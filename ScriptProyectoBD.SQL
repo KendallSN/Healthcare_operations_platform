@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 9/9/2025
+Modified: 24/9/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -120,6 +120,46 @@ CREATE SEQUENCE SEQ_HC_USR_id
  NOCACHE
 ;
 
+CREATE SEQUENCE SEQ_HC_BNE_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+;
+
+CREATE SEQUENCE SEQ_HC_DOT_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+;
+
+CREATE SEQUENCE SEQ_HC_BSC_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+;
+
+CREATE SEQUENCE SEQ_HC_PCT_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ CACHE 20
+;
+
+CREATE SEQUENCE SEQ_HC_MVT_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+;
+
 -- Create tables section -------------------------------------------------
 
 -- Table HC_Profile
@@ -149,8 +189,14 @@ COMMENT ON COLUMN HC_Profile.PRF_description IS 'Description of the profile'
 
 CREATE TABLE HC_Screen(
   SCN_id Number NOT NULL,
-  SCN_name Varchar2(30 ) NOT NULL
+  SCN_name Varchar2(30 ) NOT NULL,
+  FK_SCN_id Number
 )
+;
+
+-- Create indexes for table HC_Screen
+
+CREATE INDEX IX_Screen_Screen ON HC_Screen (FK_SCN_id)
 ;
 
 -- Add keys for table HC_Screen
@@ -226,17 +272,13 @@ CREATE TABLE HC_User(
         CONSTRAINT CHK_USR_approved CHECK (USR_approved in ('Y','N')),
   USR_email Varchar2(200 ) NOT NULL,
   BAC_id Number,
-  PR_id Number,
-  HCN_id Number
+  PR_id Number
 )
 ;
 
 -- Create indexes for table HC_User
 
 CREATE INDEX IX_PayrollType_User ON HC_User (PR_id)
-;
-
-CREATE INDEX IX_HealthCenter_User ON HC_User (HCN_id)
 ;
 
 -- Add keys for table HC_User
@@ -301,8 +343,14 @@ CREATE TABLE HC_RequestedDocument(
   RDC_name Varchar2(30 ) NOT NULL,
   RDC_description Varchar2(30 ) NOT NULL,
   RDC_for_type Varchar2(1 ) NOT NULL
-        CONSTRAINT CHK_RDC_for_type CHECK (USR_type in ('M','A'))
+        CONSTRAINT CHK_RDC_for_type CHECK (USR_type in ('M','A')),
+  DOT_id Number
 )
+;
+
+-- Create indexes for table HC_RequestedDocument
+
+CREATE INDEX IX_DocumentType_RequestedDocument ON HC_RequestedDocument (DOT_id)
 ;
 
 -- Add keys for table HC_RequestedDocument
@@ -318,7 +366,7 @@ COMMENT ON COLUMN HC_RequestedDocument.RDC_name IS 'Name of the requested docume
 ;
 COMMENT ON COLUMN HC_RequestedDocument.RDC_description IS 'Description of the requested document'
 ;
-COMMENT ON COLUMN HC_RequestedDocument.RDC_for_type IS 'Type of user who is requesting the document (F for Medic and A for administrative)'
+COMMENT ON COLUMN HC_RequestedDocument.RDC_for_type IS 'Type of user that needs to give this document (F for Medic, A for administrative and B for both)'
 ;
 
 -- Table HC_UserXRequestedDocument
@@ -349,8 +397,14 @@ COMMENT ON COLUMN HC_UserXRequestedDocument.URD_document_url IS 'Direction of th
 CREATE TABLE HC_BankAccount(
   BAC_account_number Varchar2(1000 ) NOT NULL,
   BAC_id Number NOT NULL,
-  USR_id Number NOT NULL
+  USR_id Number NOT NULL,
+  BNE_id Number
 )
+;
+
+-- Create indexes for table HC_BankAccount
+
+CREATE INDEX IX_BankEntity ON HC_BankAccount (BNE_id)
 ;
 
 -- Add keys for table HC_BankAccount
@@ -400,8 +454,25 @@ CREATE TABLE HC_Position(
   PST_id Number NOT NULL,
   PST_name Varchar2(30 ) NOT NULL,
   PST_description Varchar2(1000 ),
-  PST_price_hour_health_center Number(10,2) NOT NULL
+  PST_base_hourly_payment Number(10,2),
+  PST_base_hourly_price Number(10,2),
+  HCN_id Number NOT NULL,
+  USR_id Number,
+  PST_day_of_week Varchar2(3 ) NOT NULL
+        CONSTRAINT CHK_PST_day_of_week CHECK (PST_day_of_week in ('MON','TUE','WED','THU','FRI','SAT','SUN')),
+  TRN_id Number
 )
+;
+
+-- Create indexes for table HC_Position
+
+CREATE INDEX IX_HealthCenter_Position ON HC_Position (HCN_id)
+;
+
+CREATE INDEX IX_User_Position ON HC_Position (USR_id)
+;
+
+CREATE INDEX IX_Turn_Position ON HC_Position (TRN_id)
 ;
 
 -- Add keys for table HC_Position
@@ -417,26 +488,11 @@ COMMENT ON COLUMN HC_Position.PST_name IS 'Name of the position'
 ;
 COMMENT ON COLUMN HC_Position.PST_description IS 'Description of the position'
 ;
-COMMENT ON COLUMN HC_Position.PST_price_hour_health_center IS 'Price of the hour of a medic in the position for health center'
+COMMENT ON COLUMN HC_Position.PST_base_hourly_payment IS 'Base rate of the hour for the worker'
 ;
-
--- Table HC_PositionXUser
-
-CREATE TABLE HC_PositionXUser(
-  USR_id Number NOT NULL,
-  PST_id Number NOT NULL,
-  PSU_hourly_rate Number(10,2) NOT NULL
-)
+COMMENT ON COLUMN HC_Position.PST_base_hourly_price IS 'Base rate of the hour for the health center'
 ;
-
--- Create indexes for table HC_PositionXUser
-
-CREATE INDEX IX_Position_PositionXUser ON HC_PositionXUser (PST_id)
-;
-
--- Add keys for table HC_PositionXUser
-
-ALTER TABLE HC_PositionXUser ADD CONSTRAINT PK_HC_PositionXUser PRIMARY KEY (USR_id)
+COMMENT ON COLUMN HC_Position.PST_day_of_week IS 'Specic day of the week to the position to cover'
 ;
 
 -- Table HC_Turn
@@ -462,36 +518,6 @@ COMMENT ON COLUMN HC_Turn.TRN_start_hour IS 'Start hour of the turn'
 COMMENT ON COLUMN HC_Turn.TRN_end_hour IS 'End hour of the turn'
 ;
 
--- Table HC_TurnXPositionXUser
-
-CREATE TABLE HC_TurnXPositionXUser(
-  TR_id Number NOT NULL,
-  TPU_date Date NOT NULL,
-  TPU_price_turn_health_center Number(10,2) NOT NULL,
-  TPU_amount_turn Number(10,2) NOT NULL,
-  US_id Number NOT NULL,
-  TPU_compliance Varchar2(1 )
-        CONSTRAINT CHK_TPU_compliance CHECK (TPU_compliance in ('Y','N','P')),
-  TPU_partial_worked_hours Number(10,2)
-)
-;
-
--- Add keys for table HC_TurnXPositionXUser
-
-ALTER TABLE HC_TurnXPositionXUser ADD CONSTRAINT PK_HC_TurnXPositionXUser PRIMARY KEY (TPU_date,TR_id,US_id)
-;
-
--- Table and Columns comments section
-
-COMMENT ON COLUMN HC_TurnXPositionXUser.TPU_price_turn_health_center IS 'Price of the turn for the health center to be calculated with the duration of the turn and the price of the medic per hour'
-;
-COMMENT ON COLUMN HC_TurnXPositionXUser.TPU_amount_turn IS 'Amout to pay to the medic for the turn'
-;
-COMMENT ON COLUMN HC_TurnXPositionXUser.TPU_compliance IS 'Indicates the state of completion of the turn (Y for Yes, N for No and P for Partial)'
-;
-COMMENT ON COLUMN HC_TurnXPositionXUser.TPU_partial_worked_hours IS 'In case of a partial compliance it indicates the number of worked hours'
-;
-
 -- Table HC_Procedure
 
 CREATE TABLE HC_Procedure(
@@ -500,17 +526,25 @@ CREATE TABLE HC_Procedure(
   PCD_description Varchar2(2000 ),
   PCD_health_center_price Number(10,2) NOT NULL,
   PCD_medic_revenue Number(10,2) NOT NULL,
-  USR_id Number,
-  PCD_date Date NOT NULL
+  USR_id Number NOT NULL,
+  PCD_date Date NOT NULL,
+  PCT_id Number NOT NULL,
+  HCN_id Number NOT NULL
 )
 ;
 
 -- Create indexes for table HC_Procedure
 
-CREATE INDEX IX_Relationship1 ON HC_Procedure (USR_id)
+CREATE INDEX IX_User_Procedure ON HC_Procedure (USR_id)
 ;
 
-CREATE INDEX IX_Date ON HC_Procedure (PCD_date)
+CREATE INDEX IX_Date_Procedure ON HC_Procedure (PCD_date)
+;
+
+CREATE INDEX IX_ProcedureType_Procedure ON HC_Procedure (PCT_id)
+;
+
+CREATE INDEX IX_HealthCenter_Procedure ON HC_Procedure (HCN_id)
 ;
 
 -- Add keys for table HC_Procedure
@@ -542,7 +576,7 @@ CREATE TABLE HC_MonthScale(
   MSC_month Varchar2(3 ) NOT NULL
         CONSTRAINT CHK_MSC_month CHECK (MSC_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   MSC_year Varchar2(4 ) NOT NULL,
-  HCN_id Number
+  HCN_id Number NOT NULL
 )
 ;
 
@@ -602,13 +636,18 @@ CREATE TABLE HC_PayrollMovement(
   PRM_date Date NOT NULL,
   PRM_type Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRM_type CHECK (PRM_type in ('I','D')),
-  USR_id Number
+  MVT_id Number NOT NULL,
+  USR_id Number NOT NULL,
+  PRL_id Number NOT NULL
 )
 ;
 
 -- Create indexes for table HC_PayrollMovement
 
-CREATE INDEX IX_User_PayrollMovement ON HC_PayrollMovement (USR_id)
+CREATE INDEX IX_MovementType_PayrollMovement ON HC_PayrollMovement (MVT_id)
+;
+
+CREATE INDEX IX_PayrollXUser_PayrollMovement ON HC_PayrollMovement (USR_id,PRL_id)
 ;
 
 -- Add keys for table HC_PayrollMovement
@@ -637,25 +676,20 @@ COMMENT ON COLUMN HC_PayrollMovement.PRM_type IS 'Type of the movement (I for in
 
 CREATE TABLE HC_Payroll(
   PRL_id Number NOT NULL,
-  PRL_amount Number(12,2) NOT NULL,
   PRL_authorized Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRL_authorized CHECK (PRL_authorized in ('Y','N')),
-  PRL_account_number Varchar2(1000 ) NOT NULL,
   PRL_month Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRL_month CHECK (PRL_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   PRL_year Varchar2(4 ) NOT NULL,
-  USR_id Number,
   PRL_deposited Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRL_deposited CHECK (PRL_deposited in ('Y','N')),
-  PRL_email_sent Varchar2(1 ) NOT NULL
-        CONSTRAINT CHK_PRL_email_sent CHECK (PRL_email_sent in ('Y','N')),
-  PRL_final_html Varchar2(10000 ) NOT NULL
+  PRT_id Number NOT NULL
 )
 ;
 
 -- Create indexes for table HC_Payroll
 
-CREATE INDEX IX_FK_User_Payroll ON HC_Payroll (USR_id)
+CREATE INDEX IX_PayrollType_Payroll ON HC_Payroll (PRT_id)
 ;
 
 -- Add keys for table HC_Payroll
@@ -667,11 +701,7 @@ ALTER TABLE HC_Payroll ADD CONSTRAINT PK_HC_Payroll PRIMARY KEY (PRL_id)
 
 COMMENT ON COLUMN HC_Payroll.PRL_id IS 'Primary identifier of the payroll'
 ;
-COMMENT ON COLUMN HC_Payroll.PRL_amount IS 'Amount of the payroll'
-;
 COMMENT ON COLUMN HC_Payroll.PRL_authorized IS 'State of approval of the payroll (Y for authorized and N for Unathorized)'
-;
-COMMENT ON COLUMN HC_Payroll.PRL_account_number IS 'Account number in wich the amount will be deposited'
 ;
 COMMENT ON COLUMN HC_Payroll.PRL_month IS 'Month of the payroll'
 ;
@@ -679,9 +709,188 @@ COMMENT ON COLUMN HC_Payroll.PRL_year IS 'Year of the payroll'
 ;
 COMMENT ON COLUMN HC_Payroll.PRL_deposited IS 'State of deposit of the payroll (Y for deposited and N for not deposited)'
 ;
-COMMENT ON COLUMN HC_Payroll.PRL_email_sent IS 'Shows if the email was send (Y  for yes and N for no)'
+
+-- Table HC_BankEntity
+
+CREATE TABLE HC_BankEntity(
+  BNE_id Number NOT NULL,
+  BNE_name Varchar2(50 ) NOT NULL
+)
 ;
-COMMENT ON COLUMN HC_Payroll.PRL_final_html IS 'Final version of the html that will be send'
+
+-- Add keys for table HC_BankEntity
+
+ALTER TABLE HC_BankEntity ADD CONSTRAINT PK_HC_BankEntity PRIMARY KEY (BNE_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_BankEntity.BNE_id IS 'Primary identifier of the bank entity'
+;
+COMMENT ON COLUMN HC_BankEntity.BNE_name IS 'Name of the bank entity'
+;
+
+-- Table HC_DocumentType
+
+CREATE TABLE HC_DocumentType(
+  DOT_id Number NOT NULL,
+  DOT_name Varchar2(30 ) NOT NULL
+)
+;
+
+-- Add keys for table HC_DocumentType
+
+ALTER TABLE HC_DocumentType ADD CONSTRAINT PK_HC_DocumentType PRIMARY KEY (DOT_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_DocumentType.DOT_id IS 'Primary identifier of the document type'
+;
+COMMENT ON COLUMN HC_DocumentType.DOT_name IS 'Name of the document type'
+;
+
+-- Table HC_ProcedureType
+
+CREATE TABLE HC_ProcedureType(
+  PCT_id Number NOT NULL,
+  PCT_name Varchar2(200 ) NOT NULL,
+  PCT_description Varchar2(5000 )
+)
+;
+
+-- Add keys for table HC_ProcedureType
+
+ALTER TABLE HC_ProcedureType ADD CONSTRAINT PK_HC_ProcedureType PRIMARY KEY (PCT_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_ProcedureType.PCT_id IS 'Primary identifier of the procedure type'
+;
+COMMENT ON COLUMN HC_ProcedureType.PCT_name IS 'Name of the procedure type'
+;
+COMMENT ON COLUMN HC_ProcedureType.PCT_description IS 'Description of the procedure type'
+;
+
+-- Table HC_MovementType
+
+CREATE TABLE HC_MovementType(
+  MVT_id Number NOT NULL,
+  MVT_name Varchar2(50 ) NOT NULL,
+  MVT_description Varchar2(5000 ),
+  MVT_automatic Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_MVT_automatic CHECK (MVT_automatic in ('Y','N')),
+  MVT_amount Number(12,2),
+  MTV_amount_type Varchar2(1 )
+        CONSTRAINT CHK_MTV_amount_type CHECK (MTV_amount_type in ('A','P')),
+  MVT_lower_limit Number(12,2),
+  MTV_upper_limit Number(12,2)
+)
+;
+
+-- Add keys for table HC_MovementType
+
+ALTER TABLE HC_MovementType ADD CONSTRAINT PK_HC_MovementType PRIMARY KEY (MVT_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_MovementType.MVT_id IS 'Primary identifier of the movement type'
+;
+COMMENT ON COLUMN HC_MovementType.MVT_name IS 'Name of the movement type'
+;
+COMMENT ON COLUMN HC_MovementType.MVT_description IS 'Description of the movement type'
+;
+COMMENT ON COLUMN HC_MovementType.MVT_automatic IS 'Indicates if the movements of this type shut be created automatically (Y for yes and N for no)'
+;
+COMMENT ON COLUMN HC_MovementType.MVT_amount IS 'Amount to be applied in case of an automatic movement'
+;
+COMMENT ON COLUMN HC_MovementType.MTV_amount_type IS 'Type of amount to be applied in case of an automatic movement(A for absolute and P for percentage )'
+;
+COMMENT ON COLUMN HC_MovementType.MVT_lower_limit IS 'If necessary, lower limit to apply the amount in case of automatic movement'
+;
+COMMENT ON COLUMN HC_MovementType.MTV_upper_limit IS 'If necessary, upper limit to apply the amount in case of automatic movement'
+;
+
+-- Table HC_PayrollXUser
+
+CREATE TABLE HC_PayrollXUser(
+  USR_id Number NOT NULL,
+  PRL_id Number NOT NULL,
+  PRU_amount Number(12,2),
+  PRU_account_number Varchar2(1000 ) NOT NULL,
+  PRU_email_sent Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_PRU_email_sent CHECK (PRU_email_sent in ('Y','N'))
+)
+;
+
+-- Add keys for table HC_PayrollXUser
+
+ALTER TABLE HC_PayrollXUser ADD CONSTRAINT PK_HC_PayrollXUser PRIMARY KEY (USR_id,PRL_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_PayrollXUser.PRU_amount IS 'Total amount of the payroll to be paid to the user'
+;
+COMMENT ON COLUMN HC_PayrollXUser.PRU_account_number IS 'Account number to pay the payroll'
+;
+COMMENT ON COLUMN HC_PayrollXUser.PRU_email_sent IS 'Indicates if the email has been send (Y for yes and N for no)'
+;
+
+-- Table HC_TurnXMonthScale
+
+CREATE TABLE HC_TurnXMonthScale(
+  MSC_id Number NOT NULL,
+  TRN_id Number NOT NULL,
+  TMS_compliance Varchar2(1 ) DEFAULT PDG NOT NULL
+        CONSTRAINT CHK_TMS_compliance CHECK (TMS_compliance in ('F','PTL','PDG')),
+  TMS_partial_worked_hours Number(10,2),
+  TMS_date Date NOT NULL,
+  USR_id Number,
+  TMS_hourly_price Number(10,2),
+  TMS_hourly_payment Number(10,2),
+  TSM_name Varchar2(30 ) NOT NULL,
+  TSM_description Varchar2(1000 )
+)
+;
+
+-- Create indexes for table HC_TurnXMonthScale
+
+CREATE INDEX IX_User_TurnXMonthScale ON HC_TurnXMonthScale (USR_id)
+;
+
+CREATE INDEX IX_MonthScale_TurnXMonthScale ON HC_TurnXMonthScale (MSC_id)
+;
+
+CREATE INDEX IX_Turn_TurnXMonthScale ON HC_TurnXMonthScale (TRN_id)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_compliance IS 'Compliance state of the turn (F for full, PTL for partial, PDG for pending)'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_partial_worked_hours IS 'In case of compliance partial it indicates the amount of worked hours'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_date IS 'Day to be worked by the  user'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_price IS 'Price of the hour of this turn for the health center'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_payment IS 'Payment of the hour for this turn'
+;
+
+-- Table HC_MovementTypeXPayrollType
+
+CREATE TABLE HC_MovementTypeXPayrollType(
+  PRT_id Number NOT NULL,
+  MVT_id Number NOT NULL
+)
+;
+
+-- Add keys for table HC_MovementTypeXPayrollType
+
+ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT PK_HC_MovementTypeXPayrollType PRIMARY KEY (PRT_id,MVT_id)
 ;
 
 -- Trigger for sequence SEQ_HC_PRF_id for column PRF_id in table HC_Profile ---------
@@ -880,6 +1089,62 @@ BEGIN
 END;
 ;
 
+-- Trigger for sequence SEQ_HC_BNE_id for column BNE_id in table HC_BankEntity ---------
+CREATE OR REPLACE TRIGGER ts_HC_BankEntity_SEQ_HC_BNE_id BEFORE INSERT
+ON HC_BankEntity FOR EACH ROW
+BEGIN
+  :new.BNE_id := SEQ_HC_BNE_id.nextval;
+END;
+;
+CREATE OR REPLACE TRIGGER tsu_HC_BankEntity_SEQ_HC_BNE_id AFTER UPDATE OF BNE_id
+ON HC_BankEntity FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column BNE_id in table HC_BankEntity as it uses sequence.');
+END;
+;
+
+-- Trigger for sequence SEQ_HC_DOT_id for column DOT_id in table HC_DocumentType ---------
+CREATE OR REPLACE TRIGGER ts_HC_DocumentType_SEQ_HC_DOT_id BEFORE INSERT
+ON HC_DocumentType FOR EACH ROW
+BEGIN
+  :new.DOT_id := SEQ_HC_DOT_id.nextval;
+END;
+;
+CREATE OR REPLACE TRIGGER tsu_HC_DocumentType_SEQ_HC_DOT_id AFTER UPDATE OF DOT_id
+ON HC_DocumentType FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column DOT_id in table HC_DocumentType as it uses sequence.');
+END;
+;
+
+-- Trigger for sequence SEQ_HC_PCT_id for column PCT_id in table HC_ProcedureType ---------
+CREATE OR REPLACE TRIGGER ts_HC_ProcedureType_SEQ_HC_PCT_id BEFORE INSERT
+ON HC_ProcedureType FOR EACH ROW
+BEGIN
+  :new.PCT_id := SEQ_HC_PCT_id.nextval;
+END;
+;
+CREATE OR REPLACE TRIGGER tsu_HC_ProcedureType_SEQ_HC_PCT_id AFTER UPDATE OF PCT_id
+ON HC_ProcedureType FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column PCT_id in table HC_ProcedureType as it uses sequence.');
+END;
+;
+
+-- Trigger for sequence SEQ_HC_MVT_id for column MVT_id in table HC_MovementType ---------
+CREATE OR REPLACE TRIGGER ts_HC_MovementType_SEQ_HC_MVT_id BEFORE INSERT
+ON HC_MovementType FOR EACH ROW
+BEGIN
+  :new.MVT_id := SEQ_HC_MVT_id.nextval;
+END;
+;
+CREATE OR REPLACE TRIGGER tsu_HC_MovementType_SEQ_HC_MVT_id AFTER UPDATE OF MVT_id
+ON HC_MovementType FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column MVT_id in table HC_MovementType as it uses sequence.');
+END;
+;
+
 
 -- Create foreign keys (relationships) section ------------------------------------------------- 
 
@@ -928,52 +1193,107 @@ ALTER TABLE HC_User ADD CONSTRAINT HC_FK_BankAccount_User_02 FOREIGN KEY (BAC_id
 
 
 
-ALTER TABLE HC_PositionXUser ADD CONSTRAINT HC_FK_PositionXUser_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
-;
-
-
-
-ALTER TABLE HC_PositionXUser ADD CONSTRAINT HC_FK_PositionXUser_Position FOREIGN KEY (PST_id) REFERENCES HC_Position (PST_id)
-;
-
-
-
-ALTER TABLE HC_TurnXPositionXUser ADD CONSTRAINT HC_FK_PositionXUser_TurnXPositionXUser FOREIGN KEY (US_id) REFERENCES HC_PositionXUser (USR_id)
-;
-
-
-
-ALTER TABLE HC_TurnXPositionXUser ADD CONSTRAINT HC_FK_TurnXPositionXUser_Turn FOREIGN KEY (TR_id) REFERENCES HC_Turn (TRN_id)
-;
-
-
-
 ALTER TABLE HC_User ADD CONSTRAINT HC_FK_PayrollType_User FOREIGN KEY (PR_id) REFERENCES HC_PayrollType (PRT_id)
 ;
 
 
 
-ALTER TABLE HC_User ADD CONSTRAINT HC_FK_HealthCenter_User FOREIGN KEY (HCN_id) REFERENCES HC_HealthCenter (HCN_id)
-;
-
-
-
-ALTER TABLE HC_MonthScale ADD CONSTRAINT HC_FK_HealthCenter_MonthScale FOREIGN KEY (HCN_id) REFERENCES HC_HealthCenter (HCN_id)
-;
-
-
-
-ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_User_PayrollMovement FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
-;
-
-
-
-ALTER TABLE HC_Payroll ADD CONSTRAINT HC_FK_User_Payroll FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
-;
-
-
-
 ALTER TABLE HC_Procedure ADD CONSTRAINT HC_FK_ProcedureXUser FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
+;
+
+
+
+ALTER TABLE HC_BankAccount ADD CONSTRAINT HC_BankEntity_BankAccount FOREIGN KEY (BNE_id) REFERENCES HC_BankEntity (BNE_id)
+;
+
+
+
+ALTER TABLE HC_RequestedDocument ADD CONSTRAINT HC_FK_DocumentType_RequestedDocument FOREIGN KEY (DOT_id) REFERENCES HC_DocumentType (DOT_id)
+;
+
+
+
+ALTER TABLE HC_Screen ADD CONSTRAINT HC_FK_Screen_Screen FOREIGN KEY (FK_SCN_id) REFERENCES HC_Screen (SCN_id)
+;
+
+
+
+ALTER TABLE HC_MonthScale ADD CONSTRAINT HC_FK_MonthScale_HealthCenter FOREIGN KEY (HCN_id) REFERENCES HC_HealthCenter (HCN_id)
+;
+
+
+
+ALTER TABLE HC_Procedure ADD CONSTRAINT HC_FK_Procedure_ProcedureType FOREIGN KEY (PCT_id) REFERENCES HC_ProcedureType (PCT_id)
+;
+
+
+
+ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_MovementType_PayrollMovement FOREIGN KEY (MVT_id) REFERENCES HC_MovementType (MVT_id)
+;
+
+
+
+ALTER TABLE HC_Payroll ADD CONSTRAINT HC_FK_Payroll_PayrollType FOREIGN KEY (PRT_id) REFERENCES HC_PayrollType (PRT_id)
+;
+
+
+
+ALTER TABLE HC_PayrollXUser ADD CONSTRAINT HC_FK_PayrollXUser_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
+;
+
+
+
+ALTER TABLE HC_PayrollXUser ADD CONSTRAINT HC_FK_PayrollXUser_Payroll FOREIGN KEY (PRL_id) REFERENCES HC_Payroll (PRL_id)
+;
+
+
+
+ALTER TABLE HC_Position ADD CONSTRAINT HC_FK_Position_HealthCenter FOREIGN KEY (HCN_id) REFERENCES HC_HealthCenter (HCN_id)
+;
+
+
+
+ALTER TABLE HC_Position ADD CONSTRAINT HC_FK_Position_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
+;
+
+
+
+ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT HC_FK_TurnXMonthScale_MonthScale FOREIGN KEY (MSC_id) REFERENCES HC_MonthScale (MSC_id)
+;
+
+
+
+ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT HC_FK_TurnXMonthScale_Turn FOREIGN KEY (TRN_id) REFERENCES HC_Turn (TRN_id)
+;
+
+
+
+ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT HC_FK_TurnXMonthScale_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
+;
+
+
+
+ALTER TABLE HC_Position ADD CONSTRAINT HC_FK_Position_Turn FOREIGN KEY (TRN_id) REFERENCES HC_Turn (TRN_id)
+;
+
+
+
+ALTER TABLE HC_Procedure ADD CONSTRAINT HC_FK_Procedure_HealthCenter FOREIGN KEY (HCN_id) REFERENCES HC_HealthCenter (HCN_id)
+;
+
+
+
+ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT HC_FK_MovementTypeXPayrollType_PayrollType FOREIGN KEY (PRT_id) REFERENCES HC_PayrollType (PRT_id)
+;
+
+
+
+ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT HC_FK_MovementTypeXPayrollType_MovementType FOREIGN KEY (MVT_id) REFERENCES HC_MovementType (MVT_id)
+;
+
+
+
+ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_PayrollMovement_PayrollXUser FOREIGN KEY (USR_id, PRL_id) REFERENCES HC_PayrollXUser (USR_id, PRL_id)
 ;
 
 
