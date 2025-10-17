@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 24/9/2025
+Modified: 17/10/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -167,7 +167,8 @@ CREATE SEQUENCE SEQ_HC_MVT_id
 CREATE TABLE HC_Profile(
   PRF_id Number NOT NULL,
   PRF_name Varchar2(30 ) NOT NULL,
-  PRF_description Char(20 )
+  PRF_description Char(20 ),
+  version Number NOT NULL
 )
 ;
 
@@ -190,7 +191,8 @@ COMMENT ON COLUMN HC_Profile.PRF_description IS 'Description of the profile'
 CREATE TABLE HC_Screen(
   SCN_id Number NOT NULL,
   SCN_name Varchar2(30 ) NOT NULL,
-  FK_SCN_id Number
+  FK_SCN_id Number,
+  version Number NOT NULL
 )
 ;
 
@@ -216,7 +218,8 @@ COMMENT ON COLUMN HC_Screen.SCN_name IS 'Name of the screen'
 CREATE TABLE HC_Permission(
   PMS_id Number NOT NULL,
   PMS_name Varchar2(30 ) NOT NULL,
-  PMS_description Varchar2(200 )
+  PMS_description Varchar2(200 ),
+  version Number NOT NULL
 )
 ;
 
@@ -253,7 +256,7 @@ CREATE TABLE HC_User(
   USR_id Number NOT NULL,
   PF_id Number,
   USR_identification Varchar2(30 ) NOT NULL,
-  USR_name Varchar2(30 ) NOT NULL,
+  USR_f_name Varchar2(30 ) NOT NULL,
   USR_identification_type Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_USR_identification_type CHECK (USR_identification_type in ('N','F')),
   USR_civil_status Varchar2(1 ) NOT NULL
@@ -272,7 +275,11 @@ CREATE TABLE HC_User(
         CONSTRAINT CHK_USR_approved CHECK (USR_approved in ('Y','N')),
   USR_email Varchar2(200 ) NOT NULL,
   BAC_id Number,
-  PR_id Number
+  PR_id Number,
+  USR_f_lastname Varchar2(30 ),
+  USR_s_lastname Varchar2(30 ),
+  version Number NOT NULL,
+  USR_s_name Varchar2(30 )
 )
 ;
 
@@ -294,7 +301,7 @@ COMMENT ON COLUMN HC_User.PF_id IS 'Profile of the user once is approved'
 ;
 COMMENT ON COLUMN HC_User.USR_identification IS 'Identification number of the user'
 ;
-COMMENT ON COLUMN HC_User.USR_name IS 'Name of the User'
+COMMENT ON COLUMN HC_User.USR_f_name IS 'First name of the User'
 ;
 COMMENT ON COLUMN HC_User.USR_identification_type IS 'Type of the identification (N for National, F for Foreigner)'
 ;
@@ -321,6 +328,12 @@ COMMENT ON COLUMN HC_User.USR_email IS 'Email of the user'
 ;
 COMMENT ON COLUMN HC_User.BAC_id IS 'Main bank account of the user'
 ;
+COMMENT ON COLUMN HC_User.USR_f_lastname IS 'First lastname of the user'
+;
+COMMENT ON COLUMN HC_User.USR_s_lastname IS 'Second lastname of the user'
+;
+COMMENT ON COLUMN HC_User.USR_s_name IS 'Second name of the User'
+;
 
 -- Table HC_ProfileXPermissionXScreen
 
@@ -344,7 +357,8 @@ CREATE TABLE HC_RequestedDocument(
   RDC_description Varchar2(30 ) NOT NULL,
   RDC_for_type Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_RDC_for_type CHECK (USR_type in ('M','A')),
-  DOT_id Number
+  DOT_id Number,
+  version Number NOT NULL
 )
 ;
 
@@ -398,7 +412,8 @@ CREATE TABLE HC_BankAccount(
   BAC_account_number Varchar2(1000 ) NOT NULL,
   BAC_id Number NOT NULL,
   USR_id Number NOT NULL,
-  BNE_id Number
+  BNE_id Number,
+  version Number NOT NULL
 )
 ;
 
@@ -428,7 +443,8 @@ CREATE TABLE HC_HealthCenter(
   HCN_id Number NOT NULL,
   HCN_name Varchar2(30 ) NOT NULL,
   HCN_location Varchar2(2000 ) NOT NULL,
-  HCN_phone_number Varchar2(30 ) NOT NULL
+  HCN_phone_number Varchar2(30 ) NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -460,7 +476,8 @@ CREATE TABLE HC_Position(
   USR_id Number,
   PST_day_of_week Varchar2(3 ) NOT NULL
         CONSTRAINT CHK_PST_day_of_week CHECK (PST_day_of_week in ('MON','TUE','WED','THU','FRI','SAT','SUN')),
-  TRN_id Number
+  TRN_id Number,
+  version Number NOT NULL
 )
 ;
 
@@ -529,7 +546,10 @@ CREATE TABLE HC_Procedure(
   USR_id Number NOT NULL,
   PCD_date Date NOT NULL,
   PCT_id Number NOT NULL,
-  HCN_id Number NOT NULL
+  HCN_id Number NOT NULL,
+  PCD_processed Varchar2(1 ) DEFAULT N NOT NULL
+        CONSTRAINT CHK_PCD_processed CHECK (PCD_processed in ('Y','N')),
+  version Number NOT NULL
 )
 ;
 
@@ -566,6 +586,8 @@ COMMENT ON COLUMN HC_Procedure.PCD_medic_revenue IS 'Revenue of the medic for th
 ;
 COMMENT ON COLUMN HC_Procedure.PCD_date IS 'Date of the procedure'
 ;
+COMMENT ON COLUMN HC_Procedure.PCD_processed IS 'Indicates if the procedure has been processed for the payroll (Y for yes and N for no)'
+;
 
 -- Table HC_MonthScale
 
@@ -576,7 +598,10 @@ CREATE TABLE HC_MonthScale(
   MSC_month Varchar2(3 ) NOT NULL
         CONSTRAINT CHK_MSC_month CHECK (MSC_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   MSC_year Varchar2(4 ) NOT NULL,
-  HCN_id Number NOT NULL
+  HCN_id Number NOT NULL,
+  MSC_processed Varchar2(1 ) DEFAULT N NOT NULL
+        CONSTRAINT CHK_MSC_processed CHECK (MSC_processed in ('Y','N')),
+  version Number NOT NULL
 )
 ;
 
@@ -600,13 +625,16 @@ COMMENT ON COLUMN HC_MonthScale.MSC_month IS 'Indicates the specific month of th
 ;
 COMMENT ON COLUMN HC_MonthScale.MSC_year IS 'Indicates the specific year of the scale'
 ;
+COMMENT ON COLUMN HC_MonthScale.MSC_processed IS 'Indicates if the month scale has been processed for the payroll (Y for yes and N for no)'
+;
 
 -- Table HC_PayrollType
 
 CREATE TABLE HC_PayrollType(
   PRT_id Number NOT NULL,
   PRT_name Varchar2(30 ) NOT NULL,
-  PRT_html Varchar2(10000 ) NOT NULL
+  PRT_html Varchar2(10000 ) NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -638,7 +666,8 @@ CREATE TABLE HC_PayrollMovement(
         CONSTRAINT CHK_PRM_type CHECK (PRM_type in ('I','D')),
   MVT_id Number NOT NULL,
   USR_id Number NOT NULL,
-  PRL_id Number NOT NULL
+  PRL_id Number NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -683,7 +712,8 @@ CREATE TABLE HC_Payroll(
   PRL_year Varchar2(4 ) NOT NULL,
   PRL_deposited Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRL_deposited CHECK (PRL_deposited in ('Y','N')),
-  PRT_id Number NOT NULL
+  PRT_id Number NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -714,7 +744,8 @@ COMMENT ON COLUMN HC_Payroll.PRL_deposited IS 'State of deposit of the payroll (
 
 CREATE TABLE HC_BankEntity(
   BNE_id Number NOT NULL,
-  BNE_name Varchar2(50 ) NOT NULL
+  BNE_name Varchar2(50 ) NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -734,7 +765,8 @@ COMMENT ON COLUMN HC_BankEntity.BNE_name IS 'Name of the bank entity'
 
 CREATE TABLE HC_DocumentType(
   DOT_id Number NOT NULL,
-  DOT_name Varchar2(30 ) NOT NULL
+  DOT_name Varchar2(30 ) NOT NULL,
+  version Number NOT NULL
 )
 ;
 
@@ -755,7 +787,8 @@ COMMENT ON COLUMN HC_DocumentType.DOT_name IS 'Name of the document type'
 CREATE TABLE HC_ProcedureType(
   PCT_id Number NOT NULL,
   PCT_name Varchar2(200 ) NOT NULL,
-  PCT_description Varchar2(5000 )
+  PCT_description Varchar2(5000 ),
+  version Number NOT NULL
 )
 ;
 
@@ -785,7 +818,8 @@ CREATE TABLE HC_MovementType(
   MTV_amount_type Varchar2(1 )
         CONSTRAINT CHK_MTV_amount_type CHECK (MTV_amount_type in ('A','P')),
   MVT_lower_limit Number(12,2),
-  MTV_upper_limit Number(12,2)
+  MTV_upper_limit Number(12,2),
+  version Number NOT NULL
 )
 ;
 
@@ -818,10 +852,11 @@ COMMENT ON COLUMN HC_MovementType.MTV_upper_limit IS 'If necessary, upper limit 
 CREATE TABLE HC_PayrollXUser(
   USR_id Number NOT NULL,
   PRL_id Number NOT NULL,
-  PRU_amount Number(12,2),
+  PRU_amount Number(12,2) DEFAULT 0.00 NOT NULL,
   PRU_account_number Varchar2(1000 ) NOT NULL,
-  PRU_email_sent Varchar2(1 ) NOT NULL
-        CONSTRAINT CHK_PRU_email_sent CHECK (PRU_email_sent in ('Y','N'))
+  PRU_notified Varchar2(1 ) DEFAULT N NOT NULL
+        CONSTRAINT CHK_PRU_notified CHECK (PRU_notified in ('Y','N')),
+  version Number NOT NULL
 )
 ;
 
@@ -836,7 +871,7 @@ COMMENT ON COLUMN HC_PayrollXUser.PRU_amount IS 'Total amount of the payroll to 
 ;
 COMMENT ON COLUMN HC_PayrollXUser.PRU_account_number IS 'Account number to pay the payroll'
 ;
-COMMENT ON COLUMN HC_PayrollXUser.PRU_email_sent IS 'Indicates if the email has been send (Y for yes and N for no)'
+COMMENT ON COLUMN HC_PayrollXUser.PRU_notified IS 'Indicates if the notification email has been send (Y for yes and N for no)'
 ;
 
 -- Table HC_TurnXMonthScale
@@ -852,7 +887,10 @@ CREATE TABLE HC_TurnXMonthScale(
   TMS_hourly_price Number(10,2),
   TMS_hourly_payment Number(10,2),
   TSM_name Varchar2(30 ) NOT NULL,
-  TSM_description Varchar2(1000 )
+  TSM_description Varchar2(1000 ),
+  TMS_processed Varchar2(1 ) DEFAULT N NOT NULL
+        CONSTRAINT CHK_TMS_processed CHECK (TMS_processed in ('Y','N')),
+  version Number NOT NULL
 )
 ;
 
@@ -879,6 +917,12 @@ COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_price IS 'Price of the hour of t
 ;
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_payment IS 'Payment of the hour for this turn'
 ;
+COMMENT ON COLUMN HC_TurnXMonthScale.TSM_name IS 'Name of the posiiton that is being covered'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TSM_description IS 'Description of the position that is being covered'
+;
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_processed IS 'Indicates if the turn on the month scale has been processed for the payroll (Y for yes and N for no)'
+;
 
 -- Table HC_MovementTypeXPayrollType
 
@@ -891,6 +935,50 @@ CREATE TABLE HC_MovementTypeXPayrollType(
 -- Add keys for table HC_MovementTypeXPayrollType
 
 ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT PK_HC_MovementTypeXPayrollType PRIMARY KEY (PRT_id,MVT_id)
+;
+
+-- Table HC_NationalRegister
+
+CREATE TABLE HC_NationalRegister(
+  NRG_national_identification Varchar2(30 ) NOT NULL,
+  NRG_f_name Varchar2(30 ) NOT NULL,
+  NRG_f_lastname Varchar2(30 ) NOT NULL,
+  NRG_s_lastname Varchar2(30 ) NOT NULL,
+  NRG_s_name Varchar2(30 ),
+  version Number NOT NULL
+)
+;
+
+-- Create indexes for table HC_NationalRegister
+
+CREATE UNIQUE INDEX IX_national_identification ON HC_NationalRegister (NRG_national_identification)
+;
+
+-- Table and Columns comments section
+
+COMMENT ON COLUMN HC_NationalRegister.NRG_national_identification IS 'National identification number of the person'
+;
+COMMENT ON COLUMN HC_NationalRegister.NRG_f_name IS 'First Name of the person'
+;
+COMMENT ON COLUMN HC_NationalRegister.NRG_f_lastname IS 'First last name of the person'
+;
+COMMENT ON COLUMN HC_NationalRegister.NRG_s_lastname IS 'Second last name of the person'
+;
+COMMENT ON COLUMN HC_NationalRegister.NRG_s_name IS 'Second Name of the person'
+;
+
+-- Table GeneralParameters
+
+CREATE TABLE GeneralParameters(
+  GP_name Varchar2(50 ) NOT NULL,
+  GP_value Varchar2(500 ) NOT NULL,
+  version Number NOT NULL
+)
+;
+
+-- Create indexes for table GeneralParameters
+
+CREATE UNIQUE INDEX IDX_GP_name ON GeneralParameters (GP_name)
 ;
 
 -- Trigger for sequence SEQ_HC_PRF_id for column PRF_id in table HC_Profile ---------
