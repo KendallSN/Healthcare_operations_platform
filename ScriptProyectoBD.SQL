@@ -547,7 +547,7 @@ CREATE TABLE HC_Procedure(
   PCD_date Date NOT NULL,
   PCT_id Number NOT NULL,
   HCN_id Number NOT NULL,
-  PCD_processed Varchar2(1 ) DEFAULT N NOT NULL
+  PCD_processed Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_PCD_processed CHECK (PCD_processed in ('Y','N')),
   version Number NOT NULL
 )
@@ -599,7 +599,7 @@ CREATE TABLE HC_MonthScale(
         CONSTRAINT CHK_MSC_month CHECK (MSC_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   MSC_year Varchar2(4 ) NOT NULL,
   HCN_id Number NOT NULL,
-  MSC_processed Varchar2(1 ) DEFAULT N NOT NULL
+  MSC_processed Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_MSC_processed CHECK (MSC_processed in ('Y','N')),
   version Number NOT NULL
 )
@@ -854,7 +854,7 @@ CREATE TABLE HC_PayrollXUser(
   PRL_id Number NOT NULL,
   PRU_amount Number(12,2) DEFAULT 0.00 NOT NULL,
   PRU_account_number Varchar2(1000 ) NOT NULL,
-  PRU_notified Varchar2(1 ) DEFAULT N NOT NULL
+  PRU_notified Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_PRU_notified CHECK (PRU_notified in ('Y','N')),
   version Number NOT NULL
 )
@@ -879,7 +879,7 @@ COMMENT ON COLUMN HC_PayrollXUser.PRU_notified IS 'Indicates if the notification
 CREATE TABLE HC_TurnXMonthScale(
   MSC_id Number NOT NULL,
   TRN_id Number NOT NULL,
-  TMS_compliance Varchar2(1 ) DEFAULT PDG NOT NULL
+  TMS_compliance Varchar2(1 ) DEFAULT 'PDG' NOT NULL
         CONSTRAINT CHK_TMS_compliance CHECK (TMS_compliance in ('F','PTL','PDG')),
   TMS_partial_worked_hours Number(10,2),
   TMS_date Date NOT NULL,
@@ -888,7 +888,7 @@ CREATE TABLE HC_TurnXMonthScale(
   TMS_hourly_payment Number(10,2),
   TSM_name Varchar2(30 ) NOT NULL,
   TSM_description Varchar2(1000 ),
-  TMS_processed Varchar2(1 ) DEFAULT N NOT NULL
+  TMS_processed Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_TMS_processed CHECK (TMS_processed in ('Y','N')),
   version Number NOT NULL
 )
