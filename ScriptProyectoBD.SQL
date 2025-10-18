@@ -811,7 +811,7 @@ COMMENT ON COLUMN HC_ProcedureType.PCT_description IS 'Description of the proced
 CREATE TABLE HC_MovementType(
   MVT_id Number NOT NULL,
   MVT_name Varchar2(50 ) NOT NULL,
-  MVT_description Varchar2(5000 ),
+  MVT_description Varchar2(2000 ),
   MVT_automatic Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_MVT_automatic CHECK (MVT_automatic in ('Y','N')),
   MVT_amount Number(12,2),
