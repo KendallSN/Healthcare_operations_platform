@@ -787,7 +787,7 @@ COMMENT ON COLUMN HC_DocumentType.DOT_name IS 'Name of the document type'
 CREATE TABLE HC_ProcedureType(
   PCT_id Number NOT NULL,
   PCT_name Varchar2(200 ) NOT NULL,
-  PCT_description Varchar2(5000 ),
+  PCT_description Varchar2(2000 ),
   version Number NOT NULL
 )
 ;
