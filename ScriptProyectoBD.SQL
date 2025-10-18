@@ -356,7 +356,7 @@ CREATE TABLE HC_RequestedDocument(
   RDC_name Varchar2(30 ) NOT NULL,
   RDC_description Varchar2(30 ) NOT NULL,
   RDC_for_type Varchar2(1 ) NOT NULL
-        CONSTRAINT CHK_RDC_for_type CHECK (USR_type in ('M','A')),
+        CONSTRAINT CHK_RDC_for_type CHECK (RDC_for_type in ('M','A')),
   DOT_id Number,
   version Number NOT NULL
 )
@@ -633,7 +633,7 @@ COMMENT ON COLUMN HC_MonthScale.MSC_processed IS 'Indicates if the month scale h
 CREATE TABLE HC_PayrollType(
   PRT_id Number NOT NULL,
   PRT_name Varchar2(30 ) NOT NULL,
-  PRT_html Varchar2(10000 ) NOT NULL,
+  PRT_html Varchar2(4000 ) NOT NULL,
   version Number NOT NULL
 )
 ;
@@ -879,7 +879,7 @@ COMMENT ON COLUMN HC_PayrollXUser.PRU_notified IS 'Indicates if the notification
 CREATE TABLE HC_TurnXMonthScale(
   MSC_id Number NOT NULL,
   TRN_id Number NOT NULL,
-  TMS_compliance Varchar2(1 ) DEFAULT 'PDG' NOT NULL
+  TMS_compliance Varchar2(3 ) DEFAULT 'PDG' NOT NULL
         CONSTRAINT CHK_TMS_compliance CHECK (TMS_compliance in ('F','PTL','PDG')),
   TMS_partial_worked_hours Number(10,2),
   TMS_date Date NOT NULL,
