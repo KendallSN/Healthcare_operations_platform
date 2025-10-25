@@ -84,26 +84,39 @@ INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (2, 'Men
 INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (3, 'Mensual - Temporal', 'Pago mensual - temporal', 1);
 
 -- Users
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 2, 1, 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 2, 1, 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 3, 1, 1);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'Calle 10 #123', 'Clinica Norte - Av. 1', '+571000001', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'Carrera 5 #45', 'Centro Salud Central - Calle 2', '+571000002', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'Avenida 3 #78', 'Centro Salud Central - Calle 2', '+571000003', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'Calle 20 #9', 'Unidad Sur - Transversal 3', '+571000004', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 2, 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'Barrio Las Flores #12', 'Unidad Sur - Transversal 3', '+571000005', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 2, 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'Urbanizacion Sol #5', 'Clinica Norte - Av. 1', '+571000006', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 3, 1, 1);
 
 -- Bank accounts
 INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (1, 'BC-0001', 1, 1, 1);
-INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (2, 'BN-1002', 2, 2, 1);
-INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (3, 'BS-2003', 3, 3, 1);
-INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (4, 'BC-0004', 4, 1, 1);
-INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (5, 'BN-1005', 5, 2, 1);
-INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (6, 'BS-2006', 6, 3, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (2, 'BN-1002', 1, 2, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (3, 'BS-2003', 2, 1, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (4, 'BC-0004', 2, 2, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (5, 'BN-1005', 3, 3, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (6, 'BS-2006', 3, 1, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (7, 'BN-1005', 4, 2, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (8, 'BS-2006', 4, 3, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (9, 'BN-1005', 5, 2, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (10, 'BS-2006', 5, 1, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (11, 'BN-1005', 6, 3, 1);
+INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (12, 'BS-2006', 6, 2, 1);
+
+UPDATE HC_User SET BAC_id = 1 WHERE USR_id = 1;
+UPDATE HC_User SET BAC_id = 3 WHERE USR_id = 2;
+UPDATE HC_User SET BAC_id = 5 WHERE USR_id = 3;
+UPDATE HC_User SET BAC_id = 7 WHERE USR_id = 4;
+UPDATE HC_User SET BAC_id = 9 WHERE USR_id = 5;
+UPDATE HC_User SET BAC_id = 11 WHERE USR_id = 6;
 
 -- Positions
 -- HealthCenter 1 (Clinica Norte)
