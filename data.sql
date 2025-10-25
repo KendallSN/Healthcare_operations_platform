@@ -78,19 +78,24 @@ INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (2, 2, 
 INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 2);
 INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 4);
 
--- Users (PF_id assigned)
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 1, 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 1, 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
-  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 1, 1);
+-- Payroll types
+INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (1, 'Mensual - Estandar', 'Pago mensual - estándar', 1);
+INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (2, 'Mensual - Contrato', 'Pago mensual - contrato', 1);
+INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (3, 'Mensual - Temporal', 'Pago mensual - temporal', 1);
+
+-- Users
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 2, 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 2, 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
+  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 3, 1, 1);
 
 -- Bank accounts
 INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (1, 'BC-0001', 1, 1, 1);
@@ -142,5 +147,33 @@ INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN
   VALUES (17, 'Consulta - Tarde HC3', 'Consultas vespertinas', 'SUN', 3, 5, 5, 7600, 11600, 1);
 INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
   VALUES (18, 'Turno Madrugada HC3', 'Atencion madrugada', 'MON', 3, 6, 6, 10000, 15000, 1);
+
+-- Procedure types
+INSERT INTO HC_ProcedureType (PCT_id, PCT_name, PCT_description, version) VALUES (1, 'Consulta', 'Consulta general', 1);
+INSERT INTO HC_ProcedureType (PCT_id, PCT_name, PCT_description, version) VALUES (2, 'Pediatria', 'Atencion pediatrica', 1);
+INSERT INTO HC_ProcedureType (PCT_id, PCT_name, PCT_description, version) VALUES (3, 'Urgencia', 'Atencion de urgencias', 1);
+
+-- Procedures
+-- HCN 1 (Clinica Norte)
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Consulta General HC1 - Ana', 'Consulta general en Clinica Norte', 15000, 6000, 1, TO_DATE('2025-10-05','YYYY-MM-DD'), 1, 1, 'N', 1);
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Urgencia Leve HC1 - Juan', 'Urgencia leve en Clinica Norte', 22000, 9000, 2, TO_DATE('2025-10-12','YYYY-MM-DD'), 3, 1, 'N', 1);
+
+-- HCN 2 (Centro Salud Central) -> USR 3 (Maria), USR 4 (Carlos), USR 5 (Luisa)
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Consulta Pediatria HC2 - Maria', 'Consulta pediatria en Centro Salud Central', 16000, 6500, 3, TO_DATE('2025-10-07','YYYY-MM-DD'), 2, 2, 'N', 1);
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Procedimiento Menor HC2 - Carlos', 'Procedimiento menor en Centro Salud Central', 18000, 7000, 4, TO_DATE('2025-10-15','YYYY-MM-DD'), 1, 2, 'N', 1);
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Urgencia HC2 - Luisa', 'Atencion de urgencia en Centro Salud Central', 24000, 10000, 5, TO_DATE('2025-10-20','YYYY-MM-DD'), 3, 2, 'N', 1);
+
+-- HCN 3 (Unidad Sur) -> USR 4 (Carlos), USR 5 (Luisa), USR 6 (Diego)
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Consulta General HC3 - Carlos', 'Consulta general en Unidad Sur', 15000, 6000, 4, TO_DATE('2025-10-03','YYYY-MM-DD'), 1, 3, 'N', 1);
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Consulta Pediatria HC3 - Luisa', 'Consulta pediatria en Unidad Sur', 16500, 7000, 5, TO_DATE('2025-10-09','YYYY-MM-DD'), 2, 3, 'N', 1);
+INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES ('Urgencia HC3 - Diego', 'Atencion de urgencia en Unidad Sur', 26000, 10500, 6, TO_DATE('2025-10-22','YYYY-MM-DD'), 3, 3, 'N', 1);
 
 COMMIT;
