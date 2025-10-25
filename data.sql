@@ -79,18 +79,18 @@ INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 
 INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 4);
 
 -- Users (PF_id assigned)
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (1, '1001001', 'Ana', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 'Lopez', 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (2, '1001002', 'Juan', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 'Perez', 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (3, '1001003', 'Maria', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 'Gomez', 2);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (4, '1001004', 'Carlos', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 1, 'Martinez', 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (5, '1001005', 'Luisa', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 1, 'Ortega', 3);
-INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, USR_f_lastname, PF_id)
-  VALUES (6, '1001006', 'Diego', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 1, 'Rios', 1);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 2);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'M', 'Y', 'luisa@example.com', 1, 3);
+INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, version, PF_id)
+  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 1, 1);
 
 -- Bank accounts
 INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (1, 'BC-0001', 1, 1, 1);
