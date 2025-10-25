@@ -102,45 +102,45 @@ INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version)
 
 -- Positions
 -- HealthCenter 1 (Clinica Norte)
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (1, 'Medicina - Turno Mañana HC1', 'Atencion general mañanas', 'MON', 1, 1, 1, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (2, 'Medicina - Turno Tarde HC1', 'Atencion general tardes', 'TUE', 1, 2, 2, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (3, 'Consulta - Mañana HC1', 'Consultas generales', 'WED', 1, 6, 3, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (4, 'Consulta - Mediodía HC1', 'Consultas mediodía', 'THU', 1, 1, 4, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (5, 'Guardia - Noche HC1', 'Guardia nocturna', 'FRI', 1, 2, 5, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (6, 'Turno Madrugada HC1', 'Atencion madrugada', 'SAT', 1, 6, 6, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (1, 'Medicina - Turno Mañana HC1', 'Atencion general mañanas', 'MON', 1, 1, 1, 8000, 12000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (2, 'Medicina - Turno Tarde HC1', 'Atencion general tardes', 'TUE', 1, 2, 2, 7500, 11000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (3, 'Consulta - Mañana HC1', 'Consultas generales', 'WED', 1, 6, 3, 7000, 10000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (4, 'Consulta - Mediodía HC1', 'Consultas mediodía', 'THU', 1, 1, 4, 7200, 10400, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (5, 'Guardia - Noche HC1', 'Guardia nocturna', 'FRI', 1, 2, 5, 9000, 14000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (6, 'Turno Madrugada HC1', 'Atencion madrugada', 'SAT', 1, 6, 6, 10000, 15000, 1);
 
 -- HealthCenter 2 (Centro Salud Central)
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (7, 'Medicina - Mañana HC2', 'Atencion general mañanas', 'TUE', 2, 3, 1, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (8, 'Medicina - Tarde HC2', 'Atencion general tardes', 'WED', 2, 3, 2, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (9, 'Pediatria - Mañana HC2', 'Pediatria mañanas', 'THU', 2, 2, 3, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (10, 'Pediatria - Tarde HC2', 'Pediatria tardes', 'FRI', 2, 4, 4, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (11, 'Urgencias - Noche HC2', 'Urgencias nocturna', 'SAT', 2, 5, 5, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (12, 'Turno Madrugada HC2', 'Atencion madrugada', 'SUN', 2, 3, 6, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (7, 'Medicina - Mañana HC2', 'Atencion general mañanas', 'TUE', 2, 3, 1, 8000, 12000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (8, 'Medicina - Tarde HC2', 'Atencion general tardes', 'WED', 2, 3, 2, 7500, 11000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (9, 'Pediatria - Mañana HC2', 'Pediatria mañanas', 'THU', 2, 2, 3, 6800, 9600, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (10, 'Pediatria - Tarde HC2', 'Pediatria tardes', 'FRI', 2, 4, 4, 7200, 11200, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (11, 'Urgencias - Noche HC2', 'Urgencias nocturna', 'SAT', 2, 5, 5, 8800, 13600, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (12, 'Turno Madrugada HC2', 'Atencion madrugada', 'SUN', 2, 3, 6, 9600, 14400, 1);
 
 -- HealthCenter 3 (Unidad Sur)
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (13, 'Urgencias - Mañana HC3', 'Urgencias diurna', 'WED', 3, 4, 1, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (14, 'Urgencias - Tarde HC3', 'Urgencias vespertina', 'THU', 3, 5, 2, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (15, 'Guardia - Noche HC3', 'Guardia nocturna', 'FRI', 3, 6, 3, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (16, 'Consulta - Mediodía HC3', 'Consultas mediodía', 'SAT', 3, 4, 4, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (17, 'Consulta - Tarde HC3', 'Consultas vespertinas', 'SUN', 3, 5, 5, 1);
-INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, version)
-  VALUES (18, 'Turno Madrugada HC3', 'Atencion madrugada', 'MON', 3, 6, 6, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (13, 'Urgencias - Mañana HC3', 'Urgencias diurna', 'WED', 3, 4, 1, 8000, 12000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (14, 'Urgencias - Tarde HC3', 'Urgencias vespertina', 'THU', 3, 5, 2, 7500, 11000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (15, 'Guardia - Noche HC3', 'Guardia nocturna', 'FRI', 3, 6, 3, 9000, 14000, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (16, 'Consulta - Mediodía HC3', 'Consultas mediodía', 'SAT', 3, 4, 4, 7200, 11200, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (17, 'Consulta - Tarde HC3', 'Consultas vespertinas', 'SUN', 3, 5, 5, 7600, 11600, 1);
+INSERT INTO HC_Position (PST_id, PST_name, PST_description, PST_day_of_week, HCN_id, USR_id, TRN_id, PST_base_hourly_payment, PST_base_hourly_price, version)
+  VALUES (18, 'Turno Madrugada HC3', 'Atencion madrugada', 'MON', 3, 6, 6, 10000, 15000, 1);
 
 COMMIT;
