@@ -1,4 +1,3 @@
--- Generar payroll para un mes/año y PRT_id; crea PayrollXUser y PayrollMovements (procedures, turns, base salary y movimientos automáticos)
 CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   p_month  IN VARCHAR2,
   p_year   IN NUMBER,
