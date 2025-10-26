@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 25/10/2025
+Modified: 26/10/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -710,7 +710,7 @@ CREATE TABLE HC_Payroll(
   PRL_id Number NOT NULL,
   PRL_authorized Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRL_authorized CHECK (PRL_authorized in ('Y','N')),
-  PRL_month Varchar2(1 ) NOT NULL
+  PRL_month Varchar2(3 ) NOT NULL
         CONSTRAINT CHK_PRL_month CHECK (PRL_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   PRL_year Varchar2(4 ) NOT NULL,
   PRL_deposited Varchar2(1 ) NOT NULL
