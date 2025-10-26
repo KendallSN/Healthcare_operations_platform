@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 17/10/2025
+Modified: 25/10/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -819,7 +819,9 @@ CREATE TABLE HC_MovementType(
         CONSTRAINT CHK_MTV_amount_type CHECK (MTV_amount_type in ('A','P')),
   MVT_lower_limit Number(12,2),
   MTV_upper_limit Number(12,2),
-  version Number NOT NULL
+  version Number NOT NULL,
+  MTV_type Varchar2(1 ) DEFAULT 'I' NOT NULL
+        CONSTRAINT CHK_MTV_type CHECK (MTV_type in ('I','D'))
 )
 /
 
@@ -845,6 +847,8 @@ COMMENT ON COLUMN HC_MovementType.MTV_amount_type IS 'Type of amount to be appli
 COMMENT ON COLUMN HC_MovementType.MVT_lower_limit IS 'If necessary, lower limit to apply the amount in case of automatic movement'
 /
 COMMENT ON COLUMN HC_MovementType.MTV_upper_limit IS 'If necessary, upper limit to apply the amount in case of automatic movement'
+/
+COMMENT ON COLUMN HC_MovementType.MTV_type IS 'Type of the movement type (I for income and D for deduction)'
 /
 
 -- Table HC_PayrollXUser
