@@ -815,13 +815,13 @@ CREATE TABLE HC_MovementType(
   MVT_automatic Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_MVT_automatic CHECK (MVT_automatic in ('Y','N')),
   MVT_amount Number(12,2),
-  MTV_amount_type Varchar2(1 )
-        CONSTRAINT CHK_MTV_amount_type CHECK (MTV_amount_type in ('A','P')),
+  MVT_amount_type Varchar2(1 )
+        CONSTRAINT CHK_MVT_amount_type CHECK (MVT_amount_type in ('A','P')),
   MVT_lower_limit Number(12,2),
-  MTV_upper_limit Number(12,2),
+  MVT_upper_limit Number(12,2),
   version Number NOT NULL,
-  MTV_type Varchar2(1 ) DEFAULT 'I' NOT NULL
-        CONSTRAINT CHK_MTV_type CHECK (MTV_type in ('I','D'))
+  MVT_type Varchar2(1 ) DEFAULT 'I' NOT NULL
+        CONSTRAINT CHK_MVT_type CHECK (MVT_type in ('I','D'))
 )
 /
 
@@ -842,13 +842,13 @@ COMMENT ON COLUMN HC_MovementType.MVT_automatic IS 'Indicates if the movements o
 /
 COMMENT ON COLUMN HC_MovementType.MVT_amount IS 'Amount to be applied in case of an automatic movement'
 /
-COMMENT ON COLUMN HC_MovementType.MTV_amount_type IS 'Type of amount to be applied in case of an automatic movement(A for absolute and P for percentage )'
+COMMENT ON COLUMN HC_MovementType.MVT_amount_type IS 'Type of amount to be applied in case of an automatic movement(A for absolute and P for percentage )'
 /
 COMMENT ON COLUMN HC_MovementType.MVT_lower_limit IS 'If necessary, lower limit to apply the amount in case of automatic movement'
 /
-COMMENT ON COLUMN HC_MovementType.MTV_upper_limit IS 'If necessary, upper limit to apply the amount in case of automatic movement'
+COMMENT ON COLUMN HC_MovementType.MVT_upper_limit IS 'If necessary, upper limit to apply the amount in case of automatic movement'
 /
-COMMENT ON COLUMN HC_MovementType.MTV_type IS 'Type of the movement type (I for income and D for deduction)'
+COMMENT ON COLUMN HC_MovementType.MVT_type IS 'Type of the movement type (I for income and D for deduction)'
 /
 
 -- Table HC_PayrollXUser
