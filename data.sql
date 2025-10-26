@@ -1,4 +1,5 @@
 SET DEFINE OFF;
+-- Reset sequences
 BEGIN
   FOR seq IN (
     SELECT column_value seq_name FROM TABLE(sys.odcivarchar2list(
