@@ -279,7 +279,8 @@ CREATE TABLE HC_User(
   USR_f_lastname Varchar2(30 ),
   USR_s_lastname Varchar2(30 ),
   version Number NOT NULL,
-  USR_s_name Varchar2(30 )
+  USR_s_name Varchar2(30 ),
+  USR_base_salary Number(10,2)
 )
 /
 
@@ -333,6 +334,8 @@ COMMENT ON COLUMN HC_User.USR_f_lastname IS 'First lastname of the user'
 COMMENT ON COLUMN HC_User.USR_s_lastname IS 'Second lastname of the user'
 /
 COMMENT ON COLUMN HC_User.USR_s_name IS 'Second name of the User'
+/
+COMMENT ON COLUMN HC_User.USR_base_salary IS 'Base salary for administrative personal'
 /
 
 -- Table HC_ProfileXPermissionXScreen
