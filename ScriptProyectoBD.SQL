@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 26/10/2025
+Modified: 31/10/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -473,12 +473,7 @@ CREATE TABLE HC_Position(
   PST_id Number NOT NULL,
   PST_name Varchar2(30 ) NOT NULL,
   PST_description Varchar2(1000 ),
-  PST_base_hourly_payment Number(10,2),
-  PST_base_hourly_price Number(10,2),
   HCN_id Number NOT NULL,
-  USR_id Number,
-  PST_day_of_week Varchar2(3 ) NOT NULL
-        CONSTRAINT CHK_PST_day_of_week CHECK (PST_day_of_week in ('MON','TUE','WED','THU','FRI','SAT','SUN')),
   TRN_id Number,
   version Number NOT NULL
 )
@@ -487,9 +482,6 @@ CREATE TABLE HC_Position(
 -- Create indexes for table HC_Position
 
 CREATE INDEX IX_HealthCenter_Position ON HC_Position (HCN_id)
-/
-
-CREATE INDEX IX_User_Position ON HC_Position (USR_id)
 /
 
 CREATE INDEX IX_Turn_Position ON HC_Position (TRN_id)
@@ -508,19 +500,19 @@ COMMENT ON COLUMN HC_Position.PST_name IS 'Name of the position'
 /
 COMMENT ON COLUMN HC_Position.PST_description IS 'Description of the position'
 /
-COMMENT ON COLUMN HC_Position.PST_base_hourly_payment IS 'Base rate of the hour for the worker'
-/
-COMMENT ON COLUMN HC_Position.PST_base_hourly_price IS 'Base rate of the hour for the health center'
-/
-COMMENT ON COLUMN HC_Position.PST_day_of_week IS 'Specic day of the week to the position to cover'
-/
 
 -- Table HC_Turn
 
 CREATE TABLE HC_Turn(
   TRN_id Number NOT NULL,
   TRN_start_hour Number NOT NULL,
-  TRN_end_hour Number NOT NULL
+  TRN_end_hour Number NOT NULL,
+  USR_id Number,
+  TRN_day_of_week Varchar2(3 ) NOT NULL
+        CONSTRAINT CHK_TRN_day_of_week CHECK (TRN_day_of_week in ('MON','TUE','WED','THU','FRI','SAT','SUN')),
+  TRN_base_hourly_payment Number(10,2),
+  TRN_base_hourly_price Number(10,2),
+  version Number NOT NULL
 )
 /
 
@@ -536,6 +528,12 @@ COMMENT ON COLUMN HC_Turn.TRN_id IS 'Primary identifier of the turn'
 COMMENT ON COLUMN HC_Turn.TRN_start_hour IS 'Start hour of the turn'
 /
 COMMENT ON COLUMN HC_Turn.TRN_end_hour IS 'End hour of the turn'
+/
+COMMENT ON COLUMN HC_Turn.TRN_day_of_week IS 'Specic day of the week to the position to cover'
+/
+COMMENT ON COLUMN HC_Turn.TRN_base_hourly_payment IS 'Base rate of the hour for the worker'
+/
+COMMENT ON COLUMN HC_Turn.TRN_base_hourly_price IS 'Base rate of the hour for the health center'
 /
 
 -- Table HC_Procedure
@@ -885,7 +883,6 @@ COMMENT ON COLUMN HC_PayrollXUser.PRU_notified IS 'Indicates if the notification
 
 CREATE TABLE HC_TurnXMonthScale(
   MSC_id Number NOT NULL,
-  TRN_id Number NOT NULL,
   TMS_compliance Varchar2(3 ) DEFAULT 'PDG' NOT NULL
         CONSTRAINT CHK_TMS_compliance CHECK (TMS_compliance in ('F','PTL','PDG')),
   TMS_partial_worked_hours Number(10,2),
@@ -907,9 +904,6 @@ CREATE INDEX IX_User_TurnXMonthScale ON HC_TurnXMonthScale (USR_id)
 /
 
 CREATE INDEX IX_MonthScale_TurnXMonthScale ON HC_TurnXMonthScale (MSC_id)
-/
-
-CREATE INDEX IX_Turn_TurnXMonthScale ON HC_TurnXMonthScale (TRN_id)
 /
 
 -- Table and Columns comments section
@@ -1348,17 +1342,7 @@ ALTER TABLE HC_Position ADD CONSTRAINT HC_FK_Position_HealthCenter FOREIGN KEY (
 
 
 
-ALTER TABLE HC_Position ADD CONSTRAINT HC_FK_Position_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
-/
-
-
-
 ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT HC_FK_TurnXMonthScale_MonthScale FOREIGN KEY (MSC_id) REFERENCES HC_MonthScale (MSC_id)
-/
-
-
-
-ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT HC_FK_TurnXMonthScale_Turn FOREIGN KEY (TRN_id) REFERENCES HC_Turn (TRN_id)
 /
 
 
@@ -1389,6 +1373,11 @@ ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT HC_FK_MovementTypeXPayrol
 
 
 ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_PayrollMovement_PayrollXUser FOREIGN KEY (USR_id, PRL_id) REFERENCES HC_PayrollXUser (USR_id, PRL_id)
+/
+
+
+
+ALTER TABLE HC_Turn ADD CONSTRAINT HC_FK_Turn_User FOREIGN KEY (USR_id) REFERENCES HC_User (USR_id)
 /
 
 
