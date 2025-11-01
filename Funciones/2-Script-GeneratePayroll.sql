@@ -29,11 +29,9 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
 
   CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
     SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
-           tms.TMS_hourly_price, tms.TSM_name, p.TRN_id, t.TRN_start_hour, t.TRN_end_hour
+           tms.TMS_hourly_price, tms.TSM_name, tms.TRN_start_hour, tms.TRN_end_hour
       FROM HC_TurnXMonthScale tms
       JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
-      JOIN HC_Position p ON p.HCN_id = ms.HCN_id
-      JOIN HC_Turn t ON p.TRN_id = t.TRN_id AND t.USR_id = tms.USR_id
      WHERE tms.USR_id = p_usr
        AND tms.MSC_id = p_msc_id
        AND tms.TMS_processed = 'N'
@@ -214,7 +212,7 @@ BEGIN
           EXIT WHEN c_turns%NOTFOUND;
 
           -- Si tiene horas parciales y esta marcado como completado parcialmente, usar esas; si no, calcular las horas del turno completo
-          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_auto_rec.TMS_compliance = 'PTL' THEN
+          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_turn_rec.TMS_compliance = 'PTL' THEN
             v_hours := v_turn_rec.TMS_partial_worked_hours;
           ELSE
             -- Calcular horas completas del turno: end_hour - start_hour
