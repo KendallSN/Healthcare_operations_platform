@@ -11,22 +11,23 @@ CREATE OR REPLACE PROCEDURE GENERATE_MONTH_SCALE(
   v_inserted    NUMBER := 0;
 
   CURSOR c_pos IS
-    SELECT PST_id,
-           PST_name,
-           PST_description,
-           PST_day_of_week,
-           TRN_id,
-           USR_id,
-           PST_base_hourly_price,
-           PST_base_hourly_payment
-      FROM HC_Position
-     WHERE HCN_id = p_hcn_id
-       AND TRN_id IS NOT NULL; -- sólo posiciones que ya tienen turno asignado
+    SELECT p.PST_id,
+           p.PST_name,
+           p.PST_description,
+           t.TRN_id,
+           t.USR_id,
+           t.TRN_day_of_week,
+           t.TRN_base_hourly_price,
+           t.TRN_base_hourly_payment
+      FROM HC_Position p
+      JOIN HC_Turn t ON p.TRN_id = t.TRN_id
+     WHERE p.HCN_id = p_hcn_id
+       AND p.TRN_id IS NOT NULL; -- sólo posiciones que ya tienen turno asignado
 
   v_pos_rec c_pos%ROWTYPE;
   v_date DATE;
 BEGIN
-  -- Normalizar mes a abreviatura de 3 letras en inglés (JAN..DEC)
+  -- Pasar el mes que se recibe de numero a iniciales del nombre en ingles (Ej. 11 -> NOV)
   IF REGEXP_LIKE(TRIM(p_month),'^\d{1,2}$') THEN
     v_month_abbr := TO_CHAR(TO_DATE(TRIM(p_month),'MM'),'MON','NLS_DATE_LANGUAGE=ENGLISH');
   ELSE
@@ -44,9 +45,9 @@ BEGIN
     RAISE_APPLICATION_ERROR(-20001,'MonthScale ya existe para ese healthcenter/mes/año.');
   END IF;
 
-  -- Insertar MonthScale (el trigger rellenará MSC_id desde la secuencia)
-  INSERT INTO HC_MonthScale (HCN_id, MSC_month, MSC_year, MSC_state, MSC_processed, version)
-  VALUES (p_hcn_id, v_month_abbr, TO_CHAR(p_year), 'B', 'N', 1)
+  -- Insertar MonthScale (el trigger rellenará MSC_id desde la secuencia) y se obtiene el id del creado para usarlo en los TurnXMonthScale
+  INSERT INTO HC_MonthScale (HCN_id, MSC_month, MSC_year, MSC_state, version)
+  VALUES (p_hcn_id, v_month_abbr, TO_CHAR(p_year), 'B', 1)
   RETURNING MSC_id INTO v_msc_id;
 
   -- Calcular primer y último día del mes
@@ -61,21 +62,20 @@ BEGIN
 
     v_date := v_first_date;
     WHILE v_date <= v_last_date LOOP
-      -- comparar abreviatura del día en inglés (MON,TUE,...)
-      IF TO_CHAR(v_date,'DY','NLS_DATE_LANGUAGE=ENGLISH') = v_pos_rec.PST_day_of_week THEN
+      -- comparar abreviatura del día en inglés (MON,TUE,...) con el day of week de turn
+      IF TO_CHAR(v_date,'DY','NLS_DATE_LANGUAGE=ENGLISH') = v_pos_rec.TRN_day_of_week THEN
         INSERT INTO HC_TurnXMonthScale (
-          MSC_id, TRN_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
+          MSC_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
           USR_id, TMS_hourly_price, TMS_hourly_payment, TSM_name,
           TSM_description, TMS_processed, version
         ) VALUES (
           v_msc_id,
-          v_pos_rec.TRN_id,
           'PDG', -- pendiente por defecto
           NULL,
           v_date,
           v_pos_rec.USR_id,
-          v_pos_rec.PST_base_hourly_price,
-          v_pos_rec.PST_base_hourly_payment,
+          v_pos_rec.TRN_base_hourly_price,
+          v_pos_rec.TRN_base_hourly_payment,
           v_pos_rec.PST_name,
           v_pos_rec.PST_description,
           'N',
@@ -90,7 +90,7 @@ BEGIN
 
   COMMIT;
 
-  -- Mensaje resumido (se puede ver con DBMS_OUTPUT.ENABLE en cliente)
+  -- Mensaje
   DBMS_OUTPUT.PUT_LINE('MonthScale creada (MSC_id=' || v_msc_id || '). TurnXMonthScale insertados: ' || v_inserted);
 
 EXCEPTION
