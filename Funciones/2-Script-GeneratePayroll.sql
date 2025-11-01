@@ -39,8 +39,7 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
       FROM HC_MonthScale
      WHERE MSC_month = v_month_abbr
        AND MSC_year = TO_CHAR(p_year)
-       AND MSC_state = 'P'
-       AND MSC_processed = 'N';
+       AND MSC_state = 'P';
 
   CURSOR c_auto_mvts IS
     SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name
@@ -219,8 +218,7 @@ BEGIN
     
     -- Marcar MonthScale como completado
     UPDATE HC_MonthScale
-       SET MSC_state = 'C',
-           MSC_processed = 'Y'
+       SET MSC_state = 'C'
      WHERE MSC_id = v_msc_rec.MSC_id;
 
   END LOOP;
