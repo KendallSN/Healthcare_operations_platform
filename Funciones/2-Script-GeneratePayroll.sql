@@ -28,8 +28,12 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
        AND PCD_processed = 'N';
 
   CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
-    SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, tms.TMS_hourly_price, tms.TSM_name
+    SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
+           tms.TMS_hourly_price, tms.TSM_name, p.TRN_id, t.TRN_start_hour, t.TRN_end_hour
       FROM HC_TurnXMonthScale tms
+      JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
+      JOIN HC_Position p ON p.HCN_id = ms.HCN_id
+      JOIN HC_Turn t ON p.TRN_id = t.TRN_id AND t.USR_id = tms.USR_id
      WHERE tms.USR_id = p_usr
        AND tms.MSC_id = p_msc_id
        AND tms.TMS_processed = 'N';
@@ -158,20 +162,19 @@ BEGIN
           FETCH c_turns INTO v_turn_rec;
           EXIT WHEN c_turns%NOTFOUND;
 
-        -- Si tiene horas parciales, usar esas; si no, calcular desde TMS_hourly_payment / TMS_hourly_price
-        -- Como ya no tenemos TRN_id en TurnXMonthScale, debemos calcular las horas de otra forma
-        -- Por defecto, si no hay partial_worked_hours, asumimos que trabajó el turno completo
-        -- Podríamos inferir las horas desde el pago: horas = pago_total / pago_por_hora
-        IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL THEN
-          v_hours := v_turn_rec.TMS_partial_worked_hours;
-        ELSE
-          -- Calcular horas desde el pago (asumiendo turno completo)
-          -- Si TMS_hourly_payment tiene un valor, podemos inferir que es un turno de X horas
-          -- Por ejemplo, si el turno es de 8-14 (6 horas), debemos tener esa info guardada
-          -- Como no tenemos TRN_id, asumiremos un valor por defecto o usaremos la información disponible
-          -- Para simplificar, asumiremos 6 horas por defecto si no está especificado
-          v_hours := 6; -- valor por defecto, ajustar según necesidad
-        END IF;
+          -- Si tiene horas parciales, usar esas; si no, calcular las horas del turno completo
+          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL THEN
+            v_hours := v_turn_rec.TMS_partial_worked_hours;
+          ELSE
+            -- Calcular horas completas del turno: end_hour - start_hour
+            -- Manejar el caso donde el turno cruza la medianoche (ej: 22 a 6)
+            IF v_turn_rec.TRN_end_hour >= v_turn_rec.TRN_start_hour THEN
+              v_hours := v_turn_rec.TRN_end_hour - v_turn_rec.TRN_start_hour;
+            ELSE
+              -- El turno cruza la medianoche
+              v_hours := (24 - v_turn_rec.TRN_start_hour) + v_turn_rec.TRN_end_hour;
+            END IF;
+          END IF;
 
           v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
 
