@@ -600,8 +600,6 @@ CREATE TABLE HC_MonthScale(
         CONSTRAINT CHK_MSC_month CHECK (MSC_month in ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')),
   MSC_year Varchar2(4 ) NOT NULL,
   HCN_id Number NOT NULL,
-  MSC_processed Varchar2(1 ) DEFAULT 'N' NOT NULL
-        CONSTRAINT CHK_MSC_processed CHECK (MSC_processed in ('Y','N')),
   version Number NOT NULL
 )
 /
@@ -620,13 +618,11 @@ ALTER TABLE HC_MonthScale ADD CONSTRAINT PK_HC_MonthScale PRIMARY KEY (MSC_id)
 
 COMMENT ON COLUMN HC_MonthScale.MSC_id IS 'Primary identifies of the scale'
 /
-COMMENT ON COLUMN HC_MonthScale.MSC_state IS 'Indicates the state of the scale B for Building, A for Active, R for Review, P for Payment, and C for Completed.'
+COMMENT ON COLUMN HC_MonthScale.MSC_state IS 'Indicates the state of the scale B for Building, A for Active, R for Review, P for Payment, and C for Complete/Processed'
 /
 COMMENT ON COLUMN HC_MonthScale.MSC_month IS 'Indicates the specific month of the scale'
 /
 COMMENT ON COLUMN HC_MonthScale.MSC_year IS 'Indicates the specific year of the scale'
-/
-COMMENT ON COLUMN HC_MonthScale.MSC_processed IS 'Indicates if the month scale has been processed for the payroll (Y for yes and N for no)'
 /
 
 -- Table HC_PayrollType
