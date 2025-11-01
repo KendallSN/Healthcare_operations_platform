@@ -36,7 +36,14 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
       JOIN HC_Turn t ON p.TRN_id = t.TRN_id AND t.USR_id = tms.USR_id
      WHERE tms.USR_id = p_usr
        AND tms.MSC_id = p_msc_id
-       AND tms.TMS_processed = 'N';
+       AND tms.TMS_processed = 'N'
+       AND NVL(tms.TMS_compliance,'X') != 'PDG';
+  
+  CURSOR c_pending_turns(p_msc_id NUMBER) IS
+    SELECT COUNT(*) as pending_count
+      FROM HC_TurnXMonthScale
+     WHERE MSC_id = p_msc_id
+       AND TMS_compliance = 'PDG';
   
   CURSOR c_monthscales IS
     SELECT MSC_id, HCN_id
@@ -66,6 +73,7 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   v_total_ded   NUMBER;
   v_base_sal   NUMBER := 0; -- añadido: salario base disponible en todo el procedimiento
   v_msc_count  NUMBER := 0; -- contador de MonthScales procesados
+  v_pending_turns NUMBER := 0; -- contador de turnos pendientes (PDG)
 BEGIN
   -- normalizar mes a abreviatura MON en inglés
   IF REGEXP_LIKE(TRIM(p_month),'^\d{1,2}$') THEN
@@ -175,6 +183,21 @@ BEGIN
     EXIT WHEN c_monthscales%NOTFOUND;
     
     v_msc_count := v_msc_count + 1;
+    
+    -- Verificar si hay turnos pendientes (PDG) en este MonthScale
+    DECLARE
+      v_pdg_count NUMBER := 0;
+    BEGIN
+      SELECT COUNT(*) INTO v_pdg_count
+        FROM HC_TurnXMonthScale
+       WHERE MSC_id = v_msc_rec.MSC_id
+         AND TMS_compliance = 'PDG';
+      
+      IF v_pdg_count > 0 THEN
+        v_pending_turns := v_pending_turns + v_pdg_count;
+        DBMS_OUTPUT.PUT_LINE('ADVERTENCIA: MonthScale MSC_id='||v_msc_rec.MSC_id||' tiene '||v_pdg_count||' turno(s) con estado PDG (Pendiente). Estos turnos no serán procesados.');
+      END IF;
+    END;
 
     -- Procesar turnos de todos los usuarios médicos en este MonthScale
     OPEN c_users;
@@ -189,7 +212,7 @@ BEGIN
           FETCH c_turns INTO v_turn_rec;
           EXIT WHEN c_turns%NOTFOUND;
 
-          -- Si tiene horas parciales, usar esas; si no, calcular las horas del turno completo
+          -- Si tiene horas parciales y esta marcado como completado parcialmente, usar esas; si no, calcular las horas del turno completo
           IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_auto_rec.TMS_compliance = 'PTL' THEN
             v_hours := v_turn_rec.TMS_partial_worked_hours;
           ELSE
@@ -302,6 +325,10 @@ BEGIN
 
   COMMIT;
   DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year||'. MonthScales con turnos procesados: '||v_msc_count);
+  
+  IF v_pending_turns > 0 THEN
+    DBMS_OUTPUT.PUT_LINE('NOTA: Se encontraron '||v_pending_turns||' turno(s) con estado PDG (Pendiente) que no fueron procesados.');
+  END IF;
 EXCEPTION
   WHEN OTHERS THEN
     ROLLBACK;
