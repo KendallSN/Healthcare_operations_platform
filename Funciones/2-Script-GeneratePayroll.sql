@@ -19,20 +19,40 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
      WHERE PR_id = p_prt_id
        AND USR_approved = 'Y';
 
-  CURSOR c_procs(p_usr NUMBER, p_from DATE, p_to DATE) IS
+  CURSOR c_procs(p_usr NUMBER, p_from DATE, p_to DATE, p_hcn_id NUMBER) IS
     SELECT PCD_id, PCD_medic_revenue, PCD_name
       FROM HC_Procedure
      WHERE USR_id = p_usr
-       AND PCD_date BETWEEN p_from AND p_to;
+       AND PCD_date BETWEEN p_from AND p_to
+       AND HCN_id = p_hcn_id
+       AND PCD_processed = 'N';
 
-  CURSOR c_turns(p_usr NUMBER, p_from DATE, p_to DATE) IS
-    SELECT tms.TRN_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, tms.TMS_hourly_price, tms.TSM_name
+  CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
+    SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
+           tms.TMS_hourly_price, tms.TSM_name, tms.TRN_start_hour, tms.TRN_end_hour
       FROM HC_TurnXMonthScale tms
+      JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
      WHERE tms.USR_id = p_usr
-       AND tms.TMS_date BETWEEN p_from AND p_to;
+       AND tms.MSC_id = p_msc_id
+       AND tms.TMS_processed = 'N'
+       AND NVL(tms.TMS_compliance,'X') != 'PDG';
+  
+  CURSOR c_pending_turns(p_msc_id NUMBER) IS
+    SELECT COUNT(*) as pending_count
+      FROM HC_TurnXMonthScale
+     WHERE MSC_id = p_msc_id
+       AND TMS_compliance = 'PDG';
+  
+  CURSOR c_monthscales IS
+    SELECT MSC_id, HCN_id
+      FROM HC_MonthScale
+     WHERE MSC_month = v_month_abbr
+       AND MSC_year = TO_CHAR(p_year)
+       AND MSC_state = 'P';
 
   CURSOR c_auto_mvts IS
-    SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name
+    SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name, 
+           m.MVT_lower_limit, m.MVT_upper_limit
       FROM HC_MovementType m
       JOIN HC_MovementTypeXPayrollType mp ON mp.MVT_id = m.MVT_id
      WHERE m.MVT_automatic = 'Y'
@@ -42,6 +62,7 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   v_proc_rec   c_procs%ROWTYPE;
   v_turn_rec   c_turns%ROWTYPE;
   v_auto_rec   c_auto_mvts%ROWTYPE;
+  v_msc_rec    c_monthscales%ROWTYPE;
 
   v_bank_acc   VARCHAR2(1000);
   v_pru_amount NUMBER := 0;
@@ -50,6 +71,8 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   v_total_income NUMBER;
   v_total_ded   NUMBER;
   v_base_sal   NUMBER := 0; -- añadido: salario base disponible en todo el procedimiento
+  v_msc_count  NUMBER := 0; -- contador de MonthScales procesados
+  v_pending_turns NUMBER := 0; -- contador de turnos pendientes (PDG)
 BEGIN
   -- normalizar mes a abreviatura MON en inglés
   IF REGEXP_LIKE(TRIM(p_month),'^\d{1,2}$') THEN
@@ -85,7 +108,7 @@ BEGIN
   VALUES (p_prt_id, v_month_abbr, TO_CHAR(p_year), 'N', 'N', 1)
   RETURNING PRL_id INTO v_prl_id;
 
-  -- recorrer usuarios del payroll type
+  -- Primero: Procesar todos los usuarios del payroll type (Procedimientos y Salarios Base)
   OPEN c_users;
   LOOP
     FETCH c_users INTO v_usr_rec;
@@ -105,73 +128,140 @@ BEGIN
     INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
       VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
 
-    -- reset counters
-    v_pru_amount := 0;
-
     IF v_usr_rec.USR_type = 'M' THEN
-      -- 1) Procedures -> un payrollmovement por procedimiento dentro del mes
-      OPEN c_procs(v_usr_rec.USR_id, v_first_date, v_last_date);
-      LOOP
-        FETCH c_procs INTO v_proc_rec;
-        EXIT WHEN c_procs%NOTFOUND;
+      -- Médicos: Procesar procedimientos del mes (sin filtrar por HCN_id)
+      DECLARE
+        CURSOR c_procs_all IS
+          SELECT PCD_id, PCD_medic_revenue, PCD_name
+            FROM HC_Procedure
+           WHERE USR_id = v_usr_rec.USR_id
+             AND PCD_date BETWEEN v_first_date AND v_last_date
+             AND PCD_processed = 'N';
+        v_proc_all c_procs_all%ROWTYPE;
+      BEGIN
+        OPEN c_procs_all;
+        LOOP
+          FETCH c_procs_all INTO v_proc_all;
+          EXIT WHEN c_procs_all%NOTFOUND;
 
-        v_amt := NVL(v_proc_rec.PCD_medic_revenue,0);
+          v_amt := NVL(v_proc_all.PCD_medic_revenue,0);
 
-        INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-        VALUES (v_amt, 'A', 'Procedimiento: '||v_proc_rec.PCD_name, 'Proc generada: '||v_proc_rec.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_amt, 'A', 'Procedimiento: '||v_proc_all.PCD_name, 'Proc generada: '||v_proc_all.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
 
-      END LOOP;
-      CLOSE c_procs;
+          -- Marcar procedimiento como procesado
+          UPDATE HC_Procedure
+             SET PCD_processed = 'Y'
+           WHERE PCD_id = v_proc_all.PCD_id;
 
-      -- 2) Turns -> por cada TMS del mes crear movimiento
-      OPEN c_turns(v_usr_rec.USR_id, v_first_date, v_last_date);
-      LOOP
-        FETCH c_turns INTO v_turn_rec;
-        EXIT WHEN c_turns%NOTFOUND;
-
-        IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL THEN
-          v_hours := v_turn_rec.TMS_partial_worked_hours;
-        ELSE
-          -- intentar determinar horas completas desde tabla HC_Turn
-          DECLARE
-            v_trn_start NUMBER;
-            v_trn_end   NUMBER;
-          BEGIN
-            SELECT TRN_start_hour, TRN_end_hour INTO v_trn_start, v_trn_end FROM HC_Turn WHERE TRN_id = v_turn_rec.TRN_id;
-            -- calcular horas (considerando wrap a 24)
-            IF v_trn_end >= v_trn_start THEN
-              v_hours := v_trn_end - v_trn_start;
-            ELSE
-              v_hours := (24 - v_trn_start) + v_trn_end;
-            END IF;
-          EXCEPTION WHEN OTHERS THEN
-            v_hours := 0;
-          END;
-        END IF;
-
-        v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
-
-        INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-        VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), 'Turno: '||v_turn_rec.TSM_name||' - '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
-
-      END LOOP;
-      CLOSE c_turns;
+        END LOOP;
+        CLOSE c_procs_all;
+      END;
 
     ELSIF v_usr_rec.USR_type = 'A' THEN
       -- Administrativos: agregar salario base si existe
       BEGIN
         SELECT NVL(USR_base_salary,0) INTO v_base_sal FROM HC_User WHERE USR_id = v_usr_rec.USR_id;
+        
+        IF v_base_sal > 0 THEN
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
+        END IF;
       EXCEPTION WHEN NO_DATA_FOUND THEN
-        v_base_sal := 0;
+        NULL;
       END;
-
-      IF v_base_sal > 0 THEN
-        INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-        VALUES (v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
-      END IF;
     END IF;
 
-    -- 3) Aplicar movimientos automáticos que correspondan a este payroll type
+  END LOOP;
+  CLOSE c_users;
+
+  -- Segundo: Procesar MonthScales con estado 'P' (solo para turnos)
+  OPEN c_monthscales;
+  LOOP
+    FETCH c_monthscales INTO v_msc_rec;
+    EXIT WHEN c_monthscales%NOTFOUND;
+    
+    v_msc_count := v_msc_count + 1;
+    
+    -- Verificar si hay turnos pendientes (PDG) en este MonthScale
+    DECLARE
+      v_pdg_count NUMBER := 0;
+    BEGIN
+      SELECT COUNT(*) INTO v_pdg_count
+        FROM HC_TurnXMonthScale
+       WHERE MSC_id = v_msc_rec.MSC_id
+         AND TMS_compliance = 'PDG';
+      
+      IF v_pdg_count > 0 THEN
+        v_pending_turns := v_pending_turns + v_pdg_count;
+        DBMS_OUTPUT.PUT_LINE('ADVERTENCIA: MonthScale MSC_id='||v_msc_rec.MSC_id||' tiene '||v_pdg_count||' turno(s) con estado PDG (Pendiente). Estos turnos no serán procesados.');
+      END IF;
+    END;
+
+    -- Procesar turnos de todos los usuarios médicos en este MonthScale
+    OPEN c_users;
+    LOOP
+      FETCH c_users INTO v_usr_rec;
+      EXIT WHEN c_users%NOTFOUND;
+
+      IF v_usr_rec.USR_type = 'M' THEN
+        -- Procesar Turns -> por cada TMS del MonthScale crear movimiento
+        OPEN c_turns(v_usr_rec.USR_id, v_msc_rec.MSC_id);
+        LOOP
+          FETCH c_turns INTO v_turn_rec;
+          EXIT WHEN c_turns%NOTFOUND;
+
+          -- Si tiene horas parciales y esta marcado como completado parcialmente, usar esas; si no, calcular las horas del turno completo
+          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_turn_rec.TMS_compliance = 'PTL' THEN
+            v_hours := v_turn_rec.TMS_partial_worked_hours;
+          ELSE
+            -- Calcular horas completas del turno: end_hour - start_hour
+            -- Manejar el caso donde el turno cruza la medianoche (ej: 22 a 6)
+            IF v_turn_rec.TRN_end_hour >= v_turn_rec.TRN_start_hour THEN
+              v_hours := v_turn_rec.TRN_end_hour - v_turn_rec.TRN_start_hour;
+            ELSE
+              -- El turno cruza la medianoche
+              v_hours := (24 - v_turn_rec.TRN_start_hour) + v_turn_rec.TRN_end_hour;
+            END IF;
+          END IF;
+
+          v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
+
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), 'Turno: '||v_turn_rec.TSM_name||' - '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
+
+          -- Marcar TurnXMonthScale como procesado
+          UPDATE HC_TurnXMonthScale
+             SET TMS_processed = 'Y'
+           WHERE MSC_id = v_turn_rec.MSC_id
+             AND USR_id = v_usr_rec.USR_id
+             AND TMS_date = v_turn_rec.TMS_date;
+
+        END LOOP;
+        CLOSE c_turns;
+      END IF;
+
+    END LOOP;
+    CLOSE c_users;
+    
+    -- Marcar MonthScale como completado
+    UPDATE HC_MonthScale
+       SET MSC_state = 'C'
+     WHERE MSC_id = v_msc_rec.MSC_id;
+
+  END LOOP;
+  CLOSE c_monthscales;
+
+  -- Nota: Si no hay MonthScales, aún así se procesan procedimientos y salarios base
+  -- No lanzamos error, solo informamos
+
+  -- Aplicar movimientos automáticos y calcular totales para todos los usuarios
+  OPEN c_users;
+  LOOP
+    FETCH c_users INTO v_usr_rec;
+    EXIT WHEN c_users%NOTFOUND;
+
+    -- Aplicar movimientos automáticos que correspondan a este payroll type
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_income
       FROM HC_PayrollMovement
      WHERE USR_id = v_usr_rec.USR_id
@@ -189,29 +279,51 @@ BEGIN
       FETCH c_auto_mvts INTO v_auto_rec;
       EXIT WHEN c_auto_mvts%NOTFOUND;
 
-      IF v_auto_rec.MVT_amount_type = 'P' THEN
-        v_amt := ROUND(v_total_income * (NVL(v_auto_rec.MVT_amount,0) / 100),2);
-      ELSE
-        v_amt := NVL(v_auto_rec.MVT_amount,0);
-      END IF;
+      -- Verificar si el movimiento automático debe aplicarse según los límites
+      DECLARE
+        v_apply_movement BOOLEAN := TRUE;
+      BEGIN
+        -- Si tiene lower_limit, los ingresos deben ser mayores
+        IF v_auto_rec.MVT_lower_limit IS NOT NULL THEN
+          IF v_total_income <= v_auto_rec.MVT_lower_limit THEN
+            v_apply_movement := FALSE;
+          END IF;
+        END IF;
 
-      -- insertar movimiento automático (tipo I o D según MVT_type)
-      INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-      VALUES (v_amt,
-              CASE WHEN v_auto_rec.MVT_amount_type = 'P' THEN 'P' ELSE 'A' END,
-              'Auto: '||v_auto_rec.MVT_name,
-              'Movimiento automático: '||v_auto_rec.MVT_name,
-              SYSDATE,
-              v_auto_rec.MVT_type,
-              v_auto_rec.MVT_id,
-              v_usr_rec.USR_id,
-              v_prl_id,
-              1);
+        -- Si tiene upper_limit, los ingresos deben ser menores
+        IF v_auto_rec.MVT_upper_limit IS NOT NULL THEN
+          IF v_total_income >= v_auto_rec.MVT_upper_limit THEN
+            v_apply_movement := FALSE;
+          END IF;
+        END IF;
+
+        -- Solo aplicar el movimiento si cumple los límites
+        IF v_apply_movement THEN
+          IF v_auto_rec.MVT_amount_type = 'P' THEN
+            v_amt := ROUND(v_total_income * (NVL(v_auto_rec.MVT_amount,0) / 100),2);
+          ELSE
+            v_amt := NVL(v_auto_rec.MVT_amount,0);
+          END IF;
+
+          -- insertar movimiento automático (tipo I o D según MVT_type)
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_amt,
+                  CASE WHEN v_auto_rec.MVT_amount_type = 'P' THEN 'P' ELSE 'A' END,
+                  'Auto: '||v_auto_rec.MVT_name,
+                  'Movimiento automático: '||v_auto_rec.MVT_name,
+                  SYSDATE,
+                  v_auto_rec.MVT_type,
+                  v_auto_rec.MVT_id,
+                  v_usr_rec.USR_id,
+                  v_prl_id,
+                  1);
+        END IF;
+      END;
 
     END LOOP;
     CLOSE c_auto_mvts;
 
-    -- 4) Calcular total neto y actualizar PRU_amount
+    -- Calcular total neto y actualizar PRU_amount
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_income
       FROM HC_PayrollMovement
      WHERE USR_id = v_usr_rec.USR_id
@@ -233,7 +345,11 @@ BEGIN
   CLOSE c_users;
 
   COMMIT;
-  DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year);
+  DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year||'. MonthScales con turnos procesados: '||v_msc_count);
+  
+  IF v_pending_turns > 0 THEN
+    DBMS_OUTPUT.PUT_LINE('NOTA: Se encontraron '||v_pending_turns||' turno(s) con estado PDG (Pendiente) que no fueron procesados.');
+  END IF;
 EXCEPTION
   WHEN OTHERS THEN
     ROLLBACK;
