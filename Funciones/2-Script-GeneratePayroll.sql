@@ -53,7 +53,8 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
        AND MSC_state = 'P';
 
   CURSOR c_auto_mvts IS
-    SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name
+    SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name, 
+           m.MVT_lower_limit, m.MVT_upper_limit
       FROM HC_MovementType m
       JOIN HC_MovementTypeXPayrollType mp ON mp.MVT_id = m.MVT_id
      WHERE m.MVT_automatic = 'Y'
@@ -280,24 +281,46 @@ BEGIN
       FETCH c_auto_mvts INTO v_auto_rec;
       EXIT WHEN c_auto_mvts%NOTFOUND;
 
-      IF v_auto_rec.MVT_amount_type = 'P' THEN
-        v_amt := ROUND(v_total_income * (NVL(v_auto_rec.MVT_amount,0) / 100),2);
-      ELSE
-        v_amt := NVL(v_auto_rec.MVT_amount,0);
-      END IF;
+      -- Verificar si el movimiento automático debe aplicarse según los límites
+      DECLARE
+        v_apply_movement BOOLEAN := TRUE;
+      BEGIN
+        -- Si tiene lower_limit, los ingresos deben ser mayores
+        IF v_auto_rec.MVT_lower_limit IS NOT NULL THEN
+          IF v_total_income <= v_auto_rec.MVT_lower_limit THEN
+            v_apply_movement := FALSE;
+          END IF;
+        END IF;
 
-      -- insertar movimiento automático (tipo I o D según MVT_type)
-      INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-      VALUES (v_amt,
-              CASE WHEN v_auto_rec.MVT_amount_type = 'P' THEN 'P' ELSE 'A' END,
-              'Auto: '||v_auto_rec.MVT_name,
-              'Movimiento automático: '||v_auto_rec.MVT_name,
-              SYSDATE,
-              v_auto_rec.MVT_type,
-              v_auto_rec.MVT_id,
-              v_usr_rec.USR_id,
-              v_prl_id,
-              1);
+        -- Si tiene upper_limit, los ingresos deben ser menores
+        IF v_auto_rec.MVT_upper_limit IS NOT NULL THEN
+          IF v_total_income >= v_auto_rec.MVT_upper_limit THEN
+            v_apply_movement := FALSE;
+          END IF;
+        END IF;
+
+        -- Solo aplicar el movimiento si cumple los límites
+        IF v_apply_movement THEN
+          IF v_auto_rec.MVT_amount_type = 'P' THEN
+            v_amt := ROUND(v_total_income * (NVL(v_auto_rec.MVT_amount,0) / 100),2);
+          ELSE
+            v_amt := NVL(v_auto_rec.MVT_amount,0);
+          END IF;
+
+          -- insertar movimiento automático (tipo I o D según MVT_type)
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_amt,
+                  CASE WHEN v_auto_rec.MVT_amount_type = 'P' THEN 'P' ELSE 'A' END,
+                  'Auto: '||v_auto_rec.MVT_name,
+                  'Movimiento automático: '||v_auto_rec.MVT_name,
+                  SYSDATE,
+                  v_auto_rec.MVT_type,
+                  v_auto_rec.MVT_id,
+                  v_usr_rec.USR_id,
+                  v_prl_id,
+                  1);
+        END IF;
+      END;
 
     END LOOP;
     CLOSE c_auto_mvts;
