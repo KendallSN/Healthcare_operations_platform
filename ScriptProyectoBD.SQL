@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 31/10/2025
+Modified: 1/11/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -886,11 +886,13 @@ CREATE TABLE HC_TurnXMonthScale(
   USR_id Number,
   TMS_hourly_price Number(10,2),
   TMS_hourly_payment Number(10,2),
-  TSM_name Varchar2(30 ) NOT NULL,
-  TSM_description Varchar2(1000 ),
+  TMS_name Varchar2(30 ) NOT NULL,
+  TMS_description Varchar2(1000 ),
   TMS_processed Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_TMS_processed CHECK (TMS_processed in ('Y','N')),
-  version Number NOT NULL
+  version Number NOT NULL,
+  TMS_start_hour Number NOT NULL,
+  TMS_end_hour Number NOT NULL
 )
 /
 
@@ -914,11 +916,15 @@ COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_price IS 'Price of the hour of t
 /
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_hourly_payment IS 'Payment of the hour for this turn'
 /
-COMMENT ON COLUMN HC_TurnXMonthScale.TSM_name IS 'Name of the posiiton that is being covered'
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_name IS 'Name of the posiiton that is being covered'
 /
-COMMENT ON COLUMN HC_TurnXMonthScale.TSM_description IS 'Description of the position that is being covered'
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_description IS 'Description of the position that is being covered'
 /
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_processed IS 'Indicates if the turn on the month scale has been processed for the payroll (Y for yes and N for no)'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_start_hour IS 'Start hour of the turn'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_end_hour IS 'End hour of the turn'
 /
 
 -- Table HC_MovementTypeXPayrollType
