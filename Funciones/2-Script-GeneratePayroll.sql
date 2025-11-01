@@ -101,7 +101,74 @@ BEGIN
   VALUES (p_prt_id, v_month_abbr, TO_CHAR(p_year), 'N', 'N', 1)
   RETURNING PRL_id INTO v_prl_id;
 
-  -- recorrer MonthScales con estado 'P' (Payment)
+  -- Primero: Procesar todos los usuarios del payroll type (Procedimientos y Salarios Base)
+  OPEN c_users;
+  LOOP
+    FETCH c_users INTO v_usr_rec;
+    EXIT WHEN c_users%NOTFOUND;
+
+    -- obtener cuenta principal (una de sus cuentas) para PRU_account_number
+    BEGIN
+      SELECT BAC_account_number INTO v_bank_acc
+        FROM HC_BankAccount
+       WHERE USR_id = v_usr_rec.USR_id
+         AND ROWNUM = 1;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      v_bank_acc := 'N/A';
+    END;
+
+    -- insertar relación payrollXuser
+    INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
+      VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
+
+    IF v_usr_rec.USR_type = 'M' THEN
+      -- Médicos: Procesar procedimientos del mes (sin filtrar por HCN_id)
+      DECLARE
+        CURSOR c_procs_all IS
+          SELECT PCD_id, PCD_medic_revenue, PCD_name
+            FROM HC_Procedure
+           WHERE USR_id = v_usr_rec.USR_id
+             AND PCD_date BETWEEN v_first_date AND v_last_date
+             AND PCD_processed = 'N';
+        v_proc_all c_procs_all%ROWTYPE;
+      BEGIN
+        OPEN c_procs_all;
+        LOOP
+          FETCH c_procs_all INTO v_proc_all;
+          EXIT WHEN c_procs_all%NOTFOUND;
+
+          v_amt := NVL(v_proc_all.PCD_medic_revenue,0);
+
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_amt, 'A', 'Procedimiento: '||v_proc_all.PCD_name, 'Proc generada: '||v_proc_all.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
+
+          -- Marcar procedimiento como procesado
+          UPDATE HC_Procedure
+             SET PCD_processed = 'Y'
+           WHERE PCD_id = v_proc_all.PCD_id;
+
+        END LOOP;
+        CLOSE c_procs_all;
+      END;
+
+    ELSIF v_usr_rec.USR_type = 'A' THEN
+      -- Administrativos: agregar salario base si existe
+      BEGIN
+        SELECT NVL(USR_base_salary,0) INTO v_base_sal FROM HC_User WHERE USR_id = v_usr_rec.USR_id;
+        
+        IF v_base_sal > 0 THEN
+          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
+        END IF;
+      EXCEPTION WHEN NO_DATA_FOUND THEN
+        NULL;
+      END;
+    END IF;
+
+  END LOOP;
+  CLOSE c_users;
+
+  -- Segundo: Procesar MonthScales con estado 'P' (solo para turnos)
   OPEN c_monthscales;
   LOOP
     FETCH c_monthscales INTO v_msc_rec;
@@ -109,61 +176,21 @@ BEGIN
     
     v_msc_count := v_msc_count + 1;
 
-    -- recorrer usuarios del payroll type
+    -- Procesar turnos de todos los usuarios médicos en este MonthScale
     OPEN c_users;
     LOOP
       FETCH c_users INTO v_usr_rec;
       EXIT WHEN c_users%NOTFOUND;
 
-      -- obtener cuenta principal (una de sus cuentas) para PRU_account_number
-      BEGIN
-        SELECT BAC_account_number INTO v_bank_acc
-          FROM HC_BankAccount
-         WHERE USR_id = v_usr_rec.USR_id
-           AND ROWNUM = 1;
-      EXCEPTION WHEN NO_DATA_FOUND THEN
-        v_bank_acc := 'N/A';
-      END;
-
-      -- insertar relación payrollXuser si no existe
-      BEGIN
-        INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
-          VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
-      EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
-        NULL; -- ya existe, continuar
-      END;
-
-      -- reset counters
-      v_pru_amount := 0;
-
       IF v_usr_rec.USR_type = 'M' THEN
-        -- 1) Procedures -> un payrollmovement por procedimiento dentro del mes del MonthScale actual
-        OPEN c_procs(v_usr_rec.USR_id, v_first_date, v_last_date, v_msc_rec.HCN_id);
-        LOOP
-          FETCH c_procs INTO v_proc_rec;
-          EXIT WHEN c_procs%NOTFOUND;
-
-          v_amt := NVL(v_proc_rec.PCD_medic_revenue,0);
-
-          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-          VALUES (v_amt, 'A', 'Procedimiento: '||v_proc_rec.PCD_name, 'Proc generada: '||v_proc_rec.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
-
-          -- Marcar procedimiento como procesado
-          UPDATE HC_Procedure
-             SET PCD_processed = 'Y'
-           WHERE PCD_id = v_proc_rec.PCD_id;
-
-        END LOOP;
-        CLOSE c_procs;
-
-        -- 2) Turns -> por cada TMS del MonthScale crear movimiento
+        -- Procesar Turns -> por cada TMS del MonthScale crear movimiento
         OPEN c_turns(v_usr_rec.USR_id, v_msc_rec.MSC_id);
         LOOP
           FETCH c_turns INTO v_turn_rec;
           EXIT WHEN c_turns%NOTFOUND;
 
           -- Si tiene horas parciales, usar esas; si no, calcular las horas del turno completo
-          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL THEN
+          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_auto_rec.TMS_compliance = 'PTL' THEN
             v_hours := v_turn_rec.TMS_partial_worked_hours;
           ELSE
             -- Calcular horas completas del turno: end_hour - start_hour
@@ -190,30 +217,6 @@ BEGIN
 
         END LOOP;
         CLOSE c_turns;
-
-      ELSIF v_usr_rec.USR_type = 'A' THEN
-        -- Administrativos: agregar salario base si existe (solo una vez por usuario)
-        -- Verificar si ya se agregó el salario base para este usuario en este payroll
-        DECLARE
-          v_sal_exists NUMBER;
-        BEGIN
-          SELECT COUNT(*) INTO v_sal_exists
-            FROM HC_PayrollMovement
-           WHERE USR_id = v_usr_rec.USR_id
-             AND PRL_id = v_prl_id
-             AND MVT_id = NVL(v_mvt_base,3);
-          
-          IF v_sal_exists = 0 THEN
-            SELECT NVL(USR_base_salary,0) INTO v_base_sal FROM HC_User WHERE USR_id = v_usr_rec.USR_id;
-            
-            IF v_base_sal > 0 THEN
-              INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-              VALUES (v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
-            END IF;
-          END IF;
-        EXCEPTION WHEN NO_DATA_FOUND THEN
-          NULL;
-        END;
       END IF;
 
     END LOOP;
@@ -227,10 +230,8 @@ BEGIN
   END LOOP;
   CLOSE c_monthscales;
 
-  -- Si no se encontraron MonthScales para procesar, lanzar error
-  IF v_msc_count = 0 THEN
-    RAISE_APPLICATION_ERROR(-20002,'No se encontraron MonthScales con estado P (Payment) para el mes '||v_month_abbr||'/'||p_year);
-  END IF;
+  -- Nota: Si no hay MonthScales, aún así se procesan procedimientos y salarios base
+  -- No lanzamos error, solo informamos
 
   -- Aplicar movimientos automáticos y calcular totales para todos los usuarios
   OPEN c_users;
@@ -300,7 +301,7 @@ BEGIN
   CLOSE c_users;
 
   COMMIT;
-  DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year||'. MonthScales procesados: '||v_msc_count);
+  DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year||'. MonthScales con turnos procesados: '||v_msc_count);
 EXCEPTION
   WHEN OTHERS THEN
     ROLLBACK;
