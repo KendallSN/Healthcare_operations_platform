@@ -29,7 +29,7 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
 
   CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
     SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
-           tms.TMS_hourly_price, tms.TSM_name, tms.TRN_start_hour, tms.TRN_end_hour
+           tms.TMS_hourly_price, tms.TMS_name, tms.TMS_start_hour, tms.TMS_end_hour
       FROM HC_TurnXMonthScale tms
       JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
      WHERE tms.USR_id = p_usr
@@ -217,18 +217,18 @@ BEGIN
           ELSE
             -- Calcular horas completas del turno: end_hour - start_hour
             -- Manejar el caso donde el turno cruza la medianoche (ej: 22 a 6)
-            IF v_turn_rec.TRN_end_hour >= v_turn_rec.TRN_start_hour THEN
-              v_hours := v_turn_rec.TRN_end_hour - v_turn_rec.TRN_start_hour;
+            IF v_turn_rec.TMS_end_hour >= v_turn_rec.TMS_start_hour THEN
+              v_hours := v_turn_rec.TMS_end_hour - v_turn_rec.TMS_start_hour;
             ELSE
               -- El turno cruza la medianoche
-              v_hours := (24 - v_turn_rec.TRN_start_hour) + v_turn_rec.TRN_end_hour;
+              v_hours := (24 - v_turn_rec.TMS_start_hour) + v_turn_rec.TMS_end_hour;
             END IF;
           END IF;
 
           v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
 
           INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-          VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), 'Turno: '||v_turn_rec.TSM_name||' - '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
+          VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), 'Turno: '||v_turn_rec.TMS_name||' - '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
 
           -- Marcar TurnXMonthScale como procesado
           UPDATE HC_TurnXMonthScale
