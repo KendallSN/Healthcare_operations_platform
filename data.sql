@@ -6,7 +6,8 @@ BEGIN
       'SEQ_HC_BAC_id','SEQ_HC_HCN_id','SEQ_HC_MSC_id','SEQ_HC_PRL_id','SEQ_HC_PRM_id',
       'SEQ_HC_PRT_id','SEQ_HC_PMS_id','SEQ_HC_PST_id','SEQ_HC_PCD_id','SEQ_HC_PRF_id',
       'SEQ_HC_RDC_id','SEQ_HC_SCN_id','SEQ_HC_TRN_id','SEQ_HC_USR_id','SEQ_HC_BNE_id',
-      'SEQ_HC_DOT_id','SEQ_HC_BSC_id','SEQ_HC_PCT_id','SEQ_HC_MVT_id','SEQ_HC_TMS_id'
+      'SEQ_HC_DOT_id','SEQ_HC_BSC_id','SEQ_HC_PCT_id','SEQ_HC_MVT_id','SEQ_HC_TMS_id',
+      'SEQ_HC_LBK_id'
     ))
   ) LOOP
     BEGIN
@@ -141,7 +142,7 @@ INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_we
 INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
   VALUES (2, 14, 20, 2, 'TUE', 7500, 11000, 1);
 INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (3, 6, 12, 3, 'WED', 7000, 10000, 1);
+  VALUES (3, 6, 12, 3, 'WED', 2000, 10000, 1);
 INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
   VALUES (4, 12, 18, 1, 'THU', 7200, 10400, 1);
 INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
