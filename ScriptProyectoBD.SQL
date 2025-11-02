@@ -168,6 +168,14 @@ CREATE SEQUENCE SEQ_HC_TMS_id
  NOCACHE
 /
 
+CREATE SEQUENCE SEQ_HC_LBK_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+/
+
 -- Create tables section -------------------------------------------------
 
 -- Table HC_Profile
@@ -962,7 +970,7 @@ CREATE TABLE HC_NationalRegister(
   NRG_national_identification Varchar2(30 ) NOT NULL,
   NRG_f_name Varchar2(30 ) NOT NULL,
   NRG_f_lastname Varchar2(30 ) NOT NULL,
-  NRG_s_lastname Varchar2(30 ) NOT NULL,
+  NRG_s_lastname Varchar2(30 ),
   NRG_s_name Varchar2(30 ),
   version Number NOT NULL
 )
@@ -998,6 +1006,31 @@ CREATE TABLE GeneralParameters(
 -- Create indexes for table GeneralParameters
 
 CREATE UNIQUE INDEX IDX_GP_name ON GeneralParameters (GP_name)
+/
+
+-- Table HC_Logbook
+
+CREATE TABLE HC_Logbook(
+  LBK_id Number NOT NULL,
+  LBK_os_user Varchar2(100 ) NOT NULL,
+  LBK_db_session_user Varchar2(100 ) NOT NULL,
+  LBK_terminal Varchar2(100 ) NOT NULL,
+  LBK_ip_address Varchar2(100 ) NOT NULL,
+  LBK_module Varchar2(100 ) NOT NULL,
+  LBK_roles Varchar2(1000 ) NOT NULL,
+  LBK_table Varchar2(100 ) NOT NULL,
+  LBK_attribute Varchar2(100 ) NOT NULL,
+  LBK_operation Varchar2(100 ) NOT NULL,
+  LBK_old_value Varchar2(100 ),
+  LBK_new_value Varchar2(100 ),
+  LBK_date Date NOT NULL,
+  LBK_host Varchar2(100 ) NOT NULL
+)
+/
+
+-- Add keys for table HC_Logbook
+
+ALTER TABLE HC_Logbook ADD CONSTRAINT PK_HC_Logbook PRIMARY KEY (LBK_id)
 /
 
 -- Trigger for sequence SEQ_HC_PRF_id for column PRF_id in table HC_Profile ---------
@@ -1263,6 +1296,20 @@ CREATE OR REPLACE TRIGGER tsu_HC_TurnXMonthScale_SEQ_HC_TMS_id AFTER UPDATE OF T
 ON HC_TurnXMonthScale FOR EACH ROW
 BEGIN
   RAISE_APPLICATION_ERROR(-20010,'Cannot update column TMS_id in table HC_TurnXMonthScale as it uses sequence.');
+END;
+/
+
+-- Trigger for sequence SEQ_HC_LBK_id for column LBK_id in table HC_Logbook ---------
+CREATE OR REPLACE TRIGGER ts_HC_Logbook_SEQ_HC_LBK_id BEFORE INSERT
+ON HC_Logbook FOR EACH ROW
+BEGIN
+  :new.LBK_id := SEQ_HC_LBK_id.nextval;
+END;
+/
+CREATE OR REPLACE TRIGGER tsu_HC_Logbook_SEQ_HC_LBK_id AFTER UPDATE OF LBK_id
+ON HC_Logbook FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column LBK_id in table HC_Logbook as it uses sequence.');
 END;
 /
 
