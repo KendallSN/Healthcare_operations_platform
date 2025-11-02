@@ -16,47 +16,47 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   CURSOR c_users IS
     SELECT USR_id, USR_type
       FROM HC_User
-     WHERE PR_id = p_prt_id
-       AND USR_approved = 'Y';
+      WHERE PR_id = p_prt_id
+        AND USR_approved = 'Y';
 
   CURSOR c_procs(p_usr NUMBER, p_from DATE, p_to DATE, p_hcn_id NUMBER) IS
     SELECT PCD_id, PCD_medic_revenue, PCD_name
       FROM HC_Procedure
-     WHERE USR_id = p_usr
-       AND PCD_date BETWEEN p_from AND p_to
-       AND HCN_id = p_hcn_id
-       AND PCD_processed = 'N';
+      WHERE USR_id = p_usr
+        AND PCD_date BETWEEN p_from AND p_to
+        AND HCN_id = p_hcn_id
+        AND PCD_processed = 'N';
 
   CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
-    SELECT tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
-           tms.TMS_hourly_price, tms.TMS_name, tms.TMS_start_hour, tms.TMS_end_hour
+    SELECT tms.TMS_id, tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
+          tms.TMS_hourly_price, tms.TMS_name, tms.TMS_start_hour, tms.TMS_end_hour, tms.TMS_compliance
       FROM HC_TurnXMonthScale tms
       JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
-     WHERE tms.USR_id = p_usr
-       AND tms.MSC_id = p_msc_id
-       AND tms.TMS_processed = 'N'
-       AND NVL(tms.TMS_compliance,'X') != 'PDG';
+      WHERE tms.USR_id = p_usr
+        AND tms.MSC_id = p_msc_id
+        AND tms.TMS_processed = 'N'
+        AND NVL(tms.TMS_compliance,'X') != 'PDG';
   
   CURSOR c_pending_turns(p_msc_id NUMBER) IS
     SELECT COUNT(*) as pending_count
       FROM HC_TurnXMonthScale
-     WHERE MSC_id = p_msc_id
-       AND TMS_compliance = 'PDG';
+      WHERE MSC_id = p_msc_id
+        AND TMS_compliance = 'PDG';
   
   CURSOR c_monthscales IS
     SELECT MSC_id, HCN_id
       FROM HC_MonthScale
-     WHERE MSC_month = v_month_abbr
-       AND MSC_year = TO_CHAR(p_year)
-       AND MSC_state = 'P';
+      WHERE MSC_month = v_month_abbr
+        AND MSC_year = TO_CHAR(p_year)
+        AND MSC_state = 'P';
 
   CURSOR c_auto_mvts IS
     SELECT m.MVT_id, m.MVT_amount, m.MVT_amount_type, m.MVT_type, m.MVT_name, 
-           m.MVT_lower_limit, m.MVT_upper_limit
+          m.MVT_lower_limit, m.MVT_upper_limit
       FROM HC_MovementType m
       JOIN HC_MovementTypeXPayrollType mp ON mp.MVT_id = m.MVT_id
-     WHERE m.MVT_automatic = 'Y'
-       AND mp.PRT_id = p_prt_id;
+      WHERE m.MVT_automatic = 'Y'
+        AND mp.PRT_id = p_prt_id;
 
   v_usr_rec    c_users%ROWTYPE;
   v_proc_rec   c_procs%ROWTYPE;
@@ -118,8 +118,8 @@ BEGIN
     BEGIN
       SELECT BAC_account_number INTO v_bank_acc
         FROM HC_BankAccount
-       WHERE USR_id = v_usr_rec.USR_id
-         AND ROWNUM = 1;
+        WHERE USR_id = v_usr_rec.USR_id
+          AND ROWNUM = 1;
     EXCEPTION WHEN NO_DATA_FOUND THEN
       v_bank_acc := 'N/A';
     END;
@@ -134,9 +134,9 @@ BEGIN
         CURSOR c_procs_all IS
           SELECT PCD_id, PCD_medic_revenue, PCD_name
             FROM HC_Procedure
-           WHERE USR_id = v_usr_rec.USR_id
-             AND PCD_date BETWEEN v_first_date AND v_last_date
-             AND PCD_processed = 'N';
+            WHERE USR_id = v_usr_rec.USR_id
+              AND PCD_date BETWEEN v_first_date AND v_last_date
+              AND PCD_processed = 'N';
         v_proc_all c_procs_all%ROWTYPE;
       BEGIN
         OPEN c_procs_all;
@@ -151,8 +151,8 @@ BEGIN
 
           -- Marcar procedimiento como procesado
           UPDATE HC_Procedure
-             SET PCD_processed = 'Y'
-           WHERE PCD_id = v_proc_all.PCD_id;
+            SET PCD_processed = 'Y'
+            WHERE PCD_id = v_proc_all.PCD_id;
 
         END LOOP;
         CLOSE c_procs_all;
@@ -189,8 +189,8 @@ BEGIN
     BEGIN
       SELECT COUNT(*) INTO v_pdg_count
         FROM HC_TurnXMonthScale
-       WHERE MSC_id = v_msc_rec.MSC_id
-         AND TMS_compliance = 'PDG';
+        WHERE MSC_id = v_msc_rec.MSC_id
+          AND TMS_compliance = 'PDG';
       
       IF v_pdg_count > 0 THEN
         v_pending_turns := v_pending_turns + v_pdg_count;
@@ -232,10 +232,8 @@ BEGIN
 
           -- Marcar TurnXMonthScale como procesado
           UPDATE HC_TurnXMonthScale
-             SET TMS_processed = 'Y'
-           WHERE MSC_id = v_turn_rec.MSC_id
-             AND USR_id = v_usr_rec.USR_id
-             AND TMS_date = v_turn_rec.TMS_date;
+            SET TMS_processed = 'Y'
+            WHERE TMS_id = v_turn_rec.TMS_id;
 
         END LOOP;
         CLOSE c_turns;
@@ -246,8 +244,8 @@ BEGIN
     
     -- Marcar MonthScale como completado
     UPDATE HC_MonthScale
-       SET MSC_state = 'C'
-     WHERE MSC_id = v_msc_rec.MSC_id;
+        SET MSC_state = 'C'
+      WHERE MSC_id = v_msc_rec.MSC_id;
 
   END LOOP;
   CLOSE c_monthscales;
@@ -264,15 +262,15 @@ BEGIN
     -- Aplicar movimientos automáticos que correspondan a este payroll type
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_income
       FROM HC_PayrollMovement
-     WHERE USR_id = v_usr_rec.USR_id
-       AND PRL_id = v_prl_id
-       AND PRM_type = 'I';
+      WHERE USR_id = v_usr_rec.USR_id
+        AND PRL_id = v_prl_id
+        AND PRM_type = 'I';
 
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_ded
       FROM HC_PayrollMovement
-     WHERE USR_id = v_usr_rec.USR_id
-       AND PRL_id = v_prl_id
-       AND PRM_type = 'D';
+      WHERE USR_id = v_usr_rec.USR_id
+        AND PRL_id = v_prl_id
+        AND PRM_type = 'D';
 
     OPEN c_auto_mvts;
     LOOP
@@ -326,20 +324,20 @@ BEGIN
     -- Calcular total neto y actualizar PRU_amount
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_income
       FROM HC_PayrollMovement
-     WHERE USR_id = v_usr_rec.USR_id
-       AND PRL_id = v_prl_id
-       AND PRM_type = 'I';
+      WHERE USR_id = v_usr_rec.USR_id
+        AND PRL_id = v_prl_id
+        AND PRM_type = 'I';
 
     SELECT NVL(SUM(PRM_amount),0) INTO v_total_ded
       FROM HC_PayrollMovement
-     WHERE USR_id = v_usr_rec.USR_id
-       AND PRL_id = v_prl_id
-       AND PRM_type = 'D';
+      WHERE USR_id = v_usr_rec.USR_id
+        AND PRL_id = v_prl_id
+        AND PRM_type = 'D';
 
     UPDATE HC_PayrollXUser
-       SET PRU_amount = v_total_income - v_total_ded
-     WHERE USR_id = v_usr_rec.USR_id
-       AND PRL_id = v_prl_id;
+        SET PRU_amount = v_total_income - v_total_ded
+      WHERE USR_id = v_usr_rec.USR_id
+        AND PRL_id = v_prl_id;
 
   END LOOP;
   CLOSE c_users;
