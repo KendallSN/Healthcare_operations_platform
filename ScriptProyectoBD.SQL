@@ -549,7 +549,7 @@ COMMENT ON COLUMN HC_Turn.TRN_base_hourly_price IS 'Base rate of the hour for th
 CREATE TABLE HC_Procedure(
   PCD_id Number NOT NULL,
   PCD_name Varchar2(200 ) NOT NULL,
-  PCD_description Varchar2(2000 ),
+  PCD_description Varchar2(1000 ),
   PCD_health_center_price Number(10,2) NOT NULL,
   PCD_medic_revenue Number(10,2) NOT NULL,
   USR_id Number NOT NULL,
@@ -664,8 +664,8 @@ CREATE TABLE HC_PayrollMovement(
   PRM_amount Number(10,2) NOT NULL,
   PRM_amount_type Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRM_amount_type CHECK (PRM_amount_type in ('A','P')),
-  PRM_name Varchar2(30 ) NOT NULL,
-  PRM_description Varchar2(300 ),
+  PRM_name Varchar2(200 ) NOT NULL,
+  PRM_description Varchar2(1000 ),
   PRM_date Date NOT NULL,
   PRM_type Varchar2(1 ) NOT NULL
         CONSTRAINT CHK_PRM_type CHECK (PRM_type in ('I','D')),
