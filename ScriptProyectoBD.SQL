@@ -160,6 +160,14 @@ CREATE SEQUENCE SEQ_HC_MVT_id
  NOCACHE
 /
 
+CREATE SEQUENCE SEQ_HC_TMS_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+/
+
 -- Create tables section -------------------------------------------------
 
 -- Table HC_Profile
@@ -892,7 +900,8 @@ CREATE TABLE HC_TurnXMonthScale(
         CONSTRAINT CHK_TMS_processed CHECK (TMS_processed in ('Y','N')),
   version Number NOT NULL,
   TMS_start_hour Number NOT NULL,
-  TMS_end_hour Number NOT NULL
+  TMS_end_hour Number NOT NULL,
+  TMS_id Number NOT NULL
 )
 /
 
@@ -902,6 +911,11 @@ CREATE INDEX IX_User_TurnXMonthScale ON HC_TurnXMonthScale (USR_id)
 /
 
 CREATE INDEX IX_MonthScale_TurnXMonthScale ON HC_TurnXMonthScale (MSC_id)
+/
+
+-- Add keys for table HC_TurnXMonthScale
+
+ALTER TABLE HC_TurnXMonthScale ADD CONSTRAINT PK_HC_TurnXMonthScale PRIMARY KEY (TMS_id)
 /
 
 -- Table and Columns comments section
@@ -925,6 +939,8 @@ COMMENT ON COLUMN HC_TurnXMonthScale.TMS_processed IS 'Indicates if the turn on 
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_start_hour IS 'Start hour of the turn'
 /
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_end_hour IS 'End hour of the turn'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_id IS 'Primary identifier of the TurnXMonthScale'
 /
 
 -- Table HC_MovementTypeXPayrollType
@@ -1233,6 +1249,20 @@ CREATE OR REPLACE TRIGGER tsu_HC_MovementType_SEQ_HC_MVT_id AFTER UPDATE OF MVT_
 ON HC_MovementType FOR EACH ROW
 BEGIN
   RAISE_APPLICATION_ERROR(-20010,'Cannot update column MVT_id in table HC_MovementType as it uses sequence.');
+END;
+/
+
+-- Trigger for sequence SEQ_HC_TMS_id for column TMS_id in table HC_TurnXMonthScale ---------
+CREATE OR REPLACE TRIGGER ts_HC_TurnXMonthScale_SEQ_HC_TMS_id BEFORE INSERT
+ON HC_TurnXMonthScale FOR EACH ROW
+BEGIN
+  :new.TMS_id := SEQ_HC_TMS_id.nextval;
+END;
+/
+CREATE OR REPLACE TRIGGER tsu_HC_TurnXMonthScale_SEQ_HC_TMS_id AFTER UPDATE OF TMS_id
+ON HC_TurnXMonthScale FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column TMS_id in table HC_TurnXMonthScale as it uses sequence.');
 END;
 /
 
