@@ -1,0 +1,66 @@
+-- Especificación del paquete
+CREATE OR REPLACE PACKAGE PKG_UTILITIES AS
+  -- Procedimiento para aprobar un MonthScale y marcar todos sus turnos como finalizados
+  PROCEDURE APPROVE_MONTH_SCALE(
+    p_msc_id IN NUMBER
+  );
+END PKG_UTILITIES;
+/
+
+-- Cuerpo del paquete
+CREATE OR REPLACE PACKAGE BODY PKG_UTILITIES AS
+
+  PROCEDURE APPROVE_MONTH_SCALE(
+    p_msc_id IN NUMBER
+  ) IS
+    v_exist_count NUMBER := 0;
+    v_updated_turns NUMBER := 0;
+    v_current_state VARCHAR2(1);
+  BEGIN
+    -- Verificar si existe el MonthScale
+    BEGIN
+      SELECT COUNT(*), MAX(MSC_state) 
+        INTO v_exist_count, v_current_state
+        FROM HC_MonthScale
+        WHERE MSC_id = p_msc_id;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        v_exist_count := 0;
+    END;
+
+    IF v_exist_count = 0 THEN
+      RAISE_APPLICATION_ERROR(-20002, 'MonthScale con MSC_id=' || p_msc_id || ' no existe.');
+    END IF;
+
+    -- Informar el estado actual
+    DBMS_OUTPUT.PUT_LINE('MonthScale MSC_id=' || p_msc_id || ' tiene estado actual: ' || v_current_state);
+
+    -- Actualizar estado del MonthScale a 'P' (Payment/Pendiente de Pago)
+    UPDATE HC_MonthScale
+        SET MSC_state = 'P'
+      WHERE MSC_id = p_msc_id;
+
+    DBMS_OUTPUT.PUT_LINE('Estado del MonthScale cambiado a: P (Pendiente de Pago)');
+
+    -- Actualizar todos los TurnXMonthScale de este MonthScale a compliance 'F' (Finalizado)
+    UPDATE HC_TurnXMonthScale
+        SET TMS_compliance = 'F'
+      WHERE MSC_id = p_msc_id;
+
+    v_updated_turns := SQL%ROWCOUNT;
+
+    COMMIT;
+
+    -- Mensajes
+    DBMS_OUTPUT.PUT_LINE('MonthScale MSC_id=' || p_msc_id || ' aprobado exitosamente.');
+    DBMS_OUTPUT.PUT_LINE('Turnos actualizados a compliance F: ' || v_updated_turns);
+
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      DBMS_OUTPUT.PUT_LINE('ERROR: ' || SQLERRM);
+      RAISE;
+  END APPROVE_MONTH_SCALE;
+
+END PKG_UTILITIES;
+/
