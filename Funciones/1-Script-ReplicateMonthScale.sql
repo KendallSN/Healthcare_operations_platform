@@ -68,8 +68,8 @@ BEGIN
       IF TO_CHAR(v_date,'DY','NLS_DATE_LANGUAGE=ENGLISH') = v_pos_rec.TRN_day_of_week THEN
         INSERT INTO HC_TurnXMonthScale (
           MSC_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
-          USR_id, TMS_hourly_price, TMS_hourly_payment, TSM_name,
-          TSM_description, TMS_processed, TMS_start_hour, TMS_end_hour, version
+          USR_id, TMS_hourly_price, TMS_hourly_payment, TMS_name,
+          TMS_description, TMS_processed, TMS_start_hour, TMS_end_hour, version
         ) VALUES (
           v_msc_id,
           'PDG', -- pendiente por defecto

@@ -6,7 +6,7 @@ BEGIN
       'SEQ_HC_BAC_id','SEQ_HC_HCN_id','SEQ_HC_MSC_id','SEQ_HC_PRL_id','SEQ_HC_PRM_id',
       'SEQ_HC_PRT_id','SEQ_HC_PMS_id','SEQ_HC_PST_id','SEQ_HC_PCD_id','SEQ_HC_PRF_id',
       'SEQ_HC_RDC_id','SEQ_HC_SCN_id','SEQ_HC_TRN_id','SEQ_HC_USR_id','SEQ_HC_BNE_id',
-      'SEQ_HC_DOT_id','SEQ_HC_BSC_id','SEQ_HC_PCT_id','SEQ_HC_MVT_id'
+      'SEQ_HC_DOT_id','SEQ_HC_BSC_id','SEQ_HC_PCT_id','SEQ_HC_MVT_id','SEQ_HC_TMS_id'
     ))
   ) LOOP
     BEGIN
