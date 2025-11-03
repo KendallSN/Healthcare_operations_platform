@@ -84,14 +84,14 @@ BEGIN
     <body>
         <div class="container">
             <div class="header">
-                <div class="icon">⚙️</div>
+                <div class="icon">&#9881;</div>
                 <h1>' || p_subject || '</h1>
-                <span class="badge">Sistema Automático de Monitoreo</span>
+                <span class="badge">Sistema Automatico de Monitoreo</span>
             </div>
             <div class="content">
                 ' || p_body || '
                 <div class="timestamp">
-                    <strong>📅 Fecha de notificación:</strong> ' || v_current_date || '
+                    <strong>Fecha de notificacion:</strong> ' || v_current_date || '
                 </div>
             </div>
             <div class="footer">
@@ -99,8 +99,8 @@ BEGIN
                 Universidad Nacional - Sede Regional Brunca<br>
                 Pérez Zeledón, Costa Rica<br><br>
                 <strong>Contacto del Equipo de Desarrollo:</strong><br>
-                📞 +506 6451-5600<br>
-                📧 <a href="mailto:kendall.salazar.navarro@est.una.ac.cr">kendall.salazar.navarro@est.una.ac.cr</a> | 
+                Tel: +506 6451-5600<br>
+                Email: <a href="mailto:kendall.salazar.navarro@est.una.ac.cr">kendall.salazar.navarro@est.una.ac.cr</a> | 
                 <a href="mailto:angelo.marin.granados@est.una.ac.cr">angelo.marin.granados@est.una.ac.cr</a> | 
                 <a href="mailto:joselyn.morales.roman@est.una.ac.cr">joselyn.morales.roman@est.una.ac.cr</a><br><br>
                 <em>Este es un correo automático generado por el sistema. Por favor no responder.</em>
@@ -165,21 +165,21 @@ BEGIN
         -- Construir el cuerpo HTML con el nuevo formato
         v_html_body := 
         '<div class="alert-box error">
-            <strong>⚠️ ALERTA DE OBJETOS INVÁLIDOS</strong>
+            <strong>ALERTA DE OBJETOS INVALIDOS</strong>
         </div>
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            v_invalid_count || '</strong> objeto(s) inválido(s) en el esquema 
+            v_invalid_count || '</strong> objeto(s) invalido(s) en el esquema 
             <strong>' || USER || '</strong>.</p>
-            <p><strong>📋 Lista de objetos que requieren atención:</strong></p>
+            <p><strong>Lista de objetos que requieren atencion:</strong></p>
             <ul style="line-height: 1.8;">' || v_invalid_list || '</ul>
-            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
+            <p style="margin-bottom:0;"><strong>Accion requerida:</strong> 
             Es necesario revisar y recompilar estos objetos para restaurar su funcionalidad.</p>
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            p_subject    => '🔴 Notificación: Objetos Inválidos Detectados',
+            p_subject    => '[ALERTA] Notificacion: Objetos Invalidos Detectados',
             p_body       => v_html_body,
             p_recipient  => NULL
         );
@@ -218,21 +218,21 @@ BEGIN
         -- Construir el cuerpo HTML con el nuevo formato
         v_html_body := 
         '<div class="alert-box error">
-            <strong>⚠️ ALERTA DE ÍNDICES DAÑADOS</strong>
+            <strong>ALERTA DE INDICES DANADOS</strong>
         </div>
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            v_damaged_count || '</strong> índice(s) dañado(s) en el esquema 
+            v_damaged_count || '</strong> indice(s) danado(s) en el esquema 
             <strong>' || USER || '</strong>.</p>
-            <p><strong>📋 Lista de índices que requieren reparación:</strong></p>
+            <p><strong>Lista de indices que requieren reparacion:</strong></p>
             <ul style="line-height: 1.8;">' || v_damaged_list || '</ul>
-            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
+            <p style="margin-bottom:0;"><strong>Accion requerida:</strong> 
             Es necesario reconstruir estos índices para restaurar el rendimiento de las consultas.</p>
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            p_subject    => '🔴 Notificación: Índices Dañados Detectados',
+            p_subject    => '[ALERTA] Notificacion: Indices Danados Detectados',
             p_body       => v_html_body,
             p_recipient  => NULL
         );
@@ -314,11 +314,11 @@ BEGIN
             '<strong>Email:</strong> ' || r_user.USR_email || '<br>' ||
             '<strong>Tipo:</strong> ' || 
             CASE r_user.USR_type 
-                WHEN 'M' THEN '<span style="color:#667eea;">Médico</span>'
+                WHEN 'M' THEN '<span style="color:#667eea;">Medico</span>'
                 WHEN 'A' THEN '<span style="color:#43cea2;">Administrativo</span>'
                 ELSE r_user.USR_type 
             END || '<br>' ||
-            '<strong>Última actividad:</strong> ' || 
+            '<strong>Ultima actividad:</strong> ' || 
             CASE 
                 WHEN r_user.last_activity > TO_DATE('1900-01-02', 'YYYY-MM-DD') THEN
                     TO_CHAR(r_user.last_activity, 'DD/MM/YYYY') || 
@@ -339,28 +339,28 @@ BEGIN
         -- Construir el cuerpo HTML con el nuevo formato
         v_html_body := 
         '<div class="alert-box error">
-            <strong>⚠️ PROCESO DE DESACTIVACIÓN DE USUARIOS COMPLETADO</strong>
+            <strong>PROCESO DE DESACTIVACION DE USUARIOS COMPLETADO</strong>
         </div>
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen del proceso mensual:</strong></p>
             <p>Se han desactivado <strong style="color:#dc3545;font-size:18px;">' || 
-            v_count || '</strong> cuenta(s) de usuario por inactividad de más de 3 meses.</p>
-            <p><strong>📊 Criterios de desactivación:</strong></p>
+            v_count || '</strong> cuenta(s) de usuario por inactividad de mas de 3 meses.</p>
+            <p><strong>Criterios de desactivacion:</strong></p>
             <ul style="line-height: 1.8;">
                 <li>Sin actividad en <strong>Planillas</strong> (HC_Payroll/HC_PayrollXUser)</li>
                 <li>Sin actividad en <strong>Escalas Mensuales</strong> (HC_MonthScale/HC_TurnXMonthScale)</li>
                 <li>Sin actividad en <strong>Procedimientos</strong> (HC_Procedure)</li>
-                <li>Período evaluado: <strong>Últimos 3 meses</strong></li>
+                <li>Periodo evaluado: <strong>Ultimos 3 meses</strong></li>
             </ul>
-            <p><strong>👥 Usuarios desactivados:</strong></p>
+            <p><strong>Usuarios desactivados:</strong></p>
             <ul style="line-height: 1.8;list-style:none;padding-left:0;">' || v_user_list || '</ul>
             <p style="margin:15px 0 0 0;padding:12px;background:#fff3cd;border-radius:6px;">
-                <strong>📌 Nota importante:</strong><br>
+                <strong>Nota importante:</strong><br>
                 Las cuentas han sido marcadas como inactivas (USR_state = ''I'') en el sistema.
-                Los usuarios no podrán acceder al sistema hasta que un administrador reactive sus cuentas.
+                Los usuarios no podran acceder al sistema hasta que un administrador reactive sus cuentas.
             </p>
             <p style="margin:15px 0 0 0;padding:12px;background:#e8f4fd;border-radius:6px;">
-                <strong>🔧 Acción sugerida:</strong><br>
+                <strong>Accion sugerida:</strong><br>
                 Revisar cada caso individualmente para determinar si es necesario:
                 <ul style="margin:5px 0 0 0;">
                     <li>Contactar al usuario para confirmar su estado laboral</li>
@@ -371,7 +371,7 @@ BEGIN
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            p_subject    => 'Reporte Mensual: Desactivación de Usuarios Inactivos',
+            p_subject    => 'Reporte Mensual: Desactivacion de Usuarios Inactivos',
             p_body       => v_html_body,
             p_recipient  => NULL
         );
@@ -438,27 +438,27 @@ BEGIN
         -- Construir el cuerpo HTML con el nuevo formato
         v_html_body := 
         '<div class="alert-box error">
-            <strong>⚠️ ALERTA: TABLESPACES CERCA DEL LÍMITE</strong>
+            <strong>ALERTA: TABLESPACES CERCA DEL LIMITE</strong>
         </div>
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
             v_count || '</strong> tablespace(s) con una capacidad ocupada mayor o igual al 85%.</p>
-            <p><strong>📊 Tablespaces que requieren atención:</strong></p>
+            <p><strong>Tablespaces que requieren atencion:</strong></p>
             <ul style="line-height: 2;">' || v_tablespace_list || '</ul>
-            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
-            Se recomienda aumentar el tamaño de estos tablespaces o liberar espacio para evitar 
+            <p style="margin-bottom:0;"><strong>Accion requerida:</strong> 
+            Se recomienda aumentar el tamano de estos tablespaces o liberar espacio para evitar 
             problemas de almacenamiento.</p>
             <p style="margin:15px 0 0 0;padding:12px;background:#fff3cd;border-radius:6px;">
-                <strong>⚡ Nivel de criticidad:</strong><br>
-                <span style="color:#dc3545;">●</span> 95-100%: Crítico - Acción inmediata<br>
-                <span style="color:#fd7e14;">●</span> 90-94%: Alto - Acción urgente<br>
-                <span style="color:#ffc107;">●</span> 85-89%: Medio - Monitorear
+                <strong>Nivel de criticidad:</strong><br>
+                <span style="color:#dc3545;">&#9679;</span> 95-100%: Critico - Accion inmediata<br>
+                <span style="color:#fd7e14;">&#9679;</span> 90-94%: Alto - Accion urgente<br>
+                <span style="color:#ffc107;">&#9679;</span> 85-89%: Medio - Monitorear
             </p>
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            p_subject    => '🔴 Alerta: Tablespaces Llegando al Límite de Capacidad',
+            p_subject    => '[ALERTA] Tablespaces Llegando al Limite de Capacidad',
             p_body       => v_html_body,
             p_recipient  => NULL
         );
