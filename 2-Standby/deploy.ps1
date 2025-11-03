@@ -67,7 +67,7 @@ $prereqStart = Get-Date
 try {
     # Check Oracle software exists
     Write-Info "  → Checking Oracle software..."
-    $oracleSoftware = "software\LINUX.X64_213000_db_home.zip"
+    $oracleSoftware = "..\software\LINUX.X64_213000_db_home.zip"
     if (!(Test-Path $oracleSoftware)) {
         Write-Error "FATAL: Oracle software not found at $oracleSoftware"
         Write-Error "Please download Oracle Database 21c Enterprise Edition from oracle.com"

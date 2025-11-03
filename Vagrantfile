@@ -18,9 +18,9 @@ Vagrant.configure("2") do |config|
   # Shared folders
   config.vm.synced_folder ".", "/vagrant"
   config.vm.synced_folder "config", "/vagrant_config"
-  config.vm.synced_folder "shared_scripts", "/vagrant_scripts"
+  config.vm.synced_folder "2-Standby/shared_scripts", "/vagrant_scripts"
   config.vm.synced_folder "software", "/vagrant_software"
-  config.vm.synced_folder "automation", "/vagrant_automation"
+  config.vm.synced_folder "2-Standby/automation", "/vagrant_automation"
 
   # Primary Database Server (Node 1)
   config.vm.define "primary", primary: true do |primary|
@@ -59,7 +59,7 @@ Vagrant.configure("2") do |config|
                     '--nonrotational', params['shared']['non_rotational']]
     end
 
-    primary.vm.provision "shell", path: "scripts/primary/setup.sh"
+    primary.vm.provision "shell", path: "2-Standby/scripts/primary/setup.sh"
   end
 
   # Standby Database Server (Node 2)
@@ -99,6 +99,6 @@ Vagrant.configure("2") do |config|
                     '--nonrotational', params['shared']['non_rotational']]
     end
 
-    standby.vm.provision "shell", path: "scripts/standby/setup.sh"
+    standby.vm.provision "shell", path: "2-Standby/scripts/standby/setup.sh"
   end
 end

@@ -9,7 +9,7 @@ echo "Deploy custom schema to ${PDB_NAME}." `date`
 echo "******************************************************************************"
 
 # Check if script exists
-if [ ! -f "/vagrant/ScriptProyectoBD.SQL" ]; then
+if [ ! -f "/vagrant/1-BD/ScriptProyectoBD.SQL" ]; then
   echo "ERROR: ScriptProyectoBD.SQL not found!"
   exit 1
 fi
@@ -68,7 +68,7 @@ ALTER SESSION SET CONTAINER=${PDB_NAME};
 ALTER SESSION SET CURRENT_SCHEMA=${APP_SCHEMA};
 
 -- Execute the custom schema script
-@/vagrant/ScriptProyectoBD.SQL
+@/vagrant/1-BD/ScriptProyectoBD.SQL
 
 -- Verify tables were created
 SET LINESIZE 150
