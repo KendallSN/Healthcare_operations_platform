@@ -1,0 +1,51 @@
+# Vagrant
+.vagrant/
+*.vdi
+*.vbox
+*.vmdk
+
+# Oracle Software (too large for git)
+software/*.zip
+software/*.jar
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+*~
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Oracle specific
+oraInventory/
+*.dmp
+*.trc
+*.aud
+
+# Reference project (not part of our deployment)
+ReferenceProject/
+
+# Runtime logs and output
+LastRun.txt
+primarylogs.txt
+stbylogs.txt
+stbylogs29.txt
+WarningsAndErrors.txt
+nul
+
+# Keep directory structure
+!software/README.txt
+!2-Standby/automation/.gitkeep
+!scripts/.gitkeep
