@@ -16,152 +16,126 @@ END PKG_FUNCTIONS_JOBS;
 /
 CREATE OR REPLACE PACKAGE BODY PKG_FUNCTIONS_JOBS IS
 
--- Funcion para codificar en Base64
-FUNCTION base64_encode(p_string IN VARCHAR2) RETURN VARCHAR2 IS
-    v_encoded VARCHAR2(32767);
-BEGIN
-    v_encoded := UTL_RAW.cast_to_varchar2(UTL_ENCODE.base64_encode(UTL_RAW.cast_to_raw(p_string)));
-    RETURN v_encoded;
-END base64_encode;
-
--- Funcion para desencriptar la clave 
-
-FUNCTION FNC_DESENCRIPTAR_CLAVE(pPasswordEncriptada RAW) RETURN VARCHAR2 IS
-    decrypted RAW(2000);
-    iv        RAW(16) := UTL_RAW.CAST_TO_RAW('1234567890123456');
-    clave     RAW(32) := UTL_RAW.CAST_TO_RAW('12345678901234567890123456789012');
-BEGIN
-    decrypted := DBMS_CRYPTO.DECRYPT(src => pPasswordEncriptada,
-                                    typ => DBMS_CRYPTO.ENCRYPT_AES256 +
-                                            DBMS_CRYPTO.CHAIN_CBC +
-                                            DBMS_CRYPTO.PAD_PKCS5,
-                                    key => clave,
-                                    iv  => iv);
-    RETURN UTL_RAW.cast_to_varchar2(decrypted);
-
-EXCEPTION
-    WHEN OTHERS THEN
-    DBMS_OUTPUT.PUT_LINE('Error al desencriptar el password. ' ||
-                        SQLERRM);
-    RAISE;
-    
-END FNC_DESENCRIPTAR_CLAVE;
-
--- Procedimiento para enviar correos
+-- Procedimiento para enviar correos de notificaciones de jobs
 
 PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
                         pCuerpo    IN VARCHAR2,
                         pRecipient IN VARCHAR2) IS
-    c                    UTL_SMTP.connection;
-    v_username           VARCHAR2(100);
-    v_password           VARCHAR2(100);
-    v_encrypted_password VARCHAR2(100);
-    v_sender             VARCHAR2(100);
-    v_reply_to           VARCHAR2(100);
-    v_html_template      VARCHAR2(32767);
+    v_receiver_email VARCHAR2(500);
+    v_sender_email   VARCHAR2(500);
+    v_email_key      VARCHAR2(1000);
+    v_html_final     CLOB;
+    v_current_date   VARCHAR2(50);
 
 BEGIN
-    -- Obtener valores de la tabla PARAMETROS_GENERALES
-    SELECT valor
-    INTO v_username
-    FROM PARAMETROS_GENERALES
-    WHERE nombre = 'USUARIO_CORREO';
+    -- Obtener el correo del destinatario desde GeneralParameters
+    IF pRecipient IS NULL THEN
+        SELECT GP_value INTO v_receiver_email
+        FROM GeneralParameters
+        WHERE GP_name = 'DBA_EMAIL';
+    ELSE
+        v_receiver_email := pRecipient;
+    END IF;
 
-    SELECT valor
-    INTO v_encrypted_password
-    FROM PARAMETROS_GENERALES
-    WHERE nombre = 'CLAVE_CORREO';
+    -- Obtener parámetros de correo
+    SELECT GP_value INTO v_sender_email
+    FROM GeneralParameters
+    WHERE GP_name = 'SENDER_EMAIL';
 
-    SELECT valor
-    INTO v_sender
-    FROM PARAMETROS_GENERALES
-    WHERE nombre = 'REMITENTE';
+    SELECT GP_value INTO v_email_key
+    FROM GeneralParameters
+    WHERE GP_name = 'EMAILKEY';
 
-    v_reply_to := v_sender;
+    -- Obtener fecha actual formateada
+    v_current_date := TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS');
 
-    -- Desencriptar la clave despu�s de obtenerla con la funcion de arriba
-    v_password := FNC_DESENCRIPTAR_CLAVE(v_encrypted_password);
-
-    -- Estilo HTML para el correo
-    v_html_template := UTL_RAW.cast_to_varchar2(UTL_I18N.string_to_raw('
-    <html>
+    -- Construir HTML profesional
+    v_html_final := 
+    '<html>
     <head>
-        <title>' ||
-                                                                    pAsunto ||
-                                                                    '</title>
+        <meta charset="UTF-8">
         <style>
-            body { font-family: Arial, sans-serif; background-color: #d1d1d1; padding: 20px; margin: 0; }
-            .container { background-color: #333333; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; color: white; }
-            h1 { color: #ffffff; }
-            p { color: #cccccc; }
-            footer { margin-top: 20px; font-size: 12px; text-align: center; color: #aaaaaa; }
+            body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+            .container { max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 12px; 
+                         box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden; }
+            .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+                      color: white; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+            .header .icon { font-size: 48px; margin-bottom: 10px; }
+            .content { padding: 30px; }
+            .alert-box { background: #fff3cd; border-left: 4px solid #ffc107; 
+                         padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .alert-box.error { background: #f8d7da; border-left-color: #dc3545; }
+            .alert-box.success { background: #d1e7dd; border-left-color: #198754; }
+            .alert-box.info { background: #cff4fc; border-left-color: #0dcaf0; }
+            .details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .details ul { margin: 10px 0; padding-left: 20px; }
+            .details li { margin: 8px 0; color: #495057; line-height: 1.6; }
+            .timestamp { text-align: center; color: #6c757d; font-size: 13px; 
+                        margin: 20px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; }
+            .footer { background: #2c3e50; color: #ecf0f1; padding: 25px; text-align: center; 
+                     font-size: 12px; line-height: 1.8; }
+            .footer a { color: #3498db; text-decoration: none; }
+            .footer a:hover { text-decoration: underline; }
+            .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; 
+                    font-size: 11px; font-weight: bold; background: #e9ecef; color: #495057; }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>' ||
-                                                                    pAsunto ||
-                                                                    '</h1>
-            ' ||
-                                                                    pCuerpo || '
-            <footer>
-                2024 Proyecto de Administraci�n de Bases de Datos. Todos los derechos reservados.<br>
-                Direcci�n: Universidad Nacional SRB, P�rez Zeled�n, Costa Rica<br>
-                Tel�fono: +506 8538 1034 | +506 6262 3615 | +506 8393 5021<br>
-                Correo: <a href="mailto:jousten.blanco.fonseca@est.una.ac.cr" style="color: #ffffff;">jousten.blanco.fonseca@est.una.ac.cr</a> |
-                <a href="mailto:sebastian.granados.barrantes@est.una.ac.cr" style="color: #ffffff;">sebastian.granados.barrantes@est.una.ac.cr</a> |
-                <a href="mailto:raul.bejarano.mora@est.una.ac.cr" style="color: #ffffff;">raul.bejarano.mora@est.una.ac.cr</a>
-            </footer>
+            <div class="header">
+                <div class="icon">⚙️</div>
+                <h1>' || pAsunto || '</h1>
+                <span class="badge">Sistema Automático de Monitoreo</span>
+            </div>
+            <div class="content">
+                ' || pCuerpo || '
+                <div class="timestamp">
+                    <strong>📅 Fecha de notificación:</strong> ' || v_current_date || '
+                </div>
+            </div>
+            <div class="footer">
+                <strong>Sistema de Administración de Bases de Datos</strong><br>
+                Universidad Nacional - Sede Regional Brunca<br>
+                Pérez Zeledón, Costa Rica<br><br>
+                <strong>Contacto del Equipo de Desarrollo:</strong><br>
+                📞 +506 8538-1034 | +506 6262-3615 | +506 8393-5021<br>
+                📧 <a href="mailto:jousten.blanco.fonseca@est.una.ac.cr">jousten.blanco.fonseca@est.una.ac.cr</a> | 
+                <a href="mailto:sebastian.granados.barrantes@est.una.ac.cr">sebastian.granados.barrantes@est.una.ac.cr</a> | 
+                <a href="mailto:raul.bejarano.mora@est.una.ac.cr">raul.bejarano.mora@est.una.ac.cr</a><br><br>
+                <em>Este es un correo automático generado por el sistema. Por favor no responder.</em>
+            </div>
         </div>
     </body>
-    </html>',
-                                                                    'AL32UTF8'));
+    </html>';
 
-    -- Proceso de conexi�n y env�o de correo
-    DBMS_OUTPUT.put_line('Iniciando conexi�n SMTP...');
-    c := UTL_SMTP.open_connection('smtp-relay.brevo.com', 587);
-    DBMS_OUTPUT.put_line('Conexi�n SMTP establecida.');
+    -- Enviar correo usando PKG_Emails
+    DBMS_OUTPUT.PUT_LINE('======================================');
+    DBMS_OUTPUT.PUT_LINE('Enviando notificación de job');
+    DBMS_OUTPUT.PUT_LINE('======================================');
+    DBMS_OUTPUT.PUT_LINE('Asunto: ' || pAsunto);
+    DBMS_OUTPUT.PUT_LINE('Destinatario: ' || v_receiver_email);
+    DBMS_OUTPUT.PUT_LINE('Fecha: ' || v_current_date);
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------');
 
-    DBMS_OUTPUT.put_line('Enviando HELO...');
-    UTL_SMTP.helo(c, 'localhost');
-    DBMS_OUTPUT.put_line('HELO enviado.');
+    PKG_Emails.PCD_Send_Mail(
+        pReceiverEmail => v_receiver_email,
+        pSenderEmail   => v_sender_email,
+        pEmailKey      => v_email_key,
+        pSubject       => pAsunto,
+        pHTML          => v_html_final
+    );
 
-    DBMS_OUTPUT.put_line('Autenticando...');
-    UTL_SMTP.command(c, 'AUTH LOGIN');
-    UTL_SMTP.command(c, base64_encode(v_username));
-    UTL_SMTP.command(c, base64_encode(v_password));
-    DBMS_OUTPUT.put_line('Autenticaci�n exitosa.');
-
-    DBMS_OUTPUT.put_line('Configurando remitente...');
-    UTL_SMTP.mail(c, v_sender);
-    DBMS_OUTPUT.put_line('Remitente configurado.');
-
-    DBMS_OUTPUT.put_line('Configurando destinatario...');
-    UTL_SMTP.rcpt(c, pRecipient);
-    DBMS_OUTPUT.put_line('Destinatario configurado.');
-
-    DBMS_OUTPUT.put_line('Enviando datos del correo...');
-    UTL_SMTP.data(c,
-                'From: ' || v_sender || UTL_TCP.crlf || 'Reply-To: ' ||
-                v_reply_to || UTL_TCP.crlf || 'To: ' || pRecipient ||
-                UTL_TCP.crlf || 'Subject: ' || pAsunto || UTL_TCP.crlf ||
-                'MIME-Version: 1.0' || UTL_TCP.crlf ||
-                'Content-Type: text/html; charset=UTF-8' || UTL_TCP.crlf ||
-                UTL_TCP.crlf || v_html_template);
-    DBMS_OUTPUT.put_line('Correo enviado.');
-
-    UTL_SMTP.quit(c);
-    DBMS_OUTPUT.put_line('Conexi�n cerrada correctamente.');
+    DBMS_OUTPUT.PUT_LINE('Correo enviado exitosamente.');
+    DBMS_OUTPUT.PUT_LINE('======================================');
 
 EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR: No se encontró información de configuración de correo.');
+        RAISE;
     WHEN OTHERS THEN
-    DBMS_OUTPUT.put_line('Error al enviar el correo: ' || SQLERRM);
-    BEGIN
-        UTL_SMTP.quit(c);
-    EXCEPTION
-        WHEN OTHERS THEN
-        NULL;
-    END;
+        DBMS_OUTPUT.PUT_LINE('ERROR al enviar correo de notificación: ' || SQLERRM);
+        RAISE;
 END PCD_SEND_JOB_EMAIL;
 
 -- Procedimiento para verificacion de objetos invalidos
@@ -169,6 +143,7 @@ END PCD_SEND_JOB_EMAIL;
 PROCEDURE PCD_VERIFY_INVALID_OBJECTS AS
     cantidad_objetos_invalidos NUMBER;
     lista_objetos_invalidos    CLOB := EMPTY_CLOB();
+    v_html_body                CLOB;
 BEGIN
 
     SELECT COUNT(*)
@@ -178,30 +153,50 @@ BEGIN
     AND owner = USER;
 
     IF cantidad_objetos_invalidos > 0 THEN
-    FOR obj IN (SELECT object_name, object_type
-                FROM ALL_OBJECTS
-                WHERE status = 'INVALID'
-                AND owner = USER) LOOP
-        lista_objetos_invalidos := lista_objetos_invalidos || '<li>' ||
-                                'Objeto: ' || obj.object_name ||
-                                ', Tipo: ' || obj.object_type || '</li>';
-    END LOOP;
-    
-    PCD_SEND_JOB_EMAIL('Notificaci�n de objetos inv�lidos en el esquema',
-                    '<p> Se han encontrado ' || cantidad_objetos_invalidos ||
-                    ' objetos inv�lidos en el esquema ' || USER ||
-                    '. Es necesario revisar y reparar los siguientes objetos: </p>' ||
-                    CHR(10) || '<ul>' || lista_objetos_invalidos || '</ul>',
-                    'jousten.blanco.fonseca@est.una.ac.cr');
+        FOR obj IN (SELECT object_name, object_type
+                    FROM ALL_OBJECTS
+                    WHERE status = 'INVALID'
+                    AND owner = USER) LOOP
+            lista_objetos_invalidos := lista_objetos_invalidos || 
+                '<li><strong>' || obj.object_name || '</strong> - <em>Tipo:</em> ' || 
+                obj.object_type || '</li>';
+        END LOOP;
+        
+        -- Construir el cuerpo HTML con el nuevo formato
+        v_html_body := 
+        '<div class="alert-box error">
+            <strong>⚠️ ALERTA DE OBJETOS INVÁLIDOS</strong>
+        </div>
+        <div class="details">
+            <p style="margin-top:0;"><strong>Resumen:</strong></p>
+            <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
+            cantidad_objetos_invalidos || '</strong> objeto(s) inválido(s) en el esquema 
+            <strong>' || USER || '</strong>.</p>
+            <p><strong>📋 Lista de objetos que requieren atención:</strong></p>
+            <ul style="line-height: 1.8;">' || lista_objetos_invalidos || '</ul>
+            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
+            Es necesario revisar y recompilar estos objetos para restaurar su funcionalidad.</p>
+        </div>';
+        
+        PCD_SEND_JOB_EMAIL(
+            pAsunto    => '🔴 Notificación: Objetos Inválidos Detectados',
+            pCuerpo    => v_html_body,
+            pRecipient => NULL
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || cantidad_objetos_invalidos || ' objetos inválidos.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No se encontraron objetos inválidos.');
     END IF;
 
 END PCD_VERIFY_INVALID_OBJECTS;
 
--- Procedimiento para verificacion de indices da�ados
+-- Procedimiento para verificacion de indices dañados
 
 PROCEDURE PCD_VERIFY_DAMAGED_INDEXES AS
     cantidad_indices_danados NUMBER;
     lista_indices_danados    CLOB := EMPTY_CLOB();
+    v_html_body              CLOB;
 BEGIN
 
     SELECT COUNT(*)
@@ -211,22 +206,40 @@ BEGIN
     AND owner = USER;
 
     IF cantidad_indices_danados > 0 THEN
-    
-    FOR idx IN (SELECT index_name, index_type
-                FROM ALL_INDEXES
-                WHERE status = 'UNUSABLE'
-                AND owner = USER) LOOP
-        lista_indices_danados := lista_indices_danados || '<li>' ||
-                                '�ndice: ' || idx.index_name || '  Tipo: ' ||
-                                idx.index_type || '</li>';
-    END LOOP;
-    
-    PCD_SEND_JOB_EMAIL('Notificaci�n de �ndices da�ados en el esquema',
-                    '<p> Se han encontrado ' || cantidad_indices_danados ||
-                    ' �ndices da�ados en el esquema ' || USER ||
-                    '. Es necesario revisar y reparar los siguientes �ndices: <p>' ||
-                    '<ul>' || lista_indices_danados || '</ul>',
-                    'jousten.blanco.fonseca@est.una.ac.cr');
+        FOR idx IN (SELECT index_name, index_type
+                    FROM ALL_INDEXES
+                    WHERE status = 'UNUSABLE'
+                    AND owner = USER) LOOP
+            lista_indices_danados := lista_indices_danados || 
+                '<li><strong>' || idx.index_name || '</strong> - <em>Tipo:</em> ' || 
+                idx.index_type || '</li>';
+        END LOOP;
+        
+        -- Construir el cuerpo HTML con el nuevo formato
+        v_html_body := 
+        '<div class="alert-box error">
+            <strong>⚠️ ALERTA DE ÍNDICES DAÑADOS</strong>
+        </div>
+        <div class="details">
+            <p style="margin-top:0;"><strong>Resumen:</strong></p>
+            <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
+            cantidad_indices_danados || '</strong> índice(s) dañado(s) en el esquema 
+            <strong>' || USER || '</strong>.</p>
+            <p><strong>📋 Lista de índices que requieren reparación:</strong></p>
+            <ul style="line-height: 1.8;">' || lista_indices_danados || '</ul>
+            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
+            Es necesario reconstruir estos índices para restaurar el rendimiento de las consultas.</p>
+        </div>';
+        
+        PCD_SEND_JOB_EMAIL(
+            pAsunto    => '🔴 Notificación: Índices Dañados Detectados',
+            pCuerpo    => v_html_body,
+            pRecipient => NULL
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || cantidad_indices_danados || ' índices dañados.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No se encontraron índices dañados.');
     END IF;
 
 END PCD_VERIFY_DAMAGED_INDEXES;
@@ -245,73 +258,138 @@ PROCEDURE PCD_DEACTIVATE_INACTIVE_ACCOUNTS IS
             WHERE ma.Id_Cuenta_Ahorros = ca.id_cuenta_ahorros
             AND ma.Estado = 'A') <= ADD_MONTHS(SYSDATE, -3)
     AND ca.saldo * (CASE
-            WHEN ca.id_divisa != 1 -- 1 es el ID del col�n costarricense
+            WHEN ca.id_divisa != 1 -- 1 es el ID del colón costarricense
             THEN
             tc.valor_divisa
             ELSE
             1
-            END) < 10243 -- este es el equivalente a 20 dolares, como los valores de tipo de cambio se hizo respecto al col�n, aqui se tienen que poner colones
+            END) < 10243 -- equivalente a 20 dólares
     AND SYSDATE BETWEEN tc.fecha_inicio_vigencia AND
             NVL(tc.fecha_final_vigencia, SYSDATE);
 
-    v_mensaje VARCHAR2(4000);
+    v_lista_cuentas  CLOB := EMPTY_CLOB();
+    v_html_body      CLOB;
+    v_count          NUMBER := 0;
 BEGIN
     FOR r_cuenta IN c_cuentas LOOP
-    UPDATE cuentas_ahorros
-    SET estado = 'I'
-    WHERE id_cuenta_ahorros = r_cuenta.id_cuenta_ahorros;
-    
-    v_mensaje := v_mensaje || 'Cuenta ID ' || r_cuenta.id_cuenta_ahorros ||
-                ' con saldo ' || r_cuenta.saldo ||
-                ' ha sido inactivada.' || CHR(10);
+        UPDATE cuentas_ahorros
+        SET estado = 'I'
+        WHERE id_cuenta_ahorros = r_cuenta.id_cuenta_ahorros;
+        
+        v_lista_cuentas := v_lista_cuentas || 
+            '<li><strong>ID:</strong> ' || r_cuenta.id_cuenta_ahorros || 
+            ' - <strong>Saldo:</strong> &#8353; ' || TO_CHAR(r_cuenta.saldo, 'FM999,999,990.00') || 
+            ' - <strong>Divisa:</strong> ' || r_cuenta.id_divisa || '</li>';
+        
+        v_count := v_count + 1;
     END LOOP;
 
     COMMIT;
 
-    PCD_SEND_JOB_EMAIL(pAsunto    => 'Cuentas Inactivadas Mensualmente',
-                pCuerpo    => 'Las siguientes cuentas han sido inactivadas:' ||
-                                CHR(10) || v_mensaje,
-                pRecipient => 'jousten.blanco.fonseca@est.una.ac.cr');
+    IF v_count > 0 THEN
+        -- Construir el cuerpo HTML con el nuevo formato
+        v_html_body := 
+        '<div class="alert-box info">
+            <strong>ℹ️ PROCESO DE DESACTIVACIÓN COMPLETADO</strong>
+        </div>
+        <div class="details">
+            <p style="margin-top:0;"><strong>Resumen del proceso:</strong></p>
+            <p>Se han desactivado <strong style="color:#0dcaf0;font-size:18px;">' || 
+            v_count || '</strong> cuenta(s) por inactividad (sin movimientos en los últimos 3 meses 
+            y saldo menor a &#8353; 10,243).</p>
+            <p><strong>📋 Cuentas desactivadas:</strong></p>
+            <ul style="line-height: 1.8;">' || v_lista_cuentas || '</ul>
+            <p style="margin-bottom:0;"><strong>📌 Nota:</strong> 
+            Las cuentas han sido marcadas como inactivas en el sistema.</p>
+        </div>';
+        
+        PCD_SEND_JOB_EMAIL(
+            pAsunto    => '📊 Reporte Mensual: Desactivación de Cuentas Inactivas',
+            pCuerpo    => v_html_body,
+            pRecipient => NULL
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Se desactivaron ' || v_count || ' cuentas inactivas.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No se encontraron cuentas para desactivar.');
+    END IF;
+
 EXCEPTION
     WHEN OTHERS THEN
-    ROLLBACK;
-    DBMS_OUTPUT.put_line('Error al inactivar cuentas: ' || SQLERRM);
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error al inactivar cuentas: ' || SQLERRM);
+        RAISE;
 END PCD_DEACTIVATE_INACTIVE_ACCOUNTS;
 
 PROCEDURE PCD_VERIFY_TABLESPACE_SIZES IS
-        v_tablespaces_pasados CLOB := EMPTY_CLOB();
-    BEGIN
-        FOR ts IN (
-            SELECT tablespace_name, 
-                ROUND(((Espacio_Total - Espacio_Libre) / Espacio_Total) * 100, 2) AS used_percent
-            FROM (
-                SELECT f.tablespace_name,
-                    SUM(f.bytes) / 1024 / 1024 AS Espacio_Libre,
-                    SUM(d.bytes) / 1024 / 1024 AS Espacio_Total
-                FROM dba_free_space f
-                JOIN dba_data_files d ON f.tablespace_name = d.tablespace_name
-                GROUP BY f.tablespace_name
-            )
-        ) 
-        LOOP
-            IF ts.used_percent >= 85 THEN
-                v_tablespaces_pasados := v_tablespaces_pasados || 
-                '<li>'|| 'El tablespace ' || ts.tablespace_name || ' esta a un ' || ts.used_percent || '%' || '</li>';
-            END IF;
-        END LOOP;
-
-        IF DBMS_LOB.getlength(v_tablespaces_pasados) > 0 THEN
-        dbms_output.put_line('Esto es una prueba a ver si llega');
-            PCD_SEND_JOB_EMAIL('Notificaci�n de tablespaces llegando a su limite',
-                    '<p> Se han encontrado los siguientes tablespaces con una capacidad 
-                    ocupada mayor o igual al 85%: </p>' ||
-                    CHR(10) || '<ul>' || v_tablespaces_pasados || '</ul>',
-                    'sebastian.granados.barrantes@est.una.ac.cr');
-            DBMS_OUTPUT.put_line('Tablespaces con m�s del 85% de capacidad ocupada:' || CHR(10) || v_tablespaces_pasados);
-        ELSE
-            DBMS_OUTPUT.put_line('No hay tablespaces con m�s del 85% de capacidad ocupada.');
+    v_tablespaces_pasados CLOB := EMPTY_CLOB();
+    v_html_body           CLOB;
+    v_count               NUMBER := 0;
+BEGIN
+    FOR ts IN (
+        SELECT tablespace_name, 
+            ROUND(((Espacio_Total - Espacio_Libre) / Espacio_Total) * 100, 2) AS used_percent,
+            ROUND(Espacio_Total - Espacio_Libre, 2) AS espacio_usado,
+            ROUND(Espacio_Total, 2) AS espacio_total
+        FROM (
+            SELECT f.tablespace_name,
+                SUM(f.bytes) / 1024 / 1024 AS Espacio_Libre,
+                SUM(d.bytes) / 1024 / 1024 AS Espacio_Total
+            FROM dba_free_space f
+            JOIN dba_data_files d ON f.tablespace_name = d.tablespace_name
+            GROUP BY f.tablespace_name
+        )
+    ) 
+    LOOP
+        IF ts.used_percent >= 85 THEN
+            v_tablespaces_pasados := v_tablespaces_pasados || 
+                '<li><strong>' || ts.tablespace_name || '</strong> - ' ||
+                '<span style="color:' || 
+                CASE 
+                    WHEN ts.used_percent >= 95 THEN '#dc3545'
+                    WHEN ts.used_percent >= 90 THEN '#fd7e14'
+                    ELSE '#ffc107'
+                END || ';font-size:16px;font-weight:bold;">' || 
+                ts.used_percent || '%</span> ocupado (' || 
+                ts.espacio_usado || ' MB de ' || ts.espacio_total || ' MB)</li>';
+            v_count := v_count + 1;
         END IF;
-    END PCD_VERIFY_TABLESPACE_SIZES;
+    END LOOP;
+
+    IF DBMS_LOB.getlength(v_tablespaces_pasados) > 0 THEN
+        -- Construir el cuerpo HTML con el nuevo formato
+        v_html_body := 
+        '<div class="alert-box error">
+            <strong>⚠️ ALERTA: TABLESPACES CERCA DEL LÍMITE</strong>
+        </div>
+        <div class="details">
+            <p style="margin-top:0;"><strong>Resumen:</strong></p>
+            <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
+            v_count || '</strong> tablespace(s) con una capacidad ocupada mayor o igual al 85%.</p>
+            <p><strong>📊 Tablespaces que requieren atención:</strong></p>
+            <ul style="line-height: 2;">' || v_tablespaces_pasados || '</ul>
+            <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
+            Se recomienda aumentar el tamaño de estos tablespaces o liberar espacio para evitar 
+            problemas de almacenamiento.</p>
+            <p style="margin:15px 0 0 0;padding:12px;background:#fff3cd;border-radius:6px;">
+                <strong>⚡ Nivel de criticidad:</strong><br>
+                <span style="color:#dc3545;">●</span> 95-100%: Crítico - Acción inmediata<br>
+                <span style="color:#fd7e14;">●</span> 90-94%: Alto - Acción urgente<br>
+                <span style="color:#ffc107;">●</span> 85-89%: Medio - Monitorear
+            </p>
+        </div>';
+        
+        PCD_SEND_JOB_EMAIL(
+            pAsunto    => '🔴 Alerta: Tablespaces Llegando al Límite de Capacidad',
+            pCuerpo    => v_html_body,
+            pRecipient => NULL
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Se envió alerta de ' || v_count || ' tablespace(s) con capacidad >= 85%.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No hay tablespaces con más del 85% de capacidad ocupada.');
+    END IF;
+END PCD_VERIFY_TABLESPACE_SIZES;
 
 END PKG_FUNCTIONS_JOBS;
 /
