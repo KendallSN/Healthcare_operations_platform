@@ -104,7 +104,6 @@ WHERE GP_name = 'EMAILKEY';
 -- Configurar destinatario y asunto
 v_receiver_email := v_usr_email;
 v_subject := 'Detalle de Planilla - ' || v_prl_month || '/' || v_prl_year || ' - ' || v_prt_name;
-
 -- Reemplazar variables en el HTML
 v_html_final := v_html_template;
 v_html_final := REPLACE(v_html_final, '{{USR_NAME}}', v_usr_name);
@@ -113,10 +112,10 @@ v_html_final := REPLACE(v_html_final, '{{USR_EMAIL}}', v_usr_email);
 v_html_final := REPLACE(v_html_final, '{{PRL_MONTH}}', v_prl_month);
 v_html_final := REPLACE(v_html_final, '{{PRL_YEAR}}', v_prl_year);
 v_html_final := REPLACE(v_html_final, '{{PRT_NAME}}', v_prt_name);
-v_html_final := REPLACE(v_html_final, '{{PRU_AMOUNT}}', TO_CHAR(v_pru_amount, 'FM999,999,990.00'));
+v_html_final := REPLACE(v_html_final, '{{PRU_AMOUNT}}', '&#8353; ' || TO_CHAR(v_pru_amount, 'FM999,999,990.00'));
 v_html_final := REPLACE(v_html_final, '{{PRU_ACCOUNT}}', v_pru_account);
-v_html_final := REPLACE(v_html_final, '{{TOTAL_INCOME}}', TO_CHAR(v_total_income, 'FM999,999,990.00'));
-v_html_final := REPLACE(v_html_final, '{{TOTAL_DEDUCTIONS}}', TO_CHAR(v_total_ded, 'FM999,999,990.00'));
+v_html_final := REPLACE(v_html_final, '{{TOTAL_INCOME}}', '&#8353; ' || TO_CHAR(v_total_income, 'FM999,999,990.00'));
+v_html_final := REPLACE(v_html_final, '{{TOTAL_DEDUCTIONS}}', '&#8353; ' || TO_CHAR(v_total_ded, 'FM999,999,990.00'));
 v_html_final := REPLACE(v_html_final, '{{PRL_ID}}', TO_CHAR(v_prl_id));
 v_html_final := REPLACE(v_html_final, '{{PRU_ID}}', TO_CHAR(p_pru_id));
 

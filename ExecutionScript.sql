@@ -11,6 +11,10 @@ EXEC pkg_utilities.approve_month_scale(1);
 -- Planilla para el mes 10, año 2025 de tipo 1(Medicos)
 EXEC generate_payroll('10',2025,1);
 
+-- 
+EXEC PCD_GeneratePayment(1);
+
+
 DELETE FROM hc_payrollmovement;
 DELETE FROM hc_payrollxuser;
 DELETE FROM hc_payroll;
