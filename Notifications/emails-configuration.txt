@@ -1,0 +1,52 @@
+- Para enviar correos
+
+- 1: Conectarse a sqlplus como sysdba
+
+    sqlplus sys as sysdba
+
+- 2: Instalar componentes con los siguientes tres comandos
+
+    @?/rdbms/admin/utlmail.sql
+    @?/rdbms/admin/prvtmail.plb
+    @?/rdbms/admin/utlsmtp.sql
+
+- 3: Ejecutar el siguiente script
+
+    ALTER SYSTEM SET smtp_out_server = 'smtp.gmail.com:587' SCOPE=BOTH;
+
+- 4: Asignar los siguientes permisos a el usuario que vayan a usar (En nuestro caso HC)
+
+    -GRANT EXECUTE ON UTL_MAIL TO HC;
+    -GRANT EXECUTE ON UTL_SMTP TO HC;
+
+- 5: Ejecutar los siguiente procedimientos para crear el acl darle privilegios y asignarlo
+        el nombre entre comillas en principal debe ser el usuario que vayan a usar.
+
+    BEGIN
+        DBMS_NETWORK_ACL_ADMIN.create_acl(
+            acl          => 'smtp_acl.xml',
+            description  => 'Permitir acceso SMTP a smtp-relay.brevo.com',
+            principal    => 'HC',
+            is_grant     => TRUE,
+            privilege    => 'connect'
+        );
+    END;
+    /
+    BEGIN
+        DBMS_NETWORK_ACL_ADMIN.add_privilege(
+            acl         => 'smtp_acl.xml',
+            principal   => 'HC',
+            is_grant    => TRUE,
+            privilege   => 'resolve'
+        );
+    END;
+    /
+    BEGIN
+        DBMS_NETWORK_ACL_ADMIN.assign_acl(
+            acl        => 'smtp_acl.xml',
+            host       => 'smtp-relay.brevo.com',  -- Servidor SMTP de Brevo
+            lower_port => 587,  -- Puerto de salida SMTP (587 en este caso)
+            upper_port => 587
+        );
+    END;
+    /

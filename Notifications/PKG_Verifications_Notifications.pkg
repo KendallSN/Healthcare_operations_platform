@@ -1,0 +1,317 @@
+CREATE OR REPLACE PACKAGE PKG_Verifications_Notifications IS
+
+PROCEDURE Send_Email(pAsunto    IN VARCHAR2,
+                        pCuerpo    IN VARCHAR2,
+                        pRecipient IN VARCHAR2);
+
+PROCEDURE VERIFICAR_OBJETOS_INVALIDOS;
+
+PROCEDURE VERIFICAR_INDICES_DANADOS;
+
+PROCEDURE INACTIVAR_CUENTAS_INACTIVAS;
+
+PROCEDURE VERIFICAR_TAMANOS_TABLESPACE;
+
+END PKG_Verifications_Notifications;
+/
+CREATE OR REPLACE PACKAGE BODY PKG_Verifications_Notifications IS
+
+-- Funcion para codificar en Base64
+FUNCTION base64_encode(p_string IN VARCHAR2) RETURN VARCHAR2 IS
+    v_encoded VARCHAR2(32767);
+BEGIN
+    v_encoded := UTL_RAW.cast_to_varchar2(UTL_ENCODE.base64_encode(UTL_RAW.cast_to_raw(p_string)));
+    RETURN v_encoded;
+END base64_encode;
+
+-- Funcion para desencriptar la clave 
+
+FUNCTION FNC_DESENCRIPTAR_CLAVE(pPasswordEncriptada RAW) RETURN VARCHAR2 IS
+    decrypted RAW(2000);
+    iv        RAW(16) := UTL_RAW.CAST_TO_RAW('1234567890123456');
+    clave     RAW(32) := UTL_RAW.CAST_TO_RAW('12345678901234567890123456789012');
+BEGIN
+    decrypted := DBMS_CRYPTO.DECRYPT(src => pPasswordEncriptada,
+                                    typ => DBMS_CRYPTO.ENCRYPT_AES256 +
+                                            DBMS_CRYPTO.CHAIN_CBC +
+                                            DBMS_CRYPTO.PAD_PKCS5,
+                                    key => clave,
+                                    iv  => iv);
+    RETURN UTL_RAW.cast_to_varchar2(decrypted);
+
+EXCEPTION
+    WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Error al desencriptar el password. ' ||
+                        SQLERRM);
+    RAISE;
+    
+END FNC_DESENCRIPTAR_CLAVE;
+
+-- Procedimiento para enviar correos
+
+PROCEDURE Send_Email(pAsunto    IN VARCHAR2,
+                        pCuerpo    IN VARCHAR2,
+                        pRecipient IN VARCHAR2) IS
+    c                    UTL_SMTP.connection;
+    v_username           VARCHAR2(100);
+    v_password           VARCHAR2(100);
+    v_encrypted_password VARCHAR2(100);
+    v_sender             VARCHAR2(100);
+    v_reply_to           VARCHAR2(100);
+    v_html_template      VARCHAR2(32767);
+
+BEGIN
+    -- Obtener valores de la tabla PARAMETROS_GENERALES
+    SELECT valor
+    INTO v_username
+    FROM PARAMETROS_GENERALES
+    WHERE nombre = 'USUARIO_CORREO';
+
+    SELECT valor
+    INTO v_encrypted_password
+    FROM PARAMETROS_GENERALES
+    WHERE nombre = 'CLAVE_CORREO';
+
+    SELECT valor
+    INTO v_sender
+    FROM PARAMETROS_GENERALES
+    WHERE nombre = 'REMITENTE';
+
+    v_reply_to := v_sender;
+
+    -- Desencriptar la clave despu�s de obtenerla con la funcion de arriba
+    v_password := FNC_DESENCRIPTAR_CLAVE(v_encrypted_password);
+
+    -- Estilo HTML para el correo
+    v_html_template := UTL_RAW.cast_to_varchar2(UTL_I18N.string_to_raw('
+    <html>
+    <head>
+        <title>' ||
+                                                                    pAsunto ||
+                                                                    '</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #d1d1d1; padding: 20px; margin: 0; }
+            .container { background-color: #333333; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; color: white; }
+            h1 { color: #ffffff; }
+            p { color: #cccccc; }
+            footer { margin-top: 20px; font-size: 12px; text-align: center; color: #aaaaaa; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>' ||
+                                                                    pAsunto ||
+                                                                    '</h1>
+            ' ||
+                                                                    pCuerpo || '
+            <footer>
+                2024 Proyecto de Administraci�n de Bases de Datos. Todos los derechos reservados.<br>
+                Direcci�n: Universidad Nacional SRB, P�rez Zeled�n, Costa Rica<br>
+                Tel�fono: +506 8538 1034 | +506 6262 3615 | +506 8393 5021<br>
+                Correo: <a href="mailto:jousten.blanco.fonseca@est.una.ac.cr" style="color: #ffffff;">jousten.blanco.fonseca@est.una.ac.cr</a> |
+                <a href="mailto:sebastian.granados.barrantes@est.una.ac.cr" style="color: #ffffff;">sebastian.granados.barrantes@est.una.ac.cr</a> |
+                <a href="mailto:raul.bejarano.mora@est.una.ac.cr" style="color: #ffffff;">raul.bejarano.mora@est.una.ac.cr</a>
+            </footer>
+        </div>
+    </body>
+    </html>',
+                                                                    'AL32UTF8'));
+
+    -- Proceso de conexi�n y env�o de correo
+    DBMS_OUTPUT.put_line('Iniciando conexi�n SMTP...');
+    c := UTL_SMTP.open_connection('smtp-relay.brevo.com', 587);
+    DBMS_OUTPUT.put_line('Conexi�n SMTP establecida.');
+
+    DBMS_OUTPUT.put_line('Enviando HELO...');
+    UTL_SMTP.helo(c, 'localhost');
+    DBMS_OUTPUT.put_line('HELO enviado.');
+
+    DBMS_OUTPUT.put_line('Autenticando...');
+    UTL_SMTP.command(c, 'AUTH LOGIN');
+    UTL_SMTP.command(c, base64_encode(v_username));
+    UTL_SMTP.command(c, base64_encode(v_password));
+    DBMS_OUTPUT.put_line('Autenticaci�n exitosa.');
+
+    DBMS_OUTPUT.put_line('Configurando remitente...');
+    UTL_SMTP.mail(c, v_sender);
+    DBMS_OUTPUT.put_line('Remitente configurado.');
+
+    DBMS_OUTPUT.put_line('Configurando destinatario...');
+    UTL_SMTP.rcpt(c, pRecipient);
+    DBMS_OUTPUT.put_line('Destinatario configurado.');
+
+    DBMS_OUTPUT.put_line('Enviando datos del correo...');
+    UTL_SMTP.data(c,
+                'From: ' || v_sender || UTL_TCP.crlf || 'Reply-To: ' ||
+                v_reply_to || UTL_TCP.crlf || 'To: ' || pRecipient ||
+                UTL_TCP.crlf || 'Subject: ' || pAsunto || UTL_TCP.crlf ||
+                'MIME-Version: 1.0' || UTL_TCP.crlf ||
+                'Content-Type: text/html; charset=UTF-8' || UTL_TCP.crlf ||
+                UTL_TCP.crlf || v_html_template);
+    DBMS_OUTPUT.put_line('Correo enviado.');
+
+    UTL_SMTP.quit(c);
+    DBMS_OUTPUT.put_line('Conexi�n cerrada correctamente.');
+
+EXCEPTION
+    WHEN OTHERS THEN
+    DBMS_OUTPUT.put_line('Error al enviar el correo: ' || SQLERRM);
+    BEGIN
+        UTL_SMTP.quit(c);
+    EXCEPTION
+        WHEN OTHERS THEN
+        NULL;
+    END;
+END Send_Email;
+
+-- Procedimiento para verificacion de objetos invalidos
+
+PROCEDURE VERIFICAR_OBJETOS_INVALIDOS AS
+    cantidad_objetos_invalidos NUMBER;
+    lista_objetos_invalidos    CLOB := EMPTY_CLOB();
+BEGIN
+
+    SELECT COUNT(*)
+    INTO cantidad_objetos_invalidos
+    FROM ALL_OBJECTS
+    WHERE status = 'INVALID'
+    AND owner = USER;
+
+    IF cantidad_objetos_invalidos > 0 THEN
+    FOR obj IN (SELECT object_name, object_type
+                FROM ALL_OBJECTS
+                WHERE status = 'INVALID'
+                AND owner = USER) LOOP
+        lista_objetos_invalidos := lista_objetos_invalidos || '<li>' ||
+                                'Objeto: ' || obj.object_name ||
+                                ', Tipo: ' || obj.object_type || '</li>';
+    END LOOP;
+    
+    Send_Email('Notificaci�n de objetos inv�lidos en el esquema',
+                    '<p> Se han encontrado ' || cantidad_objetos_invalidos ||
+                    ' objetos inv�lidos en el esquema ' || USER ||
+                    '. Es necesario revisar y reparar los siguientes objetos: </p>' ||
+                    CHR(10) || '<ul>' || lista_objetos_invalidos || '</ul>',
+                    'jousten.blanco.fonseca@est.una.ac.cr');
+    END IF;
+
+END VERIFICAR_OBJETOS_INVALIDOS;
+
+-- Procedimiento para verificacion de indices da�ados
+
+PROCEDURE VERIFICAR_INDICES_DANADOS AS
+    cantidad_indices_danados NUMBER;
+    lista_indices_danados    CLOB := EMPTY_CLOB();
+BEGIN
+
+    SELECT COUNT(*)
+    INTO cantidad_indices_danados
+    FROM ALL_INDEXES
+    WHERE status = 'UNUSABLE'
+    AND owner = USER;
+
+    IF cantidad_indices_danados > 0 THEN
+    
+    FOR idx IN (SELECT index_name, index_type
+                FROM ALL_INDEXES
+                WHERE status = 'UNUSABLE'
+                AND owner = USER) LOOP
+        lista_indices_danados := lista_indices_danados || '<li>' ||
+                                '�ndice: ' || idx.index_name || '  Tipo: ' ||
+                                idx.index_type || '</li>';
+    END LOOP;
+    
+    Send_Email('Notificaci�n de �ndices da�ados en el esquema',
+                    '<p> Se han encontrado ' || cantidad_indices_danados ||
+                    ' �ndices da�ados en el esquema ' || USER ||
+                    '. Es necesario revisar y reparar los siguientes �ndices: <p>' ||
+                    '<ul>' || lista_indices_danados || '</ul>',
+                    'jousten.blanco.fonseca@est.una.ac.cr');
+    END IF;
+
+END VERIFICAR_INDICES_DANADOS;
+
+-- Procedimiento para desactivar cuentas inactivas
+
+PROCEDURE INACTIVAR_CUENTAS_INACTIVAS IS
+    CURSOR c_cuentas IS
+    SELECT ca.id_cuenta_ahorros, ca.saldo, ca.id_divisa, tc.valor_divisa
+    FROM cuentas_ahorros ca
+    JOIN Tipo_Cambio_Divisa tc
+    ON ca.id_divisa = tc.id_divisa
+    WHERE ca.estado = 'A'
+    AND (SELECT MAX(ma.fecha)
+            FROM Movimientos_Ahorros ma
+            WHERE ma.Id_Cuenta_Ahorros = ca.id_cuenta_ahorros
+            AND ma.Estado = 'A') <= ADD_MONTHS(SYSDATE, -3)
+    AND ca.saldo * (CASE
+            WHEN ca.id_divisa != 1 -- 1 es el ID del col�n costarricense
+            THEN
+            tc.valor_divisa
+            ELSE
+            1
+            END) < 10243 -- este es el equivalente a 20 dolares, como los valores de tipo de cambio se hizo respecto al col�n, aqui se tienen que poner colones
+    AND SYSDATE BETWEEN tc.fecha_inicio_vigencia AND
+            NVL(tc.fecha_final_vigencia, SYSDATE);
+
+    v_mensaje VARCHAR2(4000);
+BEGIN
+    FOR r_cuenta IN c_cuentas LOOP
+    UPDATE cuentas_ahorros
+    SET estado = 'I'
+    WHERE id_cuenta_ahorros = r_cuenta.id_cuenta_ahorros;
+    
+    v_mensaje := v_mensaje || 'Cuenta ID ' || r_cuenta.id_cuenta_ahorros ||
+                ' con saldo ' || r_cuenta.saldo ||
+                ' ha sido inactivada.' || CHR(10);
+    END LOOP;
+
+    COMMIT;
+
+    Send_Email(pAsunto    => 'Cuentas Inactivadas Mensualmente',
+                pCuerpo    => 'Las siguientes cuentas han sido inactivadas:' ||
+                                CHR(10) || v_mensaje,
+                pRecipient => 'jousten.blanco.fonseca@est.una.ac.cr');
+EXCEPTION
+    WHEN OTHERS THEN
+    ROLLBACK;
+    DBMS_OUTPUT.put_line('Error al inactivar cuentas: ' || SQLERRM);
+END INACTIVAR_CUENTAS_INACTIVAS;
+
+PROCEDURE VERIFICAR_TAMANOS_TABLESPACE IS
+        v_tablespaces_pasados CLOB := EMPTY_CLOB();
+    BEGIN
+        FOR ts IN (
+            SELECT tablespace_name, 
+                ROUND(((Espacio_Total - Espacio_Libre) / Espacio_Total) * 100, 2) AS used_percent
+            FROM (
+                SELECT f.tablespace_name,
+                    SUM(f.bytes) / 1024 / 1024 AS Espacio_Libre,
+                    SUM(d.bytes) / 1024 / 1024 AS Espacio_Total
+                FROM dba_free_space f
+                JOIN dba_data_files d ON f.tablespace_name = d.tablespace_name
+                GROUP BY f.tablespace_name
+            )
+        ) 
+        LOOP
+            IF ts.used_percent >= 85 THEN
+                v_tablespaces_pasados := v_tablespaces_pasados || 
+                '<li>'|| 'El tablespace ' || ts.tablespace_name || ' esta a un ' || ts.used_percent || '%' || '</li>';
+            END IF;
+        END LOOP;
+
+        IF DBMS_LOB.getlength(v_tablespaces_pasados) > 0 THEN
+        dbms_output.put_line('Esto es una prueba a ver si llega');
+            Send_Email('Notificaci�n de tablespaces llegando a su limite',
+                    '<p> Se han encontrado los siguientes tablespaces con una capacidad 
+                    ocupada mayor o igual al 85%: </p>' ||
+                    CHR(10) || '<ul>' || v_tablespaces_pasados || '</ul>',
+                    'sebastian.granados.barrantes@est.una.ac.cr');
+            DBMS_OUTPUT.put_line('Tablespaces con m�s del 85% de capacidad ocupada:' || CHR(10) || v_tablespaces_pasados);
+        ELSE
+            DBMS_OUTPUT.put_line('No hay tablespaces con m�s del 85% de capacidad ocupada.');
+        END IF;
+    END;
+
+END PKG_Verifications_Notifications;
+/

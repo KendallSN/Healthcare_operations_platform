@@ -1,0 +1,1 @@
+EXEC PKG_Emails.PCD_Send_Mail('kendallsalazarnavarro@gmail.com','basesdedatosuna@gmail.com','B3584AADC73571887D1255C67E7030D01AFC629BB150A5CA367C0522EB8F7F04','Hola Subject','Hola Html')

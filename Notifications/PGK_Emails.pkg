@@ -1,0 +1,102 @@
+CREATE OR REPLACE PACKAGE PKG_Emails IS
+    PROCEDURE PCD_Send_Mail(
+        pReceiverEmail in VARCHAR2,
+        pSenderEmail in VARCHAR2,
+        pEmailKey in VARCHAR2,
+        pSubject in VARCHAR2,
+        pHTML in VARCHAR2
+    );
+    
+END PKG_Emails;
+/
+
+CREATE OR REPLACE PACKAGE BODY PKG_Emails IS
+
+    FUNCTION FNC_DecryptKey(pCryptedPassword RAW) RETURN VARCHAR2 IS
+        v_DecryptedPassword RAW(1000);
+        iv        RAW(16) := UTL_RAW.CAST_TO_RAW('1234567890123456');
+        clave     RAW(32) := UTL_RAW.CAST_TO_RAW('12345678901234567890123456789012');
+        BEGIN
+        v_DecryptedPassword := DBMS_CRYPTO.DECRYPT(src => pCryptedPassword,
+                                            typ => DBMS_CRYPTO.ENCRYPT_AES256 +
+                                                DBMS_CRYPTO.CHAIN_CBC +
+                                                DBMS_CRYPTO.PAD_PKCS5,
+                                            key => clave,
+                                            iv  => iv);
+        RETURN UTL_RAW.cast_to_varchar2(v_DecryptedPassword);
+    EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error al desencriptar el password. ' ||
+                            SQLERRM);
+        RAISE;
+    END FNC_DecryptKey;
+
+    -- Funcion para codificar en Base 64
+    FUNCTION encode_base64(p_string IN VARCHAR2) RETURN VARCHAR2 IS
+        v_EncodedString VARCHAR2(20000);
+        BEGIN
+        v_EncodedString := UTL_RAW.cast_to_varchar2(UTL_ENCODE.base64_encode(UTL_RAW.cast_to_raw(p_string)));
+        RETURN v_EncodedString;
+    END encode_base64;
+
+    PROCEDURE PCD_Send_Mail(
+            pReceiverEmail in VARCHAR2,
+            pSenderEmail in VARCHAR2,
+            pEmailKey in VARCHAR2,
+            pSubject in VARCHAR2,
+            pHTML in VARCHAR2
+    ) IS
+        c               UTL_SMTP.connection;
+        v_Username      VARCHAR2(500);
+        v_Password      VARCHAR2(500);
+        v_DecryptedPassword VARCHAR2(1000);
+    BEGIN
+        SELECT GP_value
+        INTO v_Username
+        FROM GeneralParameters
+        WHERE GP_name = 'USER_EMAIL';
+
+        v_DecryptedPassword := FNC_DecryptKey(pEmailKey);
+
+        DBMS_OUTPUT.put_line('Conectando a SMTP...');
+        c := UTL_SMTP.open_connection('smtp-relay.brevo.com', 587);
+        DBMS_OUTPUT.put_line('Coneccion a MSTP exitosa.');
+
+        DBMS_OUTPUT.put_line('Enviando HELO...');
+        UTL_SMTP.helo(c, 'localhost');
+        DBMS_OUTPUT.put_line('HELO enviado exitosamente.');
+
+        DBMS_OUTPUT.put_line('Autenticando SMTP...');
+        UTL_SMTP.command(c, 'AUTH LOGIN');
+        UTL_SMTP.command(c, encode_base64(v_Username));
+        UTL_SMTP.command(c, encode_base64(v_DecryptedPassword));
+        DBMS_OUTPUT.put_line('Autenticacion SMTP exitosa.');
+
+        DBMS_OUTPUT.put_line('Configurando el email de envio...');
+        UTL_SMTP.mail(c, pSenderEmail);
+        DBMS_OUTPUT.put_line('Email de envio configurado exitosamente.');
+
+        DBMS_OUTPUT.put_line('Configurando destinatario...');
+        UTL_SMTP.rcpt(c, pReceiverEmail);
+        DBMS_OUTPUT.put_line('Destinatario configurado exitosamente.');
+
+        DBMS_OUTPUT.put_line('Enviando datos del correo...');
+        UTL_SMTP.data(c,
+                    'From: ' || pSenderEmail || UTL_TCP.crlf || 'Reply-To: ' ||
+                    pSenderEmail || UTL_TCP.crlf || 'To: ' || pReceiverEmail ||
+                    UTL_TCP.crlf || 'Subject: ' || pSubject || UTL_TCP.crlf ||
+                    'MIME-Version: 1.0' || UTL_TCP.crlf ||
+                    'Content-Type: text/html; charset=UTF-8' || UTL_TCP.crlf ||
+                    UTL_TCP.crlf || pHTML);
+        DBMS_OUTPUT.put_line('Correo enviado exitosamente.');
+
+        UTL_SMTP.quit(c);
+        DBMS_OUTPUT.put_line('Conexion SMTP cerrada exitosamente.');
+
+    EXCEPTION
+        WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error enviando el correo '|| SQLERRM);
+    END PCD_Send_Mail;
+
+END PKG_Emails;
+/
