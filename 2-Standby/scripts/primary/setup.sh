@@ -6,7 +6,7 @@ echo "Starting PRIMARY node setup." `date`
 echo "******************************************************************************"
 
 # Run root setup script
-sudo bash -c 'sh /vagrant/scripts/primary/root_setup.sh'
+sudo bash -c 'sh /vagrant/2-Standby/scripts/primary/root_setup.sh'
 
 echo "******************************************************************************"
 echo "PRIMARY node setup complete." `date`
