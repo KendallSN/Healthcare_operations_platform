@@ -1,6 +1,6 @@
 - Para enviar correos
 
-- 1: Conectarse a sqlplus como sysdba
+- 1: Conectarse a sqlplus como sysdba y ubicarse en la pdb usada
 
     sqlplus sys as sysdba
 

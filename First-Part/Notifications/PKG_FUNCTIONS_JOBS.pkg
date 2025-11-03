@@ -1,20 +1,20 @@
-CREATE OR REPLACE PACKAGE PKG_Verifications_Notifications IS
+CREATE OR REPLACE PACKAGE PKG_FUNCTIONS_JOBS IS
 
-PROCEDURE Send_Email(pAsunto    IN VARCHAR2,
+PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
                         pCuerpo    IN VARCHAR2,
                         pRecipient IN VARCHAR2);
 
-PROCEDURE VERIFICAR_OBJETOS_INVALIDOS;
+PROCEDURE PCD_VERIFY_INVALID_OBJECTS;
 
-PROCEDURE VERIFICAR_INDICES_DANADOS;
+PROCEDURE PCD_VERIFY_DAMAGED_INDEXES;
 
-PROCEDURE INACTIVAR_CUENTAS_INACTIVAS;
+PROCEDURE PCD_DEACTIVATE_INACTIVE_ACCOUNTS;
 
-PROCEDURE VERIFICAR_TAMANOS_TABLESPACE;
+PROCEDURE PCD_VERIFY_TABLESPACE_SIZES;
 
-END PKG_Verifications_Notifications;
+END PKG_FUNCTIONS_JOBS;
 /
-CREATE OR REPLACE PACKAGE BODY PKG_Verifications_Notifications IS
+CREATE OR REPLACE PACKAGE BODY PKG_FUNCTIONS_JOBS IS
 
 -- Funcion para codificar en Base64
 FUNCTION base64_encode(p_string IN VARCHAR2) RETURN VARCHAR2 IS
@@ -49,7 +49,7 @@ END FNC_DESENCRIPTAR_CLAVE;
 
 -- Procedimiento para enviar correos
 
-PROCEDURE Send_Email(pAsunto    IN VARCHAR2,
+PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
                         pCuerpo    IN VARCHAR2,
                         pRecipient IN VARCHAR2) IS
     c                    UTL_SMTP.connection;
@@ -162,11 +162,11 @@ EXCEPTION
         WHEN OTHERS THEN
         NULL;
     END;
-END Send_Email;
+END PCD_SEND_JOB_EMAIL;
 
 -- Procedimiento para verificacion de objetos invalidos
 
-PROCEDURE VERIFICAR_OBJETOS_INVALIDOS AS
+PROCEDURE PCD_VERIFY_INVALID_OBJECTS AS
     cantidad_objetos_invalidos NUMBER;
     lista_objetos_invalidos    CLOB := EMPTY_CLOB();
 BEGIN
@@ -187,7 +187,7 @@ BEGIN
                                 ', Tipo: ' || obj.object_type || '</li>';
     END LOOP;
     
-    Send_Email('Notificaci�n de objetos inv�lidos en el esquema',
+    PCD_SEND_JOB_EMAIL('Notificaci�n de objetos inv�lidos en el esquema',
                     '<p> Se han encontrado ' || cantidad_objetos_invalidos ||
                     ' objetos inv�lidos en el esquema ' || USER ||
                     '. Es necesario revisar y reparar los siguientes objetos: </p>' ||
@@ -195,11 +195,11 @@ BEGIN
                     'jousten.blanco.fonseca@est.una.ac.cr');
     END IF;
 
-END VERIFICAR_OBJETOS_INVALIDOS;
+END PCD_VERIFY_INVALID_OBJECTS;
 
 -- Procedimiento para verificacion de indices da�ados
 
-PROCEDURE VERIFICAR_INDICES_DANADOS AS
+PROCEDURE PCD_VERIFY_DAMAGED_INDEXES AS
     cantidad_indices_danados NUMBER;
     lista_indices_danados    CLOB := EMPTY_CLOB();
 BEGIN
@@ -221,7 +221,7 @@ BEGIN
                                 idx.index_type || '</li>';
     END LOOP;
     
-    Send_Email('Notificaci�n de �ndices da�ados en el esquema',
+    PCD_SEND_JOB_EMAIL('Notificaci�n de �ndices da�ados en el esquema',
                     '<p> Se han encontrado ' || cantidad_indices_danados ||
                     ' �ndices da�ados en el esquema ' || USER ||
                     '. Es necesario revisar y reparar los siguientes �ndices: <p>' ||
@@ -229,11 +229,11 @@ BEGIN
                     'jousten.blanco.fonseca@est.una.ac.cr');
     END IF;
 
-END VERIFICAR_INDICES_DANADOS;
+END PCD_VERIFY_DAMAGED_INDEXES;
 
 -- Procedimiento para desactivar cuentas inactivas
 
-PROCEDURE INACTIVAR_CUENTAS_INACTIVAS IS
+PROCEDURE PCD_DEACTIVATE_INACTIVE_ACCOUNTS IS
     CURSOR c_cuentas IS
     SELECT ca.id_cuenta_ahorros, ca.saldo, ca.id_divisa, tc.valor_divisa
     FROM cuentas_ahorros ca
@@ -268,7 +268,7 @@ BEGIN
 
     COMMIT;
 
-    Send_Email(pAsunto    => 'Cuentas Inactivadas Mensualmente',
+    PCD_SEND_JOB_EMAIL(pAsunto    => 'Cuentas Inactivadas Mensualmente',
                 pCuerpo    => 'Las siguientes cuentas han sido inactivadas:' ||
                                 CHR(10) || v_mensaje,
                 pRecipient => 'jousten.blanco.fonseca@est.una.ac.cr');
@@ -276,9 +276,9 @@ EXCEPTION
     WHEN OTHERS THEN
     ROLLBACK;
     DBMS_OUTPUT.put_line('Error al inactivar cuentas: ' || SQLERRM);
-END INACTIVAR_CUENTAS_INACTIVAS;
+END PCD_DEACTIVATE_INACTIVE_ACCOUNTS;
 
-PROCEDURE VERIFICAR_TAMANOS_TABLESPACE IS
+PROCEDURE PCD_VERIFY_TABLESPACE_SIZES IS
         v_tablespaces_pasados CLOB := EMPTY_CLOB();
     BEGIN
         FOR ts IN (
@@ -302,7 +302,7 @@ PROCEDURE VERIFICAR_TAMANOS_TABLESPACE IS
 
         IF DBMS_LOB.getlength(v_tablespaces_pasados) > 0 THEN
         dbms_output.put_line('Esto es una prueba a ver si llega');
-            Send_Email('Notificaci�n de tablespaces llegando a su limite',
+            PCD_SEND_JOB_EMAIL('Notificaci�n de tablespaces llegando a su limite',
                     '<p> Se han encontrado los siguientes tablespaces con una capacidad 
                     ocupada mayor o igual al 85%: </p>' ||
                     CHR(10) || '<ul>' || v_tablespaces_pasados || '</ul>',
@@ -311,7 +311,7 @@ PROCEDURE VERIFICAR_TAMANOS_TABLESPACE IS
         ELSE
             DBMS_OUTPUT.put_line('No hay tablespaces con m�s del 85% de capacidad ocupada.');
         END IF;
-    END;
+    END PCD_VERIFY_TABLESPACE_SIZES;
 
-END PKG_Verifications_Notifications;
+END PKG_FUNCTIONS_JOBS;
 /
