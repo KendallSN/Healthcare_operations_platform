@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 1/11/2025
+Modified: 2/11/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -169,6 +169,14 @@ CREATE SEQUENCE SEQ_HC_TMS_id
 /
 
 CREATE SEQUENCE SEQ_HC_LBK_id
+ INCREMENT BY 1
+ START WITH 1
+ NOMAXVALUE
+ MINVALUE 1
+ NOCACHE
+/
+
+CREATE SEQUENCE SEQ_HC_PRU_id
  INCREMENT BY 1
  START WITH 1
  NOMAXVALUE
@@ -680,7 +688,8 @@ CREATE TABLE HC_PayrollMovement(
   MVT_id Number NOT NULL,
   USR_id Number NOT NULL,
   PRL_id Number NOT NULL,
-  version Number NOT NULL
+  version Number NOT NULL,
+  PRU_id Number
 )
 /
 
@@ -689,7 +698,7 @@ CREATE TABLE HC_PayrollMovement(
 CREATE INDEX IX_MovementType_PayrollMovement ON HC_PayrollMovement (MVT_id)
 /
 
-CREATE INDEX IX_PayrollXUser_PayrollMovement ON HC_PayrollMovement (USR_id,PRL_id)
+CREATE INDEX IX_PayrollXUser_PayrollMovement ON HC_PayrollMovement (USR_id,PRL_id,PRU_id)
 /
 
 -- Add keys for table HC_PayrollMovement
@@ -873,13 +882,14 @@ CREATE TABLE HC_PayrollXUser(
   PRU_account_number Varchar2(1000 ) NOT NULL,
   PRU_notified Varchar2(1 ) DEFAULT 'N' NOT NULL
         CONSTRAINT CHK_PRU_notified CHECK (PRU_notified in ('Y','N')),
-  version Number NOT NULL
+  version Number NOT NULL,
+  PRU_id Number NOT NULL
 )
 /
 
 -- Add keys for table HC_PayrollXUser
 
-ALTER TABLE HC_PayrollXUser ADD CONSTRAINT PK_HC_PayrollXUser PRIMARY KEY (USR_id,PRL_id)
+ALTER TABLE HC_PayrollXUser ADD CONSTRAINT PK_HC_PayrollXUser PRIMARY KEY (USR_id,PRL_id,PRU_id)
 /
 
 -- Table and Columns comments section
@@ -889,6 +899,8 @@ COMMENT ON COLUMN HC_PayrollXUser.PRU_amount IS 'Total amount of the payroll to 
 COMMENT ON COLUMN HC_PayrollXUser.PRU_account_number IS 'Account number to pay the payroll'
 /
 COMMENT ON COLUMN HC_PayrollXUser.PRU_notified IS 'Indicates if the notification email has been send (Y for yes and N for no)'
+/
+COMMENT ON COLUMN HC_PayrollXUser.PRU_id IS 'Primary identifier of the payrollXUser'
 /
 
 -- Table HC_TurnXMonthScale
@@ -1285,6 +1297,20 @@ BEGIN
 END;
 /
 
+-- Trigger for sequence SEQ_HC_PRU_id for column PRU_id in table HC_PayrollXUser ---------
+CREATE OR REPLACE TRIGGER ts_HC_PayrollXUser_SEQ_HC_PRU_id BEFORE INSERT
+ON HC_PayrollXUser FOR EACH ROW
+BEGIN
+  :new.PRU_id := SEQ_HC_PRU_id.nextval;
+END;
+/
+CREATE OR REPLACE TRIGGER tsu_HC_PayrollXUser_SEQ_HC_PRU_id AFTER UPDATE OF PRU_id
+ON HC_PayrollXUser FOR EACH ROW
+BEGIN
+  RAISE_APPLICATION_ERROR(-20010,'Cannot update column PRU_id in table HC_PayrollXUser as it uses sequence.');
+END;
+/
+
 -- Trigger for sequence SEQ_HC_TMS_id for column TMS_id in table HC_TurnXMonthScale ---------
 CREATE OR REPLACE TRIGGER ts_HC_TurnXMonthScale_SEQ_HC_TMS_id BEFORE INSERT
 ON HC_TurnXMonthScale FOR EACH ROW
@@ -1451,7 +1477,7 @@ ALTER TABLE HC_MovementTypeXPayrollType ADD CONSTRAINT HC_FK_MovementTypeXPayrol
 
 
 
-ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_PayrollMovement_PayrollXUser FOREIGN KEY (USR_id, PRL_id) REFERENCES HC_PayrollXUser (USR_id, PRL_id)
+ALTER TABLE HC_PayrollMovement ADD CONSTRAINT HC_FK_PayrollMovement_PayrollXUser FOREIGN KEY (USR_id, PRL_id, PRU_id) REFERENCES HC_PayrollXUser (USR_id, PRL_id, PRU_id)
 /
 
 
