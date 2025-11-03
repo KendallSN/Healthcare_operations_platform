@@ -1,8 +1,0 @@
--En caos de querer conectarse a la base de datos en docker con sql plus verificar que los 
-siguientes datos esten correctos
-
-export ORACLE_HOME=/opt/oracle/product/19c/dbhome_1
-export ORACLE_SID=ORCL
-export PATH=$ORACLE_HOME/bin:$PATH
-
-sqlplus / as sysdba

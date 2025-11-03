@@ -1,8 +1,0 @@
-
---Decargar la imagen de oracle 19c
-docker pull doctorkirk/oracle-19c
--- Comando para levantar el contener con la imagen descargada (haber creado carpeta oracle en la direccion c del disco y carpeta tablespaces dentro de oracle)
-docker run --name Main-oracle-19c -p 1521:1521 -p 5500:5500 -v /c/oracle/tablespaces:/opt/oracle/oradata -e ORACLE_SID=orcl -e ORACLE_PWD=password doctorkirk/oracle-19c
--- Conectarse a sql plus en docker
-sqlplus sys/password@//localhost:1521/ORCL as sysdba
-
