@@ -73,8 +73,177 @@ INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 
 INSERT INTO HC_ProfileXPermissionXScreen (PRF_id, SCN_id, PMS_id) VALUES (3, 3, 4);
 
 -- Payroll types
-INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (1, 'Planilla - Medicos', 'Pago mensual - estándar', 1);
-INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (2, 'Planilla - Administradores', 'Pago mensual - contrato', 1);
+INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (1, 'Planilla - Medicos', 
+'<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; }
+        .info-section { margin-bottom: 25px; }
+        .info-label { font-weight: bold; color: #667eea; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-value { font-size: 16px; color: #333; margin-bottom: 15px; }
+        .summary-box { background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .summary-row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .summary-label { font-weight: 600; color: #555; }
+        .summary-value { color: #333; }
+        .total-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .total-box .amount { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #eee; }
+        .badge { display: inline-block; background-color: #667eea; color: white; padding: 5px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💼 Detalle de Planilla</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">{{PRT_NAME}}</p>
+        </div>
+        
+        <div class="content">
+            <div class="info-section">
+                <div class="info-label">👤 Empleado</div>
+                <div class="info-value">{{USR_NAME}}</div>
+                
+                <div class="info-label">🆔 Identificación</div>
+                <div class="info-value">{{USR_IDENTIFICATION}}</div>
+                
+                <div class="info-label">📧 Email</div>
+                <div class="info-value">{{USR_EMAIL}}</div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-label">📅 Período</div>
+                <div class="info-value">{{PRL_MONTH}} / {{PRL_YEAR}} <span class="badge">MÉDICO</span></div>
+                
+                <div class="info-label">🏦 Cuenta Bancaria</div>
+                <div class="info-value">{{PRU_ACCOUNT}}</div>
+            </div>
+            
+            <div class="summary-box">
+                <h3 style="margin-top: 0; color: #667eea;">📊 Resumen Financiero</h3>
+                <div class="summary-row">
+                    <span class="summary-label">💰 Total Ingresos:</span>
+                    <span class="summary-value">₡{{TOTAL_INCOME}}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">📉 Total Deducciones:</span>
+                    <span class="summary-value">₡{{TOTAL_DEDUCTIONS}}</span>
+                </div>
+            </div>
+            
+            <div class="total-box">
+                <div style="font-size: 14px; opacity: 0.9;">MONTO NETO A PAGAR</div>
+                <div class="amount">₡{{PRU_AMOUNT}}</div>
+            </div>
+            
+            <div style="background-color: #e8f4fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; color: #555;">
+                    <strong>📋 Referencias:</strong><br>
+                    • ID Planilla: {{PRL_ID}}<br>
+                    • ID Registro: {{PRU_ID}}
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un correo automático generado por el Sistema de Gestión de Planillas.</p>
+            <p>Si tiene alguna consulta, por favor contacte al departamento de recursos humanos.</p>
+            <p style="margin-top: 15px; color: #999;">© 2025 Sistema de Gestión de Centro de Salud</p>
+        </div>
+    </div>
+</body>
+</html>', 1);
+
+INSERT INTO HC_PayrollType (PRT_id, PRT_name, PRT_html, version) VALUES (2, 'Planilla - Administradores', 
+'<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; }
+        .info-section { margin-bottom: 25px; }
+        .info-label { font-weight: bold; color: #185a9d; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-value { font-size: 16px; color: #333; margin-bottom: 15px; }
+        .summary-box { background-color: #f8f9fa; border-left: 4px solid #43cea2; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .summary-row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .summary-label { font-weight: 600; color: #555; }
+        .summary-value { color: #333; }
+        .total-box { background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .total-box .amount { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #eee; }
+        .badge { display: inline-block; background-color: #43cea2; color: white; padding: 5px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💼 Detalle de Planilla</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">{{PRT_NAME}}</p>
+        </div>
+        
+        <div class="content">
+            <div class="info-section">
+                <div class="info-label">👤 Empleado</div>
+                <div class="info-value">{{USR_NAME}}</div>
+                
+                <div class="info-label">🆔 Identificación</div>
+                <div class="info-value">{{USR_IDENTIFICATION}}</div>
+                
+                <div class="info-label">📧 Email</div>
+                <div class="info-value">{{USR_EMAIL}}</div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-label">📅 Período</div>
+                <div class="info-value">{{PRL_MONTH}} / {{PRL_YEAR}} <span class="badge">ADMINISTRATIVO</span></div>
+                
+                <div class="info-label">🏦 Cuenta Bancaria</div>
+                <div class="info-value">{{PRU_ACCOUNT}}</div>
+            </div>
+            
+            <div class="summary-box">
+                <h3 style="margin-top: 0; color: #185a9d;">📊 Resumen Financiero</h3>
+                <div class="summary-row">
+                    <span class="summary-label">💰 Total Ingresos:</span>
+                    <span class="summary-value">₡{{TOTAL_INCOME}}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">📉 Total Deducciones:</span>
+                    <span class="summary-value">₡{{TOTAL_DEDUCTIONS}}</span>
+                </div>
+            </div>
+            
+            <div class="total-box">
+                <div style="font-size: 14px; opacity: 0.9;">MONTO NETO A PAGAR</div>
+                <div class="amount">₡{{PRU_AMOUNT}}</div>
+            </div>
+            
+            <div style="background-color: #e8f4fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; color: #555;">
+                    <strong>📋 Referencias:</strong><br>
+                    • ID Planilla: {{PRL_ID}}<br>
+                    • ID Registro: {{PRU_ID}}
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un correo automático generado por el Sistema de Gestión de Planillas.</p>
+            <p>Si tiene alguna consulta, por favor contacte al departamento de recursos humanos.</p>
+            <p style="margin-top: 15px; color: #999;">© 2025 Sistema de Gestión de Centro de Salud</p>
+        </div>
+    </div>
+</body>
+</html>', 1);
 
 -- Movement types
 INSERT INTO HC_MovementType (MVT_id, MVT_name, MVT_description, MVT_automatic, MVT_amount, MVT_type, MVT_amount_type, MVT_lower_limit, MVT_upper_limit, version)
@@ -103,17 +272,17 @@ INSERT INTO HC_MovementTypeXPayrollType (PRT_id, MVT_id) VALUES (2, 6);
 
 -- Users
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'Calle 10 #123', 'Clinica Norte - Av. 1', '+571000001', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'ana@example.com', 1, 1, 2);
+  VALUES (1, '1001001', 'Ana', 'Lopez', 'Garcia', 'Calle 10 #123', 'Clinica Norte - Av. 1', '+571000001', 'N', 'S', 'F', TO_DATE('1985-02-10','YYYY-MM-DD'), 'A', 'M', 'Y', 'kendallsalazarnavarro@gmail.com', 1, 1, 2);
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'Carrera 5 #45', 'Centro Salud Central - Calle 2', '+571000002', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'juan@example.com', 1, 1, 2);
+  VALUES (2, '1001002', 'Juan', 'Perez', 'Diaz', 'Carrera 5 #45', 'Centro Salud Central - Calle 2', '+571000002', 'N', 'M', 'M', TO_DATE('1978-07-05','YYYY-MM-DD'), 'A', 'M', 'Y', 'kendallsalazarnavarro@gmail.com', 1, 1, 2);
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'Avenida 3 #78', 'Centro Salud Central - Calle 2', '+571000003', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'maria@example.com', 1, 1, 2);
+  VALUES (3, '1001003', 'Maria', 'Gomez', 'Hernandez', 'Avenida 3 #78', 'Centro Salud Central - Calle 2', '+571000003', 'N', 'S', 'F', TO_DATE('1990-11-20','YYYY-MM-DD'), 'A', 'M', 'Y', 'kendallsalazarnavarro@gmail.com', 1, 1, 2);
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'Calle 20 #9', 'Unidad Sur - Transversal 3', '+571000004', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'carlos@example.com', 1, 1, 3);
+  VALUES (4, '1001004', 'Carlos', 'Martinez', 'Lopez', 'Calle 20 #9', 'Unidad Sur - Transversal 3', '+571000004', 'N', 'M', 'M', TO_DATE('1982-03-12','YYYY-MM-DD'), 'A', 'M', 'Y', 'kendallsalazarnavarro@gmail.com', 1, 1, 3);
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'Barrio Las Flores #12', 'Unidad Sur - Transversal 3', '+571000005', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'A', 'Y', 'luisa@example.com', 2, 1, 3);
+  VALUES (5, '1001005', 'Luisa', 'Ortega', 'Alvarez', 'Barrio Las Flores #12', 'Unidad Sur - Transversal 3', '+571000005', 'N', 'S', 'F', TO_DATE('1992-09-01','YYYY-MM-DD'), 'A', 'A', 'Y', 'kendallsalazarnavarro@gmail.com', 2, 1, 3);
 INSERT INTO HC_User (USR_id, USR_identification, USR_f_name, USR_f_lastname, USR_s_lastname, USR_home_address, USR_work_address, USR_phone, USR_identification_type, USR_civil_status, USR_gender, USR_dateofbirth, USR_state, USR_type, USR_approved, USR_email, PR_id, version, PF_id)
-  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'Urbanizacion Sol #5', 'Clinica Norte - Av. 1', '+571000006', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'diego@example.com', 2, 1, 1);
+  VALUES (6, '1001006', 'Diego', 'Rios', 'Santos', 'Urbanizacion Sol #5', 'Clinica Norte - Av. 1', '+571000006', 'N', 'S', 'M', TO_DATE('1995-05-15','YYYY-MM-DD'), 'A', 'A', 'Y', 'kendallsalazarnavarro@gmail.com', 2, 1, 1);
 
 -- Bank accounts
 INSERT INTO HC_BankAccount (BAC_id, BAC_account_number, USR_id, BNE_id, version) VALUES (1, 'BC-0001', 1, 1, 1);
