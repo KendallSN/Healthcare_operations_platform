@@ -19,7 +19,6 @@ CREATE OR REPLACE PACKAGE BODY PKG_Logbook IS
         p_old_value IN VARCHAR2 DEFAULT NULL,
         p_new_value IN VARCHAR2 DEFAULT NULL
     ) IS
-        v_lbk_id NUMBER;
         v_roles  VARCHAR2(1000);
     BEGIN
         -- Obtener los roles del usuario actual
@@ -31,9 +30,6 @@ CREATE OR REPLACE PACKAGE BODY PKG_Logbook IS
         WHEN NO_DATA_FOUND THEN
             v_roles := '';
         END;
-
-        -- Obtener el siguiente ID de la secuencia
-        SELECT SEQ_HC_LBK_id.NEXTVAL INTO v_lbk_id FROM DUAL;
 
         -- Insertar en HC_Logbook
         INSERT INTO HC_Logbook (
@@ -52,7 +48,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_Logbook IS
         LBK_date,
         LBK_host
         ) VALUES (
-        v_lbk_id,
+        1,
         SYS_CONTEXT('USERENV', 'OS_USER'),     
         SYS_CONTEXT('USERENV', 'SESSION_USER'),
         SYS_CONTEXT('USERENV', 'TERMINAL'),    

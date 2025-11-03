@@ -125,8 +125,8 @@ BEGIN
     END;
 
     -- insertar relación payrollXuser
-    INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
-      VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
+    INSERT INTO HC_PayrollXUser (PRL_id, USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
+      VALUES (1,v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
 
     IF v_usr_rec.USR_type = 'M' THEN
       -- Médicos: Procesar procedimientos del mes (sin filtrar por HCN_id)
