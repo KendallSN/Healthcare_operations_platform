@@ -1,0 +1,22 @@
+shared:
+  box: oraclelinux/8
+  box_url: https://oracle.github.io/vagrant-projects/boxes/oraclelinux/8.json
+  non_rotational: 'on'
+
+node1:
+  vm_name: ol8_21_dg1_primary
+  mem_size: 4096
+  cpus: 2
+  public_ip: 192.168.56.101
+  u01_disk: ./ol8_21_dg1_u01.vdi
+  u02_disk: ./ol8_21_dg1_u02.vdi
+  disk_size: 102400  # 100GB
+
+node2:
+  vm_name: ol8_21_dg2_standby
+  mem_size: 4096
+  cpus: 2
+  public_ip: 192.168.56.102
+  u01_disk: ./ol8_21_dg2_u01.vdi
+  u02_disk: ./ol8_21_dg2_u02.vdi
+  disk_size: 102400  # 100GB

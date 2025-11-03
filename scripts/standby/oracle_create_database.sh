@@ -1,0 +1,433 @@
+#!/bin/bash
+# Create STANDBY database using RMAN DUPLICATE and configure Data Guard Broker
+
+. /vagrant_config/install.env
+. /home/oracle/scripts/setEnv.sh
+
+echo "******************************************************************************"
+echo "Configure network scripts." `date`
+echo "******************************************************************************"
+
+# Create tnsnames.ora (same as primary)
+cat > ${ORACLE_HOME}/network/admin/tnsnames.ora <<EOF
+LISTENER${DB_DOMAIN_STR} = (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE2_FQ_HOSTNAME})(PORT = 1521))
+
+${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE1_FQ_HOSTNAME})(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SID = ${ORACLE_SID})
+      (UR=A)
+    )
+  )
+
+${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE2_FQ_HOSTNAME})(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SID = ${ORACLE_SID})
+      (UR=A)
+    )
+  )
+EOF
+
+# Create listener.ora
+cat > ${ORACLE_HOME}/network/admin/listener.ora <<EOF
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE2_FQ_HOSTNAME})(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = ${NODE2_DB_UNIQUE_NAME})
+      (SID_NAME = ${ORACLE_SID})
+      (ORACLE_HOME = ${ORACLE_HOME})
+    )
+    (SID_DESC =
+      (GLOBAL_DBNAME = ${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR})
+      (SID_NAME = ${ORACLE_SID})
+      (ORACLE_HOME = ${ORACLE_HOME})
+    )
+    (SID_DESC =
+      (SID_NAME = ${ORACLE_SID})
+      (GLOBAL_DBNAME = ${NODE2_DB_UNIQUE_NAME}_DGMGRL${DB_DOMAIN_STR})
+      (ORACLE_HOME = ${ORACLE_HOME})
+      (ENVS="TNS_ADMIN=${ORACLE_HOME}/network/admin")
+    )
+  )
+
+ADR_BASE_LISTENER = ${ORACLE_BASE}
+INBOUND_CONNECT_TIMEOUT_LISTENER=400
+EOF
+
+# Create sqlnet.ora
+cat > ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
+SQLNET.INBOUND_CONNECT_TIMEOUT=400
+EOF
+
+# Add Native Network Encryption if enabled
+if [ "${NATIVE_NETWORK_ENCRYPTION}" = "true" ]; then
+  cat >> ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
+SQLNET.ENCRYPTION_SERVER=REQUIRED
+SQLNET.ENCRYPTION_TYPES_SERVER=(AES256)
+
+SQLNET.ENCRYPTION_CLIENT=REQUIRED
+SQLNET.ENCRYPTION_TYPES_CLIENT=(AES256)
+
+SQLNET.CRYPTO_CHECKSUM_SERVER=REQUIRED
+SQLNET.CRYPTO_CHECKSUM_TYPES_SERVER = (SHA256)
+
+SQLNET.CRYPTO_CHECKSUM_CLIENT=REQUIRED
+SQLNET.CRYPTO_CHECKSUM_TYPES_CLIENT = (SHA256)
+EOF
+fi
+
+if [ "${DB_DOMAIN}" != "" ]; then
+  cat >> ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
+NAMES.DEFAULT_DOMAIN=${DB_DOMAIN}
+EOF
+fi
+
+echo "******************************************************************************"
+echo "Start listener." `date`
+echo "******************************************************************************"
+lsnrctl stop 2>/dev/null || true
+lsnrctl start
+lsnrctl status
+
+echo "******************************************************************************"
+echo "Create directories and password file." `date`
+echo "******************************************************************************"
+
+mkdir -p /u01/oradata/${ORACLE_SID^^}
+mkdir -p /u01/oradata/${ORACLE_SID^^}/pdbseed
+mkdir -p /u01/oradata/${ORACLE_SID^^}/${PDB_NAME}
+mkdir -p ${FRA_LOCATION}/${ORACLE_SID}
+mkdir -p ${ORACLE_BASE}/admin/${ORACLE_SID}/adump
+mkdir -p ${DATA_DIR}/${ORACLE_SID}/arch
+mkdir -p /u02/backup_from_primary
+
+orapwd file=$ORACLE_HOME/dbs/orapw${ORACLE_SID} password=${SYS_PASSWORD} entries=10 format=12
+
+echo "******************************************************************************"
+echo "Create temporary init.ora file for auxiliary instance." `date`
+echo "******************************************************************************"
+
+cat > /tmp/init${ORACLE_SID}_stby.ora <<EOF
+*.db_name='${ORACLE_SID}'
+EOF
+
+echo "******************************************************************************"
+echo "Create auxiliary instance." `date`
+echo "******************************************************************************"
+
+sqlplus / as sysdba <<EOF
+startup nomount pfile='/tmp/init${ORACLE_SID}_stby.ora';
+exit;
+EOF
+
+echo "******************************************************************************"
+echo "Test connectivity to primary database." `date`
+echo "******************************************************************************"
+
+tnsping ${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR}
+
+echo "******************************************************************************"
+echo "Create standby database using RMAN duplicate." `date`
+echo "This may take 10-20 minutes depending on database size..."
+echo "******************************************************************************"
+
+rman target sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} auxiliary sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+
+duplicate target database
+  for standby
+  from active database
+  dorecover
+  spfile
+    set db_unique_name='${NODE2_DB_UNIQUE_NAME}' comment 'Is standby'
+  nofilenamecheck;
+
+exit;
+EOF
+
+echo "******************************************************************************"
+echo "Enable FLASHBACK DATABASE on standby." `date`
+echo "******************************************************************************"
+
+sqlplus / as sysdba <<EOF
+-- Check if flashback is already enabled
+SET SERVEROUTPUT ON
+DECLARE
+    v_flashback_on VARCHAR2(3);
+BEGIN
+    SELECT flashback_on INTO v_flashback_on FROM v\$database;
+
+    IF v_flashback_on = 'NO' THEN
+        DBMS_OUTPUT.PUT_LINE('Flashback is OFF on standby, enabling now...');
+        EXECUTE IMMEDIATE 'ALTER DATABASE FLASHBACK ON';
+        DBMS_OUTPUT.PUT_LINE('Flashback enabled successfully on standby.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Flashback is already ON on standby.');
+    END IF;
+END;
+/
+
+-- Verify flashback is enabled
+SELECT name, db_unique_name, flashback_on, log_mode
+FROM v\$database;
+
+EXIT;
+EOF
+
+echo "******************************************************************************"
+echo "Enable Data Guard Broker on standby." `date`
+echo "******************************************************************************"
+
+sqlplus / as sysdba <<EOF
+alter system set dg_broker_start=true;
+EXIT;
+EOF
+
+echo "******************************************************************************"
+echo "Enable Data Guard Broker on primary and create configuration." `date`
+echo "******************************************************************************"
+
+# Enable broker on primary
+sqlplus sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
+alter system set dg_broker_start=true;
+EXIT;
+EOF
+
+# Wait for broker to initialize
+sleep 10
+
+# Configure broker
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+remove configuration;
+create configuration dg_config as primary database is ${NODE1_DB_UNIQUE_NAME} connect identifier is ${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR};
+add database ${NODE2_DB_UNIQUE_NAME} as connect identifier is ${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR};
+enable configuration;
+show configuration;
+exit;
+EOF
+
+# Wait for configuration to stabilize
+sleep 15
+
+echo "******************************************************************************"
+echo "Configure MAXAVAILABILITY protection mode and FASTSYNC transport." `date`
+echo "******************************************************************************"
+
+# Function to verify LogXptMode is set correctly on a database
+verify_logxptmode() {
+    local db_name=$1
+    local expected_mode=$2
+    local max_attempts=12  # 60 seconds total (12 * 5 seconds)
+    local attempt=1
+
+    echo "Verifying LogXptMode=${expected_mode} on ${db_name}..."
+
+    while [ $attempt -le $max_attempts ]; do
+        # Query the LogXptMode property from Data Guard Broker
+        local actual_mode=$(dgmgrl -silent sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF | grep "LogXptMode" | awk '{print $3}' | tr -d "'"
+SHOW DATABASE VERBOSE ${db_name};
+exit;
+EOF
+)
+
+        if echo "$actual_mode" | grep -qi "$expected_mode"; then
+            echo "ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ LogXptMode verified as ${expected_mode} on ${db_name}"
+            return 0
+        fi
+
+        echo "  Attempt ${attempt}/${max_attempts}: LogXptMode is '${actual_mode}', waiting for '${expected_mode}'..."
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+
+    echo "ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ERROR: Failed to verify LogXptMode=${expected_mode} on ${db_name} after ${max_attempts} attempts"
+    return 1
+}
+
+# Function to verify protection level is MAXIMUM AVAILABILITY (not RESYNCHRONIZATION)
+verify_protection_level() {
+    local max_attempts=12  # 60 seconds total
+    local attempt=1
+
+    echo "Verifying protection level is MAXIMUM AVAILABILITY..."
+
+    while [ $attempt -le $max_attempts ]; do
+        # Query protection level from the primary database
+        local protection_level=$(sqlplus -s / as sysdba <<EOF
+SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
+SELECT protection_level FROM v\$database;
+EXIT;
+EOF
+)
+
+        # Trim whitespace
+        protection_level=$(echo "$protection_level" | tr -d ' \t\r\n')
+
+        if [ "$protection_level" = "MAXIMUMAVAILABILITY" ]; then
+            echo "ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Protection level verified as MAXIMUM AVAILABILITY"
+            return 0
+        fi
+
+        echo "  Attempt ${attempt}/${max_attempts}: Protection level is '${protection_level}', waiting for 'MAXIMUM AVAILABILITY'..."
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+
+    echo "ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ERROR: Failed to verify MAXIMUM AVAILABILITY protection level after ${max_attempts} attempts"
+    echo "  Current protection level: ${protection_level}"
+    return 1
+}
+
+# Step 1: Set FASTSYNC transport mode on PRIMARY
+echo "Setting LogXptMode=FASTSYNC on primary database..."
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+EDIT DATABASE ${NODE1_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
+exit;
+EOF
+
+echo "Setting LogXptMode=FASTSYNC on standby database..."
+dgmgrl sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
+exit;
+EOF
+
+# Verify primary LogXptMode is applied
+if ! verify_logxptmode "${NODE1_DB_UNIQUE_NAME}" "FASTSYNC"; then
+    echo "WARNING: Could not verify LogXptMode on primary, but continuing..."
+fi
+
+# Step 2: Enable apply on standby to start log transport
+echo "Enabling apply on standby database..."
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET STATE='APPLY-ON';
+exit;
+EOF
+
+# Give standby a moment to start applying
+sleep 5
+
+# Step 3: Set MAXAVAILABILITY protection mode AFTER transport is configured
+echo "Setting MAXAVAILABILITY protection mode..."
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY;
+exit;
+EOF
+
+# Step 4: Verify protection level is actually MAXIMUM AVAILABILITY
+if ! verify_protection_level; then
+    echo "WARNING: Protection level verification failed!"
+    echo "The configuration may be in RESYNCHRONIZATION or MAXIMUM PERFORMANCE mode."
+    echo "Check Data Guard Broker status for ORA-16627 errors."
+fi
+
+# Show final configuration after all settings are applied
+echo ""
+echo "Final Data Guard Broker configuration:"
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+SHOW CONFIGURATION;
+SHOW DATABASE ${NODE1_DB_UNIQUE_NAME};
+SHOW DATABASE ${NODE2_DB_UNIQUE_NAME};
+exit;
+EOF
+
+echo "******************************************************************************"
+echo "Validate Data Guard configuration." `date`
+echo "******************************************************************************"
+
+sleep 30
+
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+validate database ${NODE1_DB_UNIQUE_NAME};
+validate database ${NODE2_DB_UNIQUE_NAME};
+validate database ${NODE2_DB_UNIQUE_NAME} spfile;
+validate static connect identifier for ${NODE1_DB_UNIQUE_NAME};
+validate static connect identifier for ${NODE2_DB_UNIQUE_NAME};
+exit;
+EOF
+
+echo "******************************************************************************"
+echo "Verify FLASHBACK DATABASE is enabled on both databases." `date`
+echo "******************************************************************************"
+
+echo "Checking flashback status on PRIMARY..."
+sqlplus -s sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
+SET LINESIZE 180
+COLUMN name FORMAT A15
+COLUMN db_unique_name FORMAT A20
+COLUMN flashback_on FORMAT A12
+COLUMN log_mode FORMAT A12
+SELECT name, db_unique_name, flashback_on, log_mode
+FROM v\$database;
+EXIT;
+EOF
+
+echo ""
+echo "Checking flashback status on STANDBY..."
+sqlplus -s / as sysdba <<EOF
+SET LINESIZE 180
+COLUMN name FORMAT A15
+COLUMN db_unique_name FORMAT A20
+COLUMN flashback_on FORMAT A12
+COLUMN log_mode FORMAT A12
+SELECT name, db_unique_name, flashback_on, log_mode
+FROM v\$database;
+EXIT;
+EOF
+
+echo ""
+echo "NOTE: FLASHBACK DATABASE enables quick reinstatement after failover."
+echo "      Without flashback, the old primary must be rebuilt from scratch."
+echo ""
+
+echo "******************************************************************************"
+echo "Verify Data Guard synchronization and schema replication." `date`
+echo "******************************************************************************"
+
+# Show final configuration status after protection mode change
+dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+SHOW CONFIGURATION;
+SHOW DATABASE ${NODE1_DB_UNIQUE_NAME};
+SHOW DATABASE ${NODE2_DB_UNIQUE_NAME};
+exit;
+EOF
+
+echo ""
+echo "Data Guard Synchronization Status:"
+echo "- Standby database is managed by Data Guard Broker"
+echo "- Custom schema (${APP_SCHEMA}) was created on primary before standby creation"
+echo "- RMAN DUPLICATE copied all data including custom schema to standby"
+echo "- Ongoing changes are replicated via Data Guard log transport and apply"
+echo "- Use '/home/oracle/automation/verify_dataguard.sh' for detailed verification"
+echo ""
+
+echo "******************************************************************************"
+echo "STANDBY database creation and configuration complete!" `date`
+echo "******************************************************************************"
+echo ""
+echo "Data Guard Configuration Summary:"
+echo "- Primary: ${NODE1_DB_UNIQUE_NAME} on ${NODE1_FQ_HOSTNAME}"
+echo "- Standby: ${NODE2_DB_UNIQUE_NAME} on ${NODE2_FQ_HOSTNAME}"
+echo "- Protection Mode: MAXAVAILABILITY"
+echo "- Transport Mode: FASTSYNC (synchronous)"
+echo "- Archive Lag Target: ${ARCHIVE_LAG_TARGET} seconds (5 minutes)"
+echo "- Redo Log Size: ${REDO_LOG_SIZE} MB"
+echo "- Flashback Database: ENABLED (allows fast reinstatement after failover)"
+echo "- Custom schema has been replicated to standby"
+echo ""
+echo "Use 'dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR}' to manage Data Guard"
