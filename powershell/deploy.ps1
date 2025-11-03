@@ -46,9 +46,10 @@ function Get-VBoxManagePath {
     return $null
 }
 
-# Create timestamped log directory
+# Create timestamped log directory (in powershell subdirectory)
 $timestamp = Get-Date -Format "yyyy-MM-dd-HHmmss"
-$logDir = "logs\deploy-$timestamp"
+$scriptDir = $PSScriptRoot
+$logDir = Join-Path $scriptDir "logs\deploy-$timestamp"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 Write-Info "=========================================="
@@ -133,6 +134,12 @@ try {
     exit 1
 }
 
+# Change to project root for Vagrant operations
+Write-Info "  → Changing to project root directory..."
+$projectRoot = Split-Path -Parent $scriptDir
+Set-Location $projectRoot
+Write-Success "  [OK] Working directory: $(Get-Location)`n"
+
 # Phase 2: Fix line endings
 Write-Info "[Phase 2/6] Fixing Line Endings"
 $lineEndingLog = "$logDir\01-line-endings.log"
@@ -140,7 +147,7 @@ $lineEndingStart = Get-Date
 
 try {
     Write-Info "  → Running fix-line-endings.ps1..."
-    & powershell -ExecutionPolicy Bypass -File .\fix-line-endings.ps1 | Tee-Object -FilePath $lineEndingLog
+    & powershell -ExecutionPolicy Bypass -File .\powershell\fix-line-endings.ps1 | Tee-Object -FilePath $lineEndingLog
     $lineEndingElapsed = (Get-Date) - $lineEndingStart
     Write-Success "  [OK] Line endings fixed ($($lineEndingElapsed.TotalSeconds.ToString('F1'))s)`n"
 } catch {
