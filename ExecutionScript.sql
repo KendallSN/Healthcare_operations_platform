@@ -1,3 +1,7 @@
+-- Crear la estructura de la bd
+-- Insertar la información
+-- Crear los triggers para las bitacoras
+
 -- Planilla para el mes 10, año 2025 de centro de salud 1
 EXEC generate_month_scale('10',2025,1);
 

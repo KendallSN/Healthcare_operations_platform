@@ -73,6 +73,8 @@ CREATE OR REPLACE PROCEDURE GENERATE_PAYROLL (
   v_base_sal   NUMBER := 0; -- añadido: salario base disponible en todo el procedimiento
   v_msc_count  NUMBER := 0; -- contador de MonthScales procesados
   v_pending_turns NUMBER := 0; -- contador de turnos pendientes (PDG)
+  v_pru_ids    VARCHAR2(4000) := ''; -- IDs de PayrollXUser creados
+  v_pru_id     NUMBER; -- ID individual de PayrollXUser
 BEGIN
   -- normalizar mes a abreviatura MON en inglés
   IF REGEXP_LIKE(TRIM(p_month),'^\d{1,2}$') THEN
@@ -83,6 +85,23 @@ BEGIN
 
   v_first_date := TO_DATE('01-'||v_month_abbr||'-'||TO_CHAR(p_year),'DD-MON-YYYY','NLS_DATE_LANGUAGE=ENGLISH');
   v_last_date  := LAST_DAY(v_first_date);
+
+  -- Verificar si ya existe un payroll para ese mes/año/tipo
+  DECLARE
+    v_exist_count NUMBER := 0;
+  BEGIN
+    SELECT COUNT(*) INTO v_exist_count
+      FROM HC_Payroll
+      WHERE PRT_id = p_prt_id
+        AND PRL_month = v_month_abbr
+        AND PRL_year = TO_CHAR(p_year);
+    
+    IF v_exist_count > 0 THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Ya existe un Payroll para el tipo PRT_id=' || p_prt_id || 
+                              ', mes=' || v_month_abbr || ', año=' || p_year || 
+                              '. No se puede crear un duplicado.');
+    END IF;
+  END;
 
   -- obtener ids de movement types estándar (si existen) con manejo de excepciones
   BEGIN
@@ -125,8 +144,16 @@ BEGIN
     END;
 
     -- insertar relación payrollXuser
-    INSERT INTO HC_PayrollXUser (PRU_id, USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
-      VALUES (1,v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1);
+    INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
+      VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1)
+      RETURNING PRU_id INTO v_pru_id;
+    
+    -- Agregar PRU_id a la lista
+    IF v_pru_ids IS NOT NULL AND LENGTH(v_pru_ids) > 0 THEN
+      v_pru_ids := v_pru_ids || ', ' || TO_CHAR(v_pru_id);
+    ELSE
+      v_pru_ids := TO_CHAR(v_pru_id);
+    END IF;
 
     IF v_usr_rec.USR_type = 'M' THEN
       -- Médicos: Procesar procedimientos del mes (sin filtrar por HCN_id)
@@ -343,7 +370,18 @@ BEGIN
   CLOSE c_users;
 
   COMMIT;
-  DBMS_OUTPUT.PUT_LINE('Payroll creado PRL_id='||v_prl_id||' para PRT_id='||p_prt_id||' mes='||v_month_abbr||'/'||p_year||'. MonthScales con turnos procesados: '||v_msc_count);
+  
+  -- Mensajes
+  DBMS_OUTPUT.PUT_LINE('======================================');
+  DBMS_OUTPUT.PUT_LINE('Payroll creado:');
+  DBMS_OUTPUT.PUT_LINE('  - PRL_id: ' || v_prl_id);
+  DBMS_OUTPUT.PUT_LINE('  - PRT_id: ' || p_prt_id);
+  DBMS_OUTPUT.PUT_LINE('  - Mes/Año: ' || v_month_abbr || '/' || p_year);
+  DBMS_OUTPUT.PUT_LINE('  - MonthScales con turnos procesados: ' || v_msc_count);
+  DBMS_OUTPUT.PUT_LINE('--------------------------------------');
+  DBMS_OUTPUT.PUT_LINE('PayrollXUser creados (PRU_ids):');
+  DBMS_OUTPUT.PUT_LINE('  ' || v_pru_ids);
+  DBMS_OUTPUT.PUT_LINE('======================================');
   
   IF v_pending_turns > 0 THEN
     DBMS_OUTPUT.PUT_LINE('NOTA: Se encontraron '||v_pending_turns||' turno(s) con estado PDG (Pendiente) que no fueron procesados.');
