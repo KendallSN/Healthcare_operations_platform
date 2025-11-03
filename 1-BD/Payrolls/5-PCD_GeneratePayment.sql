@@ -132,7 +132,7 @@ DBMS_OUTPUT.PUT_LINE('--------------------------------------');
 PKG_Emails.PCD_Send_Mail(
     pReceiverEmail => v_receiver_email,
     pSenderEmail   => v_sender_email,
-    pEmailKey      => v_email_key,
+    pEmailKey      => FNC_DecryptEmailKey(v_email_key),
     pSubject       => v_subject,
     pHTML          => v_html_final
 );
