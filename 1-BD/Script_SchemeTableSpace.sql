@@ -16,6 +16,7 @@ GRANT CREATE USER TO HC;
 GRANT GRANT ANY ROLE TO HC;
 GRANT CREATE ANY DIRECTORY TO HC;
 GRANT DROP ANY DIRECTORY TO HC;
+GRANT CREATE VIEW TO HC;
 
 create tablespace HC_TS datafile '/opt/oracle/oradata/hc_ts.DBF' SIZE 1g autoextend on next 100m MAXSIZE 5g;
 alter user HC default tablespace HC_TS;
