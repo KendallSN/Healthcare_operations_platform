@@ -32,7 +32,7 @@ sh /vagrant_scripts/configure_hostname.sh
 sh /vagrant_scripts/configure_chrony.sh
 
 # Setup oracle user environment
-su - oracle -c 'sh /vagrant/scripts/primary/oracle_user_environment_setup.sh'
+su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/oracle_user_environment_setup.sh'
 . /home/oracle/scripts/setEnv.sh
 
 # Install Oracle software
@@ -46,13 +46,13 @@ sh ${ORA_INVENTORY}/orainstRoot.sh
 sh ${ORACLE_HOME}/root.sh
 
 # Create primary database
-su - oracle -c 'sh /vagrant/scripts/primary/oracle_create_database.sh'
+su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/oracle_create_database.sh'
 
 # Deploy custom schema
-su - oracle -c 'sh /vagrant/scripts/primary/deploy_custom_schema.sh'
+su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/deploy_custom_schema.sh'
 
 # Setup automation scripts
-su - oracle -c 'sh /vagrant/scripts/primary/setup_automation.sh'
+su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/setup_automation.sh'
 
 echo "******************************************************************************"
 echo "PRIMARY Root Setup Complete." `date`

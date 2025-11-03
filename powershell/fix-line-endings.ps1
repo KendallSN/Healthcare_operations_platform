@@ -1,10 +1,15 @@
-# PowerShell script to convert all shell scripts to Unix (LF) line endings
+# PowerShell script to convert all shell scripts and config files to Unix (LF) line endings
 # Automatically works from powershell/ subfolder by searching parent directory
 
-Write-Host "Converting all shell scripts to Unix (LF) line endings..." -ForegroundColor Green
+Write-Host "Converting shell scripts and config files to Unix (LF) line endings..." -ForegroundColor Green
 
-# Get all .sh files recursively from project root (parent directory)
-$files = Get-ChildItem -Path .. -Filter *.sh -Recurse
+# Get project root (parent of script directory)
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
+# Get all .sh and .env files recursively from project root
+$shFiles = Get-ChildItem -Path $projectRoot -Filter *.sh -Recurse
+$envFiles = Get-ChildItem -Path $projectRoot -Filter *.env -Recurse
+$files = $shFiles + $envFiles
 
 foreach ($file in $files) {
     Write-Host "Processing: $($file.FullName)" -ForegroundColor Yellow
@@ -19,4 +24,6 @@ foreach ($file in $files) {
 }
 
 Write-Host "`nConversion complete! Total files processed: $($files.Count)" -ForegroundColor Green
-Write-Host "You can now run 'vagrant up primary' again." -ForegroundColor Cyan
+Write-Host "  - Shell scripts (.sh): $($shFiles.Count)" -ForegroundColor Cyan
+Write-Host "  - Config files (.env): $($envFiles.Count)" -ForegroundColor Cyan
+Write-Host "`nYou can now run deployment again." -ForegroundColor Green
