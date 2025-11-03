@@ -1,8 +1,8 @@
 CREATE OR REPLACE PACKAGE PKG_FUNCTIONS_JOBS IS
 
-PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
-                        pCuerpo    IN VARCHAR2,
-                        pRecipient IN VARCHAR2);
+PROCEDURE PCD_SEND_JOB_EMAIL(p_subject    IN VARCHAR2,
+                        p_body    IN VARCHAR2,
+                        p_recipient IN VARCHAR2);
 
 PROCEDURE PCD_VERIFY_INVALID_OBJECTS;
 
@@ -18,9 +18,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_FUNCTIONS_JOBS IS
 
 -- Procedimiento para enviar correos de notificaciones de jobs
 
-PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
-                        pCuerpo    IN VARCHAR2,
-                        pRecipient IN VARCHAR2) IS
+PROCEDURE PCD_SEND_JOB_EMAIL(p_subject    IN VARCHAR2,
+                        p_body    IN VARCHAR2,
+                        p_recipient IN VARCHAR2) IS
     v_receiver_email VARCHAR2(500);
     v_sender_email   VARCHAR2(500);
     v_email_key      VARCHAR2(1000);
@@ -29,12 +29,12 @@ PROCEDURE PCD_SEND_JOB_EMAIL(pAsunto    IN VARCHAR2,
 
 BEGIN
     -- Obtener el correo del destinatario desde GeneralParameters
-    IF pRecipient IS NULL THEN
+    IF p_recipient IS NULL THEN
         SELECT GP_value INTO v_receiver_email
         FROM GeneralParameters
         WHERE GP_name = 'DBA_EMAIL';
     ELSE
-        v_receiver_email := pRecipient;
+        v_receiver_email := p_recipient;
     END IF;
 
     -- Obtener parámetros de correo
@@ -44,7 +44,7 @@ BEGIN
 
     SELECT GP_value INTO v_email_key
     FROM GeneralParameters
-    WHERE GP_name = 'EMAILKEY';
+    WHERE GP_name = 'EMAIL_KEY';
 
     -- Obtener fecha actual formateada
     v_current_date := TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS');
@@ -85,11 +85,11 @@ BEGIN
         <div class="container">
             <div class="header">
                 <div class="icon">⚙️</div>
-                <h1>' || pAsunto || '</h1>
+                <h1>' || p_subject || '</h1>
                 <span class="badge">Sistema Automático de Monitoreo</span>
             </div>
             <div class="content">
-                ' || pCuerpo || '
+                ' || p_body || '
                 <div class="timestamp">
                     <strong>📅 Fecha de notificación:</strong> ' || v_current_date || '
                 </div>
@@ -99,10 +99,10 @@ BEGIN
                 Universidad Nacional - Sede Regional Brunca<br>
                 Pérez Zeledón, Costa Rica<br><br>
                 <strong>Contacto del Equipo de Desarrollo:</strong><br>
-                📞 +506 8538-1034 | +506 6262-3615 | +506 8393-5021<br>
-                📧 <a href="mailto:jousten.blanco.fonseca@est.una.ac.cr">jousten.blanco.fonseca@est.una.ac.cr</a> | 
-                <a href="mailto:sebastian.granados.barrantes@est.una.ac.cr">sebastian.granados.barrantes@est.una.ac.cr</a> | 
-                <a href="mailto:raul.bejarano.mora@est.una.ac.cr">raul.bejarano.mora@est.una.ac.cr</a><br><br>
+                📞 +506 6451-5600<br>
+                📧 <a href="mailto:kendall.salazar.navarro@est.una.ac.cr">kendall.salazar.navarro@est.una.ac.cr</a> | 
+                <a href="mailto:angelo.marin.granados@est.una.ac.cr">angelo.marin.granados@est.una.ac.cr</a> | 
+                <a href="mailto:joselyn.morales.roman@est.una.ac.cr">joselyn.morales.roman@est.una.ac.cr</a><br><br>
                 <em>Este es un correo automático generado por el sistema. Por favor no responder.</em>
             </div>
         </div>
@@ -113,16 +113,16 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('======================================');
     DBMS_OUTPUT.PUT_LINE('Enviando notificación de job');
     DBMS_OUTPUT.PUT_LINE('======================================');
-    DBMS_OUTPUT.PUT_LINE('Asunto: ' || pAsunto);
+    DBMS_OUTPUT.PUT_LINE('Asunto: ' || p_subject);
     DBMS_OUTPUT.PUT_LINE('Destinatario: ' || v_receiver_email);
     DBMS_OUTPUT.PUT_LINE('Fecha: ' || v_current_date);
     DBMS_OUTPUT.PUT_LINE('--------------------------------------');
-
+    
     PKG_Emails.PCD_Send_Mail(
         pReceiverEmail => v_receiver_email,
         pSenderEmail   => v_sender_email,
         pEmailKey      => v_email_key,
-        pSubject       => pAsunto,
+        pSubject       => p_subject,
         pHTML          => v_html_final
     );
 
@@ -141,23 +141,23 @@ END PCD_SEND_JOB_EMAIL;
 -- Procedimiento para verificacion de objetos invalidos
 
 PROCEDURE PCD_VERIFY_INVALID_OBJECTS AS
-    cantidad_objetos_invalidos NUMBER;
-    lista_objetos_invalidos    CLOB := EMPTY_CLOB();
-    v_html_body                CLOB;
+    v_invalid_count NUMBER;
+    v_invalid_list  CLOB := EMPTY_CLOB();
+    v_html_body     CLOB;
 BEGIN
 
     SELECT COUNT(*)
-    INTO cantidad_objetos_invalidos
+    INTO v_invalid_count
     FROM ALL_OBJECTS
     WHERE status = 'INVALID'
     AND owner = USER;
 
-    IF cantidad_objetos_invalidos > 0 THEN
+    IF v_invalid_count > 0 THEN
         FOR obj IN (SELECT object_name, object_type
                     FROM ALL_OBJECTS
                     WHERE status = 'INVALID'
                     AND owner = USER) LOOP
-            lista_objetos_invalidos := lista_objetos_invalidos || 
+            v_invalid_list := v_invalid_list || 
                 '<li><strong>' || obj.object_name || '</strong> - <em>Tipo:</em> ' || 
                 obj.object_type || '</li>';
         END LOOP;
@@ -170,21 +170,21 @@ BEGIN
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            cantidad_objetos_invalidos || '</strong> objeto(s) inválido(s) en el esquema 
+            v_invalid_count || '</strong> objeto(s) inválido(s) en el esquema 
             <strong>' || USER || '</strong>.</p>
             <p><strong>📋 Lista de objetos que requieren atención:</strong></p>
-            <ul style="line-height: 1.8;">' || lista_objetos_invalidos || '</ul>
+            <ul style="line-height: 1.8;">' || v_invalid_list || '</ul>
             <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
             Es necesario revisar y recompilar estos objetos para restaurar su funcionalidad.</p>
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            pAsunto    => '🔴 Notificación: Objetos Inválidos Detectados',
-            pCuerpo    => v_html_body,
-            pRecipient => NULL
+            p_subject    => '🔴 Notificación: Objetos Inválidos Detectados',
+            p_body       => v_html_body,
+            p_recipient  => NULL
         );
         
-        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || cantidad_objetos_invalidos || ' objetos inválidos.');
+        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || v_invalid_count || ' objetos inválidos.');
     ELSE
         DBMS_OUTPUT.PUT_LINE('No se encontraron objetos inválidos.');
     END IF;
@@ -194,23 +194,23 @@ END PCD_VERIFY_INVALID_OBJECTS;
 -- Procedimiento para verificacion de indices dañados
 
 PROCEDURE PCD_VERIFY_DAMAGED_INDEXES AS
-    cantidad_indices_danados NUMBER;
-    lista_indices_danados    CLOB := EMPTY_CLOB();
-    v_html_body              CLOB;
+    v_damaged_count NUMBER;
+    v_damaged_list  CLOB := EMPTY_CLOB();
+    v_html_body     CLOB;
 BEGIN
 
     SELECT COUNT(*)
-    INTO cantidad_indices_danados
+    INTO v_damaged_count
     FROM ALL_INDEXES
     WHERE status = 'UNUSABLE'
     AND owner = USER;
 
-    IF cantidad_indices_danados > 0 THEN
+    IF v_damaged_count > 0 THEN
         FOR idx IN (SELECT index_name, index_type
                     FROM ALL_INDEXES
                     WHERE status = 'UNUSABLE'
                     AND owner = USER) LOOP
-            lista_indices_danados := lista_indices_danados || 
+            v_damaged_list := v_damaged_list || 
                 '<li><strong>' || idx.index_name || '</strong> - <em>Tipo:</em> ' || 
                 idx.index_type || '</li>';
         END LOOP;
@@ -223,21 +223,21 @@ BEGIN
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            cantidad_indices_danados || '</strong> índice(s) dañado(s) en el esquema 
+            v_damaged_count || '</strong> índice(s) dañado(s) en el esquema 
             <strong>' || USER || '</strong>.</p>
             <p><strong>📋 Lista de índices que requieren reparación:</strong></p>
-            <ul style="line-height: 1.8;">' || lista_indices_danados || '</ul>
+            <ul style="line-height: 1.8;">' || v_damaged_list || '</ul>
             <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
             Es necesario reconstruir estos índices para restaurar el rendimiento de las consultas.</p>
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            pAsunto    => '🔴 Notificación: Índices Dañados Detectados',
-            pCuerpo    => v_html_body,
-            pRecipient => NULL
+            p_subject    => '🔴 Notificación: Índices Dañados Detectados',
+            p_body       => v_html_body,
+            p_recipient  => NULL
         );
         
-        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || cantidad_indices_danados || ' índices dañados.');
+        DBMS_OUTPUT.PUT_LINE('Se envió notificación de ' || v_damaged_count || ' índices dañados.');
     ELSE
         DBMS_OUTPUT.PUT_LINE('No se encontraron índices dañados.');
     END IF;
@@ -247,28 +247,28 @@ END PCD_VERIFY_DAMAGED_INDEXES;
 -- Procedimiento para desactivar cuentas de usuarios inactivos
 
 PROCEDURE PCD_DEACTIVATE_INACTIVE_ACCOUNTS IS
-    CURSOR c_usuarios_inactivos IS
-    WITH usuario_actividad AS (
+    CURSOR c_inactive_users IS
+    WITH user_activity AS (
         SELECT 
             u.USR_id,
             u.USR_identification,
-            u.USR_f_name || ' ' || u.USR_f_lastname || ' ' || NVL(u.USR_s_lastname, '') AS nombre_completo,
+            u.USR_f_name || ' ' || u.USR_f_lastname || ' ' || NVL(u.USR_s_lastname, '') AS full_name,
             u.USR_email,
             u.USR_type,
             -- Último Payroll (mes/año en inglés convertido a fecha - formato: JAN, FEB, MAR...)
             (SELECT MAX(TO_DATE('01-' || p.PRL_month || '-' || p.PRL_year, 'DD-MON-YYYY', 'NLS_DATE_LANGUAGE=ENGLISH'))
             FROM HC_Payroll p 
             JOIN HC_PayrollXUser pru ON p.PRL_id = pru.PRL_id 
-            WHERE pru.USR_id = u.USR_id) AS ultimo_payroll,
+            WHERE pru.USR_id = u.USR_id) AS last_payroll,
             -- Último Procedure (fecha directa)
             (SELECT MAX(pcd.PCD_date) 
             FROM HC_Procedure pcd 
-            WHERE pcd.USR_id = u.USR_id) AS ultimo_procedure,
+            WHERE pcd.USR_id = u.USR_id) AS last_procedure,
             -- Último MonthScale (mes/año en inglés convertido a fecha - formato: JAN, FEB, MAR...)
             (SELECT MAX(TO_DATE('01-' || msc.MSC_month || '-' || msc.MSC_year, 'DD-MON-YYYY', 'NLS_DATE_LANGUAGE=ENGLISH'))
             FROM HC_MonthScale msc 
             JOIN HC_TurnXMonthScale tms ON msc.MSC_id = tms.MSC_id 
-            WHERE tms.USR_id = u.USR_id) AS ultimo_monthscale
+            WHERE tms.USR_id = u.USR_id) AS last_monthscale
         FROM HC_User u
         WHERE u.USR_state = 'A'
         AND u.USR_approved = 'Y'
@@ -276,54 +276,54 @@ PROCEDURE PCD_DEACTIVATE_INACTIVE_ACCOUNTS IS
     SELECT 
         USR_id,
         USR_identification,
-        nombre_completo,
+        full_name,
         USR_email,
         USR_type,
         GREATEST(
-            NVL(ultimo_payroll, TO_DATE('1900-01-01', 'YYYY-MM-DD')),
-            NVL(ultimo_procedure, TO_DATE('1900-01-01', 'YYYY-MM-DD')),
-            NVL(ultimo_monthscale, TO_DATE('1900-01-01', 'YYYY-MM-DD'))
-        ) AS ultima_actividad
-    FROM usuario_actividad
+            NVL(last_payroll, TO_DATE('1900-01-01', 'YYYY-MM-DD')),
+            NVL(last_procedure, TO_DATE('1900-01-01', 'YYYY-MM-DD')),
+            NVL(last_monthscale, TO_DATE('1900-01-01', 'YYYY-MM-DD'))
+        ) AS last_activity
+    FROM user_activity
     WHERE 
         -- Todos los eventos (si existen) deben ser de hace más de 3 meses
-        (ultimo_payroll IS NULL OR ultimo_payroll < ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -3))
-        AND (ultimo_procedure IS NULL OR ultimo_procedure < ADD_MONTHS(SYSDATE, -3))
-        AND (ultimo_monthscale IS NULL OR ultimo_monthscale < ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -3));
+        (last_payroll IS NULL OR last_payroll < ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -3))
+        AND (last_procedure IS NULL OR last_procedure < ADD_MONTHS(SYSDATE, -3))
+        AND (last_monthscale IS NULL OR last_monthscale < ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -3));
 
-    v_lista_usuarios  CLOB := EMPTY_CLOB();
+    v_user_list       CLOB := EMPTY_CLOB();
     v_html_body       CLOB;
     v_count           NUMBER := 0;
-    v_fecha_ejecucion VARCHAR2(50);
+    v_execution_date  VARCHAR2(50);
 BEGIN
-    v_fecha_ejecucion := TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS');
+    v_execution_date := TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS');
     
     -- Procesar cada usuario inactivo
-    FOR r_usuario IN c_usuarios_inactivos LOOP
+    FOR r_user IN c_inactive_users LOOP
         -- Desactivar usuario
         UPDATE HC_User
         SET USR_state = 'I'
-        WHERE USR_id = r_usuario.USR_id;
+        WHERE USR_id = r_user.USR_id;
         
         -- Construir lista HTML con detalles del usuario
-        v_lista_usuarios := v_lista_usuarios || 
+        v_user_list := v_user_list || 
             '<li style="margin:10px 0;padding:10px;background:#f8f9fa;border-radius:6px;">' ||
-            '<strong>ID:</strong> ' || r_usuario.USR_id || '<br>' ||
-            '<strong>Identificación:</strong> ' || r_usuario.USR_identification || '<br>' ||
-            '<strong>Nombre:</strong> ' || r_usuario.nombre_completo || '<br>' ||
-            '<strong>Email:</strong> ' || r_usuario.USR_email || '<br>' ||
+            '<strong>ID:</strong> ' || r_user.USR_id || '<br>' ||
+            '<strong>Identificación:</strong> ' || r_user.USR_identification || '<br>' ||
+            '<strong>Nombre:</strong> ' || r_user.full_name || '<br>' ||
+            '<strong>Email:</strong> ' || r_user.USR_email || '<br>' ||
             '<strong>Tipo:</strong> ' || 
-            CASE r_usuario.USR_type 
+            CASE r_user.USR_type 
                 WHEN 'M' THEN '<span style="color:#667eea;">Médico</span>'
                 WHEN 'A' THEN '<span style="color:#43cea2;">Administrativo</span>'
-                ELSE r_usuario.USR_type 
+                ELSE r_user.USR_type 
             END || '<br>' ||
             '<strong>Última actividad:</strong> ' || 
             CASE 
-                WHEN r_usuario.ultima_actividad > TO_DATE('1900-01-02', 'YYYY-MM-DD') THEN
-                    TO_CHAR(r_usuario.ultima_actividad, 'DD/MM/YYYY') || 
+                WHEN r_user.last_activity > TO_DATE('1900-01-02', 'YYYY-MM-DD') THEN
+                    TO_CHAR(r_user.last_activity, 'DD/MM/YYYY') || 
                     ' <span style="color:#dc3545;">(' || 
-                    ROUND(MONTHS_BETWEEN(SYSDATE, r_usuario.ultima_actividad), 1) || 
+                    ROUND(MONTHS_BETWEEN(SYSDATE, r_user.last_activity), 1) || 
                     ' meses de inactividad)</span>'
                 ELSE
                     '<span style="color:#dc3545;">Sin actividad registrada (más de 3 meses)</span>'
@@ -352,11 +352,11 @@ BEGIN
                 <li>Sin actividad en <strong>Procedimientos</strong> (HC_Procedure)</li>
                 <li>Período evaluado: <strong>Últimos 3 meses</strong></li>
             </ul>
-            <p><strong>� Usuarios desactivados:</strong></p>
-            <ul style="line-height: 1.8;list-style:none;padding-left:0;">' || v_lista_usuarios || '</ul>
+            <p><strong>👥 Usuarios desactivados:</strong></p>
+            <ul style="line-height: 1.8;list-style:none;padding-left:0;">' || v_user_list || '</ul>
             <p style="margin:15px 0 0 0;padding:12px;background:#fff3cd;border-radius:6px;">
                 <strong>📌 Nota importante:</strong><br>
-                Las cuentas han sido marcadas como inactivas (USR_state = ''I'') en el sistema. 
+                Las cuentas han sido marcadas como inactivas (USR_state = ''I'') en el sistema.
                 Los usuarios no podrán acceder al sistema hasta que un administrador reactive sus cuentas.
             </p>
             <p style="margin:15px 0 0 0;padding:12px;background:#e8f4fd;border-radius:6px;">
@@ -371,15 +371,15 @@ BEGIN
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            pAsunto    => 'Reporte Mensual: Desactivación de Usuarios Inactivos',
-            pCuerpo    => v_html_body,
-            pRecipient => NULL
+            p_subject    => 'Reporte Mensual: Desactivación de Usuarios Inactivos',
+            p_body       => v_html_body,
+            p_recipient  => NULL
         );
         
         DBMS_OUTPUT.PUT_LINE('========================================');
         DBMS_OUTPUT.PUT_LINE('Proceso de desactivación completado');
         DBMS_OUTPUT.PUT_LINE('========================================');
-        DBMS_OUTPUT.PUT_LINE('Fecha de ejecución: ' || v_fecha_ejecucion);
+        DBMS_OUTPUT.PUT_LINE('Fecha de ejecución: ' || v_execution_date);
         DBMS_OUTPUT.PUT_LINE('Total de usuarios desactivados: ' || v_count);
         DBMS_OUTPUT.PUT_LINE('Se envió notificación al DBA.');
         DBMS_OUTPUT.PUT_LINE('========================================');
@@ -387,7 +387,7 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('========================================');
         DBMS_OUTPUT.PUT_LINE('Proceso de desactivación completado');
         DBMS_OUTPUT.PUT_LINE('========================================');
-        DBMS_OUTPUT.PUT_LINE('Fecha de ejecución: ' || v_fecha_ejecucion);
+        DBMS_OUTPUT.PUT_LINE('Fecha de ejecución: ' || v_execution_date);
         DBMS_OUTPUT.PUT_LINE('No se encontraron usuarios inactivos.');
         DBMS_OUTPUT.PUT_LINE('========================================');
     END IF;
@@ -400,19 +400,19 @@ EXCEPTION
 END PCD_DEACTIVATE_INACTIVE_ACCOUNTS;
 
 PROCEDURE PCD_VERIFY_TABLESPACE_SIZES IS
-    v_tablespaces_pasados CLOB := EMPTY_CLOB();
-    v_html_body           CLOB;
-    v_count               NUMBER := 0;
+    v_tablespace_list CLOB := EMPTY_CLOB();
+    v_html_body       CLOB;
+    v_count           NUMBER := 0;
 BEGIN
     FOR ts IN (
         SELECT tablespace_name, 
-            ROUND(((Espacio_Total - Espacio_Libre) / Espacio_Total) * 100, 2) AS used_percent,
-            ROUND(Espacio_Total - Espacio_Libre, 2) AS espacio_usado,
-            ROUND(Espacio_Total, 2) AS espacio_total
+            ROUND(((total_space - free_space) / total_space) * 100, 2) AS used_percent,
+            ROUND(total_space - free_space, 2) AS used_space,
+            ROUND(total_space, 2) AS total_space
         FROM (
             SELECT f.tablespace_name,
-                SUM(f.bytes) / 1024 / 1024 AS Espacio_Libre,
-                SUM(d.bytes) / 1024 / 1024 AS Espacio_Total
+                SUM(f.bytes) / 1024 / 1024 AS free_space,
+                SUM(d.bytes) / 1024 / 1024 AS total_space
             FROM dba_free_space f
             JOIN dba_data_files d ON f.tablespace_name = d.tablespace_name
             GROUP BY f.tablespace_name
@@ -420,7 +420,7 @@ BEGIN
     ) 
     LOOP
         IF ts.used_percent >= 85 THEN
-            v_tablespaces_pasados := v_tablespaces_pasados || 
+            v_tablespace_list := v_tablespace_list || 
                 '<li><strong>' || ts.tablespace_name || '</strong> - ' ||
                 '<span style="color:' || 
                 CASE 
@@ -429,12 +429,12 @@ BEGIN
                     ELSE '#ffc107'
                 END || ';font-size:16px;font-weight:bold;">' || 
                 ts.used_percent || '%</span> ocupado (' || 
-                ts.espacio_usado || ' MB de ' || ts.espacio_total || ' MB)</li>';
+                ts.used_space || ' MB de ' || ts.total_space || ' MB)</li>';
             v_count := v_count + 1;
         END IF;
     END LOOP;
 
-    IF DBMS_LOB.getlength(v_tablespaces_pasados) > 0 THEN
+    IF DBMS_LOB.getlength(v_tablespace_list) > 0 THEN
         -- Construir el cuerpo HTML con el nuevo formato
         v_html_body := 
         '<div class="alert-box error">
@@ -445,7 +445,7 @@ BEGIN
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
             v_count || '</strong> tablespace(s) con una capacidad ocupada mayor o igual al 85%.</p>
             <p><strong>📊 Tablespaces que requieren atención:</strong></p>
-            <ul style="line-height: 2;">' || v_tablespaces_pasados || '</ul>
+            <ul style="line-height: 2;">' || v_tablespace_list || '</ul>
             <p style="margin-bottom:0;"><strong>🔧 Acción requerida:</strong> 
             Se recomienda aumentar el tamaño de estos tablespaces o liberar espacio para evitar 
             problemas de almacenamiento.</p>
@@ -458,9 +458,9 @@ BEGIN
         </div>';
         
         PCD_SEND_JOB_EMAIL(
-            pAsunto    => '🔴 Alerta: Tablespaces Llegando al Límite de Capacidad',
-            pCuerpo    => v_html_body,
-            pRecipient => NULL
+            p_subject    => '🔴 Alerta: Tablespaces Llegando al Límite de Capacidad',
+            p_body       => v_html_body,
+            p_recipient  => NULL
         );
         
         DBMS_OUTPUT.PUT_LINE('Se envió alerta de ' || v_count || ' tablespace(s) con capacidad >= 85%.');
