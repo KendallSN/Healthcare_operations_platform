@@ -20,39 +20,23 @@ ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN;
 EXIT;
 EOF
 
-# Create application schema user in PDB
+# Create application schema user and tablespace in PDB using SQL script
 echo "******************************************************************************"
-echo "Create application schema user ${APP_SCHEMA} in ${PDB_NAME}..." `date`
+echo "Create application schema user ${APP_SCHEMA} in ${PDB_NAME} using ${APP_SCHEMA_SQL}..." `date`
 echo "******************************************************************************"
+
+# Check if schema creation SQL script exists
+if [ ! -f "/vagrant/1-BD/${APP_SCHEMA_SQL}" ]; then
+  echo "ERROR: ${APP_SCHEMA_SQL} not found in /vagrant/1-BD/!"
+  exit 1
+fi
 
 sqlplus / as sysdba <<EOF
 -- Connect to the PDB
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 
--- Drop user if exists (for re-deployments)
-BEGIN
-  EXECUTE IMMEDIATE 'DROP USER ${APP_SCHEMA} CASCADE';
-EXCEPTION
-  WHEN OTHERS THEN
-    IF SQLCODE != -1918 THEN
-      RAISE;
-    END IF;
-END;
-/
-
--- Create application schema user
-CREATE USER ${APP_SCHEMA} IDENTIFIED BY "${APP_SCHEMA_PASSWORD}"
-  DEFAULT TABLESPACE USERS
-  TEMPORARY TABLESPACE TEMP
-  QUOTA UNLIMITED ON USERS;
-
--- Grant necessary privileges
-GRANT CONNECT, RESOURCE TO ${APP_SCHEMA};
-GRANT CREATE TABLE TO ${APP_SCHEMA};
-GRANT CREATE SEQUENCE TO ${APP_SCHEMA};
-GRANT CREATE TRIGGER TO ${APP_SCHEMA};
-GRANT CREATE VIEW TO ${APP_SCHEMA};
-GRANT CREATE PROCEDURE TO ${APP_SCHEMA};
+-- Execute the schema creation script
+@/vagrant/1-BD/${APP_SCHEMA_SQL}
 
 EXIT;
 EOF
