@@ -18,30 +18,30 @@ ERRORS=0
 echo ""
 echo "=== SSH Key Configuration ==="
 if [ -f ~/.ssh/id_rsa ]; then
-    echo "  âœ“ Private key exists"
+    echo "  [OK] Private key exists"
     KEY_PERMS=$(stat -c "%a" ~/.ssh/id_rsa)
     if [ "$KEY_PERMS" = "600" ]; then
-        echo "  âœ“ Private key permissions correct (600)"
+        echo "  [OK] Private key permissions correct (600)"
     else
-        echo "  âœ— Private key permissions incorrect: $KEY_PERMS (should be 600)"
+        echo "  [ERROR] Private key permissions incorrect: $KEY_PERMS (should be 600)"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  âœ— Private key missing"
+    echo "  [ERROR] Private key missing"
     ERRORS=$((ERRORS + 1))
 fi
 
 if [ -f ~/.ssh/id_rsa.pub ]; then
-    echo "  âœ“ Public key exists"
+    echo "  [OK] Public key exists"
     PUB_KEY_PERMS=$(stat -c "%a" ~/.ssh/id_rsa.pub)
     if [ "$PUB_KEY_PERMS" = "644" ]; then
-        echo "  âœ“ Public key permissions correct (644)"
+        echo "  [OK] Public key permissions correct (644)"
     else
-        echo "  âœ— Public key permissions incorrect: $PUB_KEY_PERMS (should be 644)"
+        echo "  [ERROR] Public key permissions incorrect: $PUB_KEY_PERMS (should be 644)"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  âœ— Public key missing"
+    echo "  [ERROR] Public key missing"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -50,9 +50,9 @@ if [ "$ORACLE_SID" = "cdb1" ]; then
     echo ""
     echo "=== SSH Connectivity Test ==="
     if ssh -o BatchMode=yes -o ConnectTimeout=10 oracle@${NODE2_FQ_HOSTNAME} "echo 'SSH OK'" 2>/dev/null | grep -q "SSH OK"; then
-        echo "  âœ“ Passwordless SSH to standby working"
+        echo "  [OK] Passwordless SSH to standby working"
     else
-        echo "  âœ— Passwordless SSH to standby failed"
+        echo "  [ERROR] Passwordless SSH to standby failed"
         ERRORS=$((ERRORS + 1))
     fi
 fi
@@ -62,19 +62,19 @@ if [ "$ORACLE_SID" != "cdb1" ]; then
     echo ""
     echo "=== Authorized Keys ==="
     if [ -f ~/.ssh/authorized_keys ]; then
-        echo "  âœ“ authorized_keys file exists"
+        echo "  [OK] authorized_keys file exists"
         AUTH_KEY_PERMS=$(stat -c "%a" ~/.ssh/authorized_keys)
         if [ "$AUTH_KEY_PERMS" = "600" ]; then
-            echo "  âœ“ authorized_keys permissions correct (600)"
+            echo "  [OK] authorized_keys permissions correct (600)"
         else
-            echo "  âœ— authorized_keys permissions incorrect: $AUTH_KEY_PERMS (should be 600)"
+            echo "  [ERROR] authorized_keys permissions incorrect: $AUTH_KEY_PERMS (should be 600)"
             ERRORS=$((ERRORS + 1))
         fi
 
         KEY_COUNT=$(grep -c "^ssh-rsa" ~/.ssh/authorized_keys)
-        echo "  âœ“ Number of authorized keys: $KEY_COUNT"
+        echo "  [OK] Number of authorized keys: $KEY_COUNT"
     else
-        echo "  âœ— authorized_keys file missing"
+        echo "  [ERROR] authorized_keys file missing"
         ERRORS=$((ERRORS + 1))
     fi
 fi
@@ -84,24 +84,24 @@ echo ""
 echo "=== Backup Directories ==="
 if [ "$ORACLE_SID" = "cdb1" ]; then
     if [ -d /u02/backup ]; then
-        echo "  âœ“ Primary backup directory exists: /u02/backup"
+        echo "  [OK] Primary backup directory exists: /u02/backup"
         BACKUP_COUNT=$(ls -1 /u02/backup/*.bkp 2>/dev/null | wc -l)
         BACKUP_SIZE=$(du -sh /u02/backup 2>/dev/null | awk '{print $1}')
         echo "    Backup files: $BACKUP_COUNT"
         echo "    Total size: $BACKUP_SIZE"
     else
-        echo "  âœ— Primary backup directory missing: /u02/backup"
+        echo "  [ERROR] Primary backup directory missing: /u02/backup"
         ERRORS=$((ERRORS + 1))
     fi
 else
     if [ -d /u02/backup_from_primary ]; then
-        echo "  âœ“ Standby backup directory exists: /u02/backup_from_primary"
+        echo "  [OK] Standby backup directory exists: /u02/backup_from_primary"
         BACKUP_COUNT=$(ls -1 /u02/backup_from_primary/*.bkp 2>/dev/null | wc -l)
         BACKUP_SIZE=$(du -sh /u02/backup_from_primary 2>/dev/null | awk '{print $1}')
         echo "    Backup files: $BACKUP_COUNT"
         echo "    Total size: $BACKUP_SIZE"
     else
-        echo "  âœ— Standby backup directory missing: /u02/backup_from_primary"
+        echo "  [ERROR] Standby backup directory missing: /u02/backup_from_primary"
         ERRORS=$((ERRORS + 1))
     fi
 fi
@@ -124,9 +124,9 @@ REQUIRED_SCRIPTS=(
 SCRIPT_ERRORS=0
 for script in "${REQUIRED_SCRIPTS[@]}"; do
     if [ -x "/home/oracle/automation/$script" ]; then
-        echo "  âœ“ $script"
+        echo "  [OK] $script"
     else
-        echo "  âœ— $script (missing or not executable)"
+        echo "  [ERROR] $script (missing or not executable)"
         ERRORS=$((ERRORS + 1))
         SCRIPT_ERRORS=$((SCRIPT_ERRORS + 1))
     fi
@@ -143,22 +143,22 @@ CRON_COUNT=$(crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | wc -l)
 if [ "$ORACLE_SID" = "cdb1" ]; then
     # Primary should have 3 cron jobs
     if [ "$CRON_COUNT" -ge 3 ]; then
-        echo "  âœ“ Primary cron jobs installed ($CRON_COUNT jobs)"
+        echo "  [OK] Primary cron jobs installed ($CRON_COUNT jobs)"
         echo ""
         crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | sed 's/^/    /'
     else
-        echo "  âœ— Primary cron jobs missing (found $CRON_COUNT, expected 3)"
+        echo "  [ERROR] Primary cron jobs missing (found $CRON_COUNT, expected 3)"
         echo "  Run: /home/oracle/automation/install_cron_jobs.sh"
         ERRORS=$((ERRORS + 1))
     fi
 else
     # Standby should have 1 cron job
     if [ "$CRON_COUNT" -ge 1 ]; then
-        echo "  âœ“ Standby cron jobs installed ($CRON_COUNT jobs)"
+        echo "  [OK] Standby cron jobs installed ($CRON_COUNT jobs)"
         echo ""
         crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | sed 's/^/    /'
     else
-        echo "  âœ— Standby cron jobs missing (found $CRON_COUNT, expected 1)"
+        echo "  [ERROR] Standby cron jobs missing (found $CRON_COUNT, expected 1)"
         echo "  Run: /home/oracle/automation/install_cron_jobs.sh"
         ERRORS=$((ERRORS + 1))
     fi
@@ -168,7 +168,7 @@ fi
 echo ""
 echo "=== Logs Directory ==="
 if [ -d /home/oracle/logs/automation ]; then
-    echo "  âœ“ Logs directory exists: /home/oracle/logs/automation"
+    echo "  [OK] Logs directory exists: /home/oracle/logs/automation"
     LOG_COUNT=$(ls -1 /home/oracle/logs/automation/*.log 2>/dev/null | wc -l)
     echo "    Log files: $LOG_COUNT"
 
@@ -177,7 +177,7 @@ if [ -d /home/oracle/logs/automation ]; then
         ls -lth /home/oracle/logs/automation/*.log 2>/dev/null | head -5 | awk '{print "      " $9 " (" $5 ")"}'
     fi
 else
-    echo "  âœ— Logs directory missing: /home/oracle/logs/automation"
+    echo "  [ERROR] Logs directory missing: /home/oracle/logs/automation"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -185,16 +185,16 @@ fi
 echo ""
 echo "=== Oracle Environment ==="
 if [ -n "$ORACLE_HOME" ]; then
-    echo "  âœ“ ORACLE_HOME set: $ORACLE_HOME"
+    echo "  [OK] ORACLE_HOME set: $ORACLE_HOME"
 else
-    echo "  âœ— ORACLE_HOME not set"
+    echo "  [ERROR] ORACLE_HOME not set"
     ERRORS=$((ERRORS + 1))
 fi
 
 if [ -n "$ORACLE_SID" ]; then
-    echo "  âœ“ ORACLE_SID set: $ORACLE_SID"
+    echo "  [OK] ORACLE_SID set: $ORACLE_SID"
 else
-    echo "  âœ— ORACLE_SID not set"
+    echo "  [ERROR] ORACLE_SID not set"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -211,9 +211,9 @@ EOF
 DB_STATUS=$(echo "$DB_STATUS" | tr -d '[:space:]')
 
 if [ "$DB_STATUS" = "OPEN" ] || [ "$DB_STATUS" = "MOUNTED" ]; then
-    echo "  âœ“ Database status: $DB_STATUS"
+    echo "  [OK] Database status: $DB_STATUS"
 else
-    echo "  âœ— Database status: $DB_STATUS (unexpected)"
+    echo "  [WARNING] Database status: $DB_STATUS (unexpected)"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -225,9 +225,9 @@ if [ "$ORACLE_SID" = "cdb1" ]; then
     DG_STATUS=$(dgmgrl / "show configuration" 2>/dev/null | grep "Configuration Status" | awk -F: '{print $2}' | tr -d '[:space:]')
 
     if [ "$DG_STATUS" = "SUCCESS" ]; then
-        echo "  âœ“ Data Guard configuration status: SUCCESS"
+        echo "  [OK] Data Guard configuration status: SUCCESS"
     else
-        echo "  âœ— Data Guard configuration status: $DG_STATUS"
+        echo "  [WARNING] Data Guard configuration status: $DG_STATUS"
         ERRORS=$((ERRORS + 1))
     fi
 fi
@@ -236,7 +236,7 @@ fi
 echo ""
 echo "========================================================================"
 if [ $ERRORS -eq 0 ]; then
-    echo "VERIFICATION RESULT: âœ“ ALL CHECKS PASSED"
+    echo "VERIFICATION RESULT: [OK] ALL CHECKS PASSED"
     echo ""
     echo "Backup automation is fully configured and ready."
     echo ""
@@ -249,7 +249,7 @@ if [ $ERRORS -eq 0 ]; then
         echo "  - Archive cleanup at 11:00 PM (3-day retention)"
     fi
 else
-    echo "VERIFICATION RESULT: âœ— FOUND $ERRORS ERROR(S)"
+    echo "VERIFICATION RESULT: [FAIL] FOUND $ERRORS ERROR(S)"
     echo ""
     echo "Please review the errors above and fix before production use."
     echo ""
