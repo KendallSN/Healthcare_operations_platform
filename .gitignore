@@ -32,7 +32,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
-*~
 
 # Oracle specific
 oraInventory/
@@ -55,3 +54,6 @@ nul
 !software/README.txt
 !2-Standby/automation/.gitkeep
 !scripts/.gitkeep
+
+#this folder might contain large files:
+1-BD/directories
