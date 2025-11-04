@@ -54,6 +54,12 @@ su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/deploy_custom_schema.sh'
 # Setup automation scripts
 su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/setup_automation.sh'
 
+# Setup SSH keys for automated backup transfers (run as root for /vagrant access)
+echo "******************************************************************************"
+echo "Setting up SSH keys for backup transfers." `date`
+echo "******************************************************************************"
+sh /vagrant/2-Standby/scripts/primary/setup_ssh_keys_auto.sh
+
 echo "******************************************************************************"
 echo "PRIMARY Root Setup Complete." `date`
 echo "******************************************************************************"

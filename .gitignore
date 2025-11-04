@@ -4,6 +4,9 @@
 *.vbox
 *.vmdk
 
+# SSH keys (generated during deployment, should never be committed)
+ssh_keys/
+
 # Oracle Software (too large for git)
 software/*.zip
 software/*.jar

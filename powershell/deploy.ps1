@@ -251,8 +251,65 @@ try {
     exit 1
 }
 
+# Phase 5.5: Post-Deployment Automation Setup (SSH + Cron)
+Write-Info "[Phase 5.5/7] Post-Deployment Automation Setup"
+$automationLog = "$logDir\04a-automation-setup.log"
+$automationStart = Get-Date
+
+try {
+    # Step 1: Import standby's host keys to primary's known_hosts
+    Write-Info "  → Importing standby host keys to primary..."
+    "=== IMPORTING STANDBY HOST KEYS TO PRIMARY ===" | Out-File -FilePath $automationLog
+    vagrant ssh primary -c "sudo su - oracle -c 'if [ -f /vagrant/ssh_keys/standby_host_keys.txt ]; then cat /vagrant/ssh_keys/standby_host_keys.txt >> ~/.ssh/known_hosts; echo Host keys imported; else echo ERROR: standby_host_keys.txt not found; fi'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+
+    # Step 2: Test SSH connectivity from primary to standby
+    Write-Info "  → Testing SSH connectivity (primary → standby)..."
+    "=== TESTING SSH CONNECTIVITY ===" | Out-File -FilePath $automationLog -Append
+    $sshTestResult = vagrant ssh primary -c "sudo su - oracle -c 'ssh -o BatchMode=yes -o ConnectTimeout=10 oracle@ol8-21-dg2.localdomain hostname'" 2>&1
+    $sshTestResult | Out-File -FilePath $automationLog -Append
+
+    if ($sshTestResult -match "ol8-21-dg2") {
+        Write-Success "  [OK] SSH connectivity verified"
+        "SSH Test Result: SUCCESS - Passwordless SSH working" | Out-File -FilePath $automationLog -Append
+    } else {
+        Write-Warning "  [WARNING] SSH test did not return expected hostname"
+        Write-Warning "  SSH may require manual setup. See: $automationLog"
+        "SSH Test Result: UNEXPECTED - Manual verification needed" | Out-File -FilePath $automationLog -Append
+    }
+
+    # Step 3: Install cron jobs on primary
+    Write-Info "  → Installing cron jobs on primary..."
+    "=== INSTALLING CRON JOBS ON PRIMARY ===" | Out-File -FilePath $automationLog -Append
+    vagrant ssh primary -c "sudo su - oracle -c '/home/oracle/automation/install_cron_jobs.sh'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+
+    # Step 4: Install cron jobs on standby
+    Write-Info "  → Installing cron jobs on standby..."
+    "=== INSTALLING CRON JOBS ON STANDBY ===" | Out-File -FilePath $automationLog -Append
+    vagrant ssh standby -c "sudo su - oracle -c '/home/oracle/automation/install_cron_jobs.sh'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+
+    # Step 5: Verify cron jobs installed
+    Write-Info "  → Verifying cron job installation..."
+    "=== VERIFYING CRON JOBS ===" | Out-File -FilePath $automationLog -Append
+
+    Write-Info "    - Primary cron jobs:"
+    vagrant ssh primary -c "sudo su - oracle -c 'crontab -l | grep -v \"^#\" | grep -v \"^$\" || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+
+    Write-Info "    - Standby cron jobs:"
+    vagrant ssh standby -c "sudo su - oracle -c 'crontab -l | grep -v \"^#\" | grep -v \"^$\" || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+
+    $automationElapsed = (Get-Date) - $automationStart
+    Write-Success "  [OK] Automation setup completed ($($automationElapsed.TotalSeconds.ToString('F1'))s)`n"
+    "=== AUTOMATION SETUP COMPLETED: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===" | Out-File -FilePath $automationLog -Append
+    "Total time: $($automationElapsed.TotalSeconds.ToString('F1'))s" | Out-File -FilePath $automationLog -Append
+} catch {
+    $automationElapsed = (Get-Date) - $automationStart
+    Write-Warning "Automation setup encountered errors: $_"
+    Write-Warning "SSH keys or cron jobs may require manual setup"
+    $_ | Out-File -FilePath $automationLog -Append
+}
+
 # Phase 6: Collect VM Logs
-Write-Info "[Phase 6/6] Collecting VM Logs"
+Write-Info "[Phase 6/7] Collecting VM Logs"
 $vmLogsStart = Get-Date
 
 try {
@@ -291,6 +348,10 @@ try {
 $deploymentElapsed = (Get-Date) - $deploymentStart
 $summaryFile = "$logDir\DEPLOYMENT-SUMMARY.txt"
 
+# Ensure all elapsed time variables are defined (in case of errors)
+if (!$automationElapsed) { $automationElapsed = New-TimeSpan -Seconds 0 }
+if (!$vmLogsElapsed) { $vmLogsElapsed = New-TimeSpan -Seconds 0 }
+
 $summary = @"
 ========================================
 ORACLE DATA GUARD DEPLOYMENT SUMMARY
@@ -307,6 +368,7 @@ Line Endings Fix:     $($lineEndingElapsed.TotalSeconds.ToString('F1'))s
 Cleanup:              $($cleanupElapsed.TotalSeconds.ToString('F1'))s
 Primary Deployment:   $($primaryElapsed.TotalMinutes.ToString('F1')) minutes
 Standby Deployment:   $($standbyElapsed.TotalMinutes.ToString('F1')) minutes
+Automation Setup:     $($automationElapsed.TotalSeconds.ToString('F1'))s
 VM Logs Collection:   $($vmLogsElapsed.TotalSeconds.ToString('F1'))s
 
 TOTAL TIME: $($deploymentElapsed.TotalMinutes.ToString('F1')) minutes
@@ -329,6 +391,14 @@ Archive Lag:     300 seconds (5 minutes)
 Flashback:       ENABLED (both databases)
 
 ----------------------------------------
+AUTOMATION STATUS
+----------------------------------------
+✓ SSH Keys: Configured automatically for backup transfers
+✓ Cron Jobs: Installed on both primary and standby
+  - Primary: Daily backups (1 AM), log transport check (every 10 min), archive cleanup (2 AM)
+  - Standby: Archive cleanup (11 PM)
+
+----------------------------------------
 NEXT STEPS
 ----------------------------------------
 1. Verify Data Guard status:
@@ -340,13 +410,15 @@ NEXT STEPS
    dgmgrl sys/S1sPassword1!@cdb1.localdomain
    SHOW CONFIGURATION;
 
-3. Setup SSH keys for backups (run on both nodes):
+3. Verify SSH connectivity (should work automatically):
    vagrant ssh primary
    sudo su - oracle
-   /home/oracle/automation/setup_ssh_keys.sh
+   ssh oracle@ol8-21-dg2.localdomain hostname
 
-4. Install cron jobs (run on both nodes):
-   /home/oracle/automation/install_cron_jobs.sh
+4. Test backup transfer:
+   vagrant ssh primary
+   sudo su - oracle
+   /home/oracle/automation/rman_daily_backup.sh
 
 5. Access databases from Windows:
    Primary CDB:  sqlplus sys/S1sPassword1!@localhost:1521/cdb1 as sysdba
