@@ -251,61 +251,65 @@ try {
     exit 1
 }
 
-# Phase 5.5: Post-Deployment Automation Setup (SSH + Cron)
-Write-Info "[Phase 5.5/7] Post-Deployment Automation Setup"
-$automationLog = "$logDir\04a-automation-setup.log"
-$automationStart = Get-Date
+# Phase 5.5: Post-Deployment Verification
+Write-Info "[Phase 5.5/7] Post-Deployment Verification"
+$verificationLog = "$logDir\04a-verification.log"
+$verificationStart = Get-Date
 
 try {
     # Step 1: Import standby's host keys to primary's known_hosts
     Write-Info "  → Importing standby host keys to primary..."
-    "=== IMPORTING STANDBY HOST KEYS TO PRIMARY ===" | Out-File -FilePath $automationLog
-    vagrant ssh primary -c "sudo su - oracle -c 'if [ -f /vagrant/ssh_keys/standby_host_keys.txt ]; then cat /vagrant/ssh_keys/standby_host_keys.txt >> ~/.ssh/known_hosts; echo Host keys imported; else echo ERROR: standby_host_keys.txt not found; fi'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+    "=== IMPORTING STANDBY HOST KEYS TO PRIMARY ===" | Out-File -FilePath $verificationLog
+    vagrant ssh primary -c "sudo su - oracle -c 'if [ -f /vagrant/ssh_keys/standby_host_keys.txt ]; then cat /vagrant/ssh_keys/standby_host_keys.txt >> ~/.ssh/known_hosts; echo Host keys imported; else echo ERROR: standby_host_keys.txt not found; fi'" 2>&1 | Tee-Object -FilePath $verificationLog -Append
 
     # Step 2: Test SSH connectivity from primary to standby
     Write-Info "  → Testing SSH connectivity (primary → standby)..."
-    "=== TESTING SSH CONNECTIVITY ===" | Out-File -FilePath $automationLog -Append
+    "=== TESTING SSH CONNECTIVITY ===" | Out-File -FilePath $verificationLog -Append
     $sshTestResult = vagrant ssh primary -c "sudo su - oracle -c 'ssh -o BatchMode=yes -o ConnectTimeout=10 oracle@ol8-21-dg2.localdomain hostname'" 2>&1
-    $sshTestResult | Out-File -FilePath $automationLog -Append
+    $sshTestResult | Out-File -FilePath $verificationLog -Append
 
     if ($sshTestResult -match "ol8-21-dg2") {
         Write-Success "  [OK] SSH connectivity verified"
-        "SSH Test Result: SUCCESS - Passwordless SSH working" | Out-File -FilePath $automationLog -Append
+        "SSH Test Result: SUCCESS - Passwordless SSH working" | Out-File -FilePath $verificationLog -Append
     } else {
         Write-Warning "  [WARNING] SSH test did not return expected hostname"
-        Write-Warning "  SSH may require manual setup. See: $automationLog"
-        "SSH Test Result: UNEXPECTED - Manual verification needed" | Out-File -FilePath $automationLog -Append
+        Write-Warning "  SSH may require manual setup. See: $verificationLog"
+        "SSH Test Result: UNEXPECTED - Manual verification needed" | Out-File -FilePath $verificationLog -Append
     }
 
-    # Step 3: Install cron jobs on primary
-    Write-Info "  → Installing cron jobs on primary..."
-    "=== INSTALLING CRON JOBS ON PRIMARY ===" | Out-File -FilePath $automationLog -Append
-    vagrant ssh primary -c "sudo su - oracle -c '/home/oracle/automation/install_cron_jobs.sh'" 2>&1 | Tee-Object -FilePath $automationLog -Append
-
-    # Step 4: Install cron jobs on standby
-    Write-Info "  → Installing cron jobs on standby..."
-    "=== INSTALLING CRON JOBS ON STANDBY ===" | Out-File -FilePath $automationLog -Append
-    vagrant ssh standby -c "sudo su - oracle -c '/home/oracle/automation/install_cron_jobs.sh'" 2>&1 | Tee-Object -FilePath $automationLog -Append
-
-    # Step 5: Verify cron jobs installed
+    # Step 3: Verify cron jobs installed (now done automatically during VM provisioning)
     Write-Info "  → Verifying cron job installation..."
-    "=== VERIFYING CRON JOBS ===" | Out-File -FilePath $automationLog -Append
+    "=== VERIFYING CRON JOBS (installed during VM provisioning) ===" | Out-File -FilePath $verificationLog -Append
 
     Write-Info "    - Primary cron jobs:"
-    vagrant ssh primary -c "sudo su - oracle -c 'crontab -l | grep -v \"^#\" | grep -v \"^$\" || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+    $primaryCron = vagrant ssh primary -c "sudo su - oracle -c 'crontab -l 2>/dev/null | grep -v \"^#\" | grep -v \"^$\" | wc -l'" 2>&1
+    vagrant ssh primary -c "sudo su - oracle -c 'crontab -l 2>/dev/null || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $verificationLog -Append
+
+    if ($primaryCron -ge 3) {
+        Write-Success "    [OK] Primary has $primaryCron cron jobs (expected: 3)"
+    } else {
+        Write-Warning "    [WARNING] Primary has $primaryCron cron jobs (expected: 3)"
+    }
 
     Write-Info "    - Standby cron jobs:"
-    vagrant ssh standby -c "sudo su - oracle -c 'crontab -l | grep -v \"^#\" | grep -v \"^$\" || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $automationLog -Append
+    $standbyCron = vagrant ssh standby -c "sudo su - oracle -c 'crontab -l 2>/dev/null | grep -v \"^#\" | grep -v \"^$\" | wc -l'" 2>&1
+    vagrant ssh standby -c "sudo su - oracle -c 'crontab -l 2>/dev/null || echo No cron jobs found'" 2>&1 | Tee-Object -FilePath $verificationLog -Append
 
-    $automationElapsed = (Get-Date) - $automationStart
-    Write-Success "  [OK] Automation setup completed ($($automationElapsed.TotalSeconds.ToString('F1'))s)`n"
-    "=== AUTOMATION SETUP COMPLETED: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===" | Out-File -FilePath $automationLog -Append
-    "Total time: $($automationElapsed.TotalSeconds.ToString('F1'))s" | Out-File -FilePath $automationLog -Append
+    if ($standbyCron -ge 1) {
+        Write-Success "    [OK] Standby has $standbyCron cron job(s) (expected: 1)"
+    } else {
+        Write-Warning "    [WARNING] Standby has $standbyCron cron jobs (expected: 1)"
+    }
+
+    $verificationElapsed = (Get-Date) - $verificationStart
+    Write-Success "  [OK] Verification completed ($($verificationElapsed.TotalSeconds.ToString('F1'))s)`n"
+    "=== VERIFICATION COMPLETED: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===" | Out-File -FilePath $verificationLog -Append
+    "Total time: $($verificationElapsed.TotalSeconds.ToString('F1'))s" | Out-File -FilePath $verificationLog -Append
 } catch {
-    $automationElapsed = (Get-Date) - $automationStart
-    Write-Warning "Automation setup encountered errors: $_"
-    Write-Warning "SSH keys or cron jobs may require manual setup"
-    $_ | Out-File -FilePath $automationLog -Append
+    $verificationElapsed = (Get-Date) - $verificationStart
+    Write-Warning "Verification encountered errors: $_"
+    Write-Warning "Check verification log: $verificationLog"
+    $_ | Out-File -FilePath $verificationLog -Append
 }
 
 # Phase 6: Collect VM Logs

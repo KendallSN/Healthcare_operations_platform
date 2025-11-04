@@ -60,6 +60,12 @@ echo "Setting up SSH keys for backup transfers." `date`
 echo "******************************************************************************"
 sh /vagrant/2-Standby/scripts/primary/setup_ssh_keys_auto.sh
 
+# Install cron jobs for automation
+echo "******************************************************************************"
+echo "Installing cron jobs for automation." `date`
+echo "******************************************************************************"
+su - oracle -c 'sh /home/oracle/automation/install_cron_jobs.sh'
+
 echo "******************************************************************************"
 echo "PRIMARY Root Setup Complete." `date`
 echo "******************************************************************************"
