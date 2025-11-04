@@ -11,6 +11,9 @@ ssh_keys/
 software/*.zip
 software/*.jar
 
+#docs
+local_docs/
+
 # Logs
 *.log
 logs/
