@@ -1,3 +1,2 @@
-1- ARREGLAR LOS PROCEDIMIENTOS DE PKG_FUNCTIONS_JOBS
-2- SEGURIDAD: Roles, Usuarios, Perfiles
-3- CORREGIR NOMBRES.
+1- Hacer activar Roles
+2- Probar cambios de GeneratePayroll
