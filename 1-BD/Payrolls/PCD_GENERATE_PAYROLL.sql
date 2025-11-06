@@ -29,7 +29,8 @@ CREATE OR REPLACE PROCEDURE PCD_GENERATE_PAYROLL (
 
   CURSOR c_turns(p_usr NUMBER, p_msc_id NUMBER) IS
     SELECT tms.TMS_id, tms.MSC_id, tms.TMS_date, tms.TMS_partial_worked_hours, tms.TMS_hourly_payment, 
-          tms.TMS_hourly_price, tms.TMS_name, tms.TMS_start_hour, tms.TMS_end_hour, tms.TMS_compliance
+          tms.TMS_hourly_price, tms.TMS_name, tms.TMS_start_hour, tms.TMS_end_hour, tms.TMS_compliance,
+          tms.TMS_payment_type, tms.TMS_price_type, tms.TMS_full_payment, tms.TMS_full_price
       FROM HC_TurnXMonthScale tms
       JOIN HC_MonthScale ms ON tms.MSC_id = ms.MSC_id
       WHERE tms.USR_id = p_usr
@@ -238,21 +239,26 @@ BEGIN
           FETCH c_turns INTO v_turn_rec;
           EXIT WHEN c_turns%NOTFOUND;
 
-          -- Si tiene horas parciales y esta marcado como completado parcialmente, usar esas; si no, calcular las horas del turno completo
-          IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_turn_rec.TMS_compliance = 'PTL' THEN
-            v_hours := v_turn_rec.TMS_partial_worked_hours;
-          ELSE
-            -- Calcular horas completas del turno: end_hour - start_hour
-            -- Manejar el caso donde el turno cruza la medianoche (ej: 22 a 6)
-            IF v_turn_rec.TMS_end_hour >= v_turn_rec.TMS_start_hour THEN
-              v_hours := v_turn_rec.TMS_end_hour - v_turn_rec.TMS_start_hour;
+          -- Calcular el monto según el tipo de pago (H=por hora, T=turno completo)
+          IF v_turn_rec.TMS_payment_type = 'H' THEN
+            -- Pago por hora: calcular horas trabajadas
+            IF v_turn_rec.TMS_partial_worked_hours IS NOT NULL AND v_turn_rec.TMS_compliance = 'PTL' THEN
+              v_hours := v_turn_rec.TMS_partial_worked_hours;
             ELSE
-              -- El turno cruza la medianoche
-              v_hours := (24 - v_turn_rec.TMS_start_hour) + v_turn_rec.TMS_end_hour;
+              -- Calcular horas completas del turno: end_hour - start_hour
+              -- Manejar el caso donde el turno cruza la medianoche (ej: 22 a 6)
+              IF v_turn_rec.TMS_end_hour >= v_turn_rec.TMS_start_hour THEN
+                v_hours := v_turn_rec.TMS_end_hour - v_turn_rec.TMS_start_hour;
+              ELSE
+                -- El turno cruza la medianoche
+                v_hours := (24 - v_turn_rec.TMS_start_hour) + v_turn_rec.TMS_end_hour;
+              END IF;
             END IF;
+            v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
+          ELSE
+            -- Pago por turno completo: usar el monto fijo
+            v_amt := NVL(v_turn_rec.TMS_full_payment,0);
           END IF;
-
-          v_amt := NVL(v_hours,0) * NVL(v_turn_rec.TMS_hourly_payment,0);
 
           INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
           VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), 'Turno: '||v_turn_rec.TMS_name||' - '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);

@@ -20,7 +20,11 @@ CREATE OR REPLACE PROCEDURE PCD_GENERATE_MONTH_SCALE(
            t.TRN_base_hourly_price,
            t.TRN_base_hourly_payment,
            t.TRN_start_hour,
-           t.TRN_end_hour
+           t.TRN_end_hour,
+           t.TRN_payment_type,
+           t.TRN_price_type,
+           t.TRN_base_full_price,
+           t.TRN_base_full_payment
       FROM HC_Position p
       JOIN HC_Turn t ON p.TRN_id = t.TRN_id
      WHERE p.HCN_id = p_hcn_id
@@ -69,7 +73,8 @@ BEGIN
         INSERT INTO HC_TurnXMonthScale (
           MSC_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
           USR_id, TMS_hourly_price, TMS_hourly_payment, TMS_name,
-          TMS_description, TMS_processed, TMS_start_hour, TMS_end_hour, version
+          TMS_description, TMS_processed, TMS_start_hour, TMS_end_hour,
+          TMS_payment_type, TMS_price_type, TMS_full_price, TMS_full_payment, version
         ) VALUES (
           v_msc_id,
           'PDG', -- pendiente por defecto
@@ -83,6 +88,10 @@ BEGIN
           'N',
           v_pos_rec.TRN_start_hour,
           v_pos_rec.TRN_end_hour,
+          v_pos_rec.TRN_payment_type,
+          v_pos_rec.TRN_price_type,
+          v_pos_rec.TRN_base_full_price,
+          v_pos_rec.TRN_base_full_payment,
           1
         );
         v_inserted := v_inserted + 1;

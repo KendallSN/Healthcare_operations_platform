@@ -139,43 +139,61 @@ UPDATE HC_User SET BAC_id = 7 WHERE USR_id = 4;
 UPDATE HC_User SET BAC_id = 9 WHERE USR_id = 5;
 UPDATE HC_User SET BAC_id = 11 WHERE USR_id = 6;
 
--- Turns (nueva estructura: ahora tienen USR_id, day_of_week, payment, price)
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (1, 8, 14, 1, 'MON', 8000, 12000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (2, 14, 20, 2, 'TUE', 7500, 11000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (3, 6, 12, 3, 'WED', 2000, 10000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (4, 12, 18, 1, 'THU', 7200, 10400, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (5, 18, 24, 2, 'FRI', 9000, 14000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (6, 0, 6, 4, 'SAT', 10000, 15000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (7, 8, 14, 3, 'TUE', 8000, 12000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (8, 14, 20, 3, 'WED', 7500, 11000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (9, 6, 12, 2, 'THU', 6800, 9600, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (10, 12, 18, 4, 'FRI', 7200, 11200, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (11, 18, 24, 2, 'SAT', 8800, 13600, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (12, 0, 6, 3, 'SUN', 9600, 14400, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (13, 8, 14, 4, 'WED', 8000, 12000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (14, 14, 20, 3, 'THU', 7500, 11000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (15, 6, 12, 2, 'FRI', 9000, 14000, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (16, 12, 18, 1, 'SAT', 7200, 11200, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (17, 18, 24, 3, 'SUN', 7600, 11600, 1);
-INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_base_hourly_payment, TRN_base_hourly_price, version) 
-  VALUES (18, 0, 6, 4, 'MON', 10000, 15000, 1);
+-- Turns (con tipos de pago/precio: H=por hora, T=turno completo)
+-- Turno 1: Pago por hora, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (1, 8, 14, 1, 'MON', 'H', 'H', 8000, 12000, NULL, NULL, 1);
+-- Turno 2: Pago por turno completo, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (2, 14, 20, 2, 'TUE', 'T', 'T', NULL, NULL, 45000, 66000, 1);
+-- Turno 3: Pago por hora, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (3, 6, 12, 3, 'WED', 'H', 'T', 2000, NULL, NULL, 60000, 1);
+-- Turno 4: Pago por turno completo, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (4, 12, 18, 1, 'THU', 'T', 'H', NULL, 10400, 43200, NULL, 1);
+-- Turno 5: Pago por hora, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (5, 18, 24, 2, 'FRI', 'H', 'H', 9000, 14000, NULL, NULL, 1);
+-- Turno 6: Pago por turno completo, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (6, 0, 6, 4, 'SAT', 'T', 'T', NULL, NULL, 60000, 90000, 1);
+-- Turno 7: Pago por hora, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (7, 8, 14, 3, 'TUE', 'H', 'T', 8000, NULL, NULL, 72000, 1);
+-- Turno 8: Pago por turno completo, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (8, 14, 20, 3, 'WED', 'T', 'H', NULL, 11000, 45000, NULL, 1);
+-- Turno 9: Pago por hora, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (9, 6, 12, 2, 'THU', 'H', 'H', 6800, 9600, NULL, NULL, 1);
+-- Turno 10: Pago por turno completo, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (10, 12, 18, 4, 'FRI', 'T', 'T', NULL, NULL, 43200, 67200, 1);
+-- Turno 11: Pago por hora, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (11, 18, 24, 2, 'SAT', 'H', 'T', 8800, NULL, NULL, 81600, 1);
+-- Turno 12: Pago por turno completo, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (12, 0, 6, 3, 'SUN', 'T', 'H', NULL, 14400, 57600, NULL, 1);
+-- Turno 13: Pago por hora, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (13, 8, 14, 4, 'WED', 'H', 'H', 8000, 12000, NULL, NULL, 1);
+-- Turno 14: Pago por turno completo, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (14, 14, 20, 3, 'THU', 'T', 'T', NULL, NULL, 45000, 66000, 1);
+-- Turno 15: Pago por hora, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (15, 6, 12, 2, 'FRI', 'H', 'T', 9000, NULL, NULL, 84000, 1);
+-- Turno 16: Pago por turno completo, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (16, 12, 18, 1, 'SAT', 'T', 'H', NULL, 11200, 43200, NULL, 1);
+-- Turno 17: Pago por hora, Precio por hora
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (17, 18, 24, 3, 'SUN', 'H', 'H', 7600, 11600, NULL, NULL, 1);
+-- Turno 18: Pago por turno completo, Precio por turno completo
+INSERT INTO HC_Turn (TRN_id, TRN_start_hour, TRN_end_hour, USR_id, TRN_day_of_week, TRN_payment_type, TRN_price_type, TRN_base_hourly_payment, TRN_base_hourly_price, TRN_base_full_payment, TRN_base_full_price, version) 
+  VALUES (18, 0, 6, 4, 'MON', 'T', 'T', NULL, NULL, 60000, 90000, 1);
 
 -- Positions (nueva estructura: sin USR_id, day_of_week, payment, price)
 -- HealthCenter 1 (Clinica Norte)
