@@ -1,6 +1,6 @@
 ﻿/*
 Created: 22/8/2025
-Modified: 2/11/2025
+Modified: 5/11/2025
 Model: Oracle 19c
 Database: Oracle 19c
 */
@@ -536,7 +536,13 @@ CREATE TABLE HC_Turn(
         CONSTRAINT CHK_TRN_day_of_week CHECK (TRN_day_of_week in ('MON','TUE','WED','THU','FRI','SAT','SUN')),
   TRN_base_hourly_payment Number(10,2),
   TRN_base_hourly_price Number(10,2),
-  version Number NOT NULL
+  version Number NOT NULL,
+  TRN_payment_type Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_TRN_payment_type CHECK (TRN_payment_type in ('H','T')),
+  TRN_price_type Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_TRN_price_type CHECK (TRN_price_type in ('H','T')),
+  TRN_base_full_price Number(10,2),
+  TRN_base_full_payment Number(10,2)
 )
 /
 
@@ -558,6 +564,14 @@ COMMENT ON COLUMN HC_Turn.TRN_day_of_week IS 'Specic day of the week to the posi
 COMMENT ON COLUMN HC_Turn.TRN_base_hourly_payment IS 'Base rate of the hour for the worker'
 /
 COMMENT ON COLUMN HC_Turn.TRN_base_hourly_price IS 'Base rate of the hour for the health center'
+/
+COMMENT ON COLUMN HC_Turn.TRN_payment_type IS 'Type of payment for the turn (H is for hourly payment and T is for a complete payment for the turn )'
+/
+COMMENT ON COLUMN HC_Turn.TRN_price_type IS 'Type of price for the turn (H is for hourly price and T is for a complete price for the turn )'
+/
+COMMENT ON COLUMN HC_Turn.TRN_base_full_price IS 'Base full price of the turn'
+/
+COMMENT ON COLUMN HC_Turn.TRN_base_full_payment IS 'Base full payment of the turn'
 /
 
 -- Table HC_Procedure
@@ -921,7 +935,13 @@ CREATE TABLE HC_TurnXMonthScale(
   version Number NOT NULL,
   TMS_start_hour Number NOT NULL,
   TMS_end_hour Number NOT NULL,
-  TMS_id Number NOT NULL
+  TMS_id Number NOT NULL,
+  TMS_full_price Number(10,2),
+  TMS_full_payment Number(10,2),
+  TMS_payment_type Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_TMS_payment_type CHECK (TMS_payment_type in ('H','T')),
+  TMS_price_type Varchar2(1 ) NOT NULL
+        CONSTRAINT CHK_TMS_price_type CHECK (TMS_price_type in ('H','T'))
 )
 /
 
@@ -961,6 +981,14 @@ COMMENT ON COLUMN HC_TurnXMonthScale.TMS_start_hour IS 'Start hour of the turn'
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_end_hour IS 'End hour of the turn'
 /
 COMMENT ON COLUMN HC_TurnXMonthScale.TMS_id IS 'Primary identifier of the TurnXMonthScale'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_full_price IS 'Full price for the turn'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_full_payment IS 'Full payment for the turn'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_payment_type IS 'Type of payment for the turn (H is for hourly payment and T is for a complete payment for the turn )'
+/
+COMMENT ON COLUMN HC_TurnXMonthScale.TMS_price_type IS 'Type of price for the turn (H is for hourly price and T is for a complete price for the turn )'
 /
 
 -- Table HC_MovementTypeXPayrollType
