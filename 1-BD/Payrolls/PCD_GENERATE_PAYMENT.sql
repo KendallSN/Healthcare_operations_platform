@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PCD_GeneratePayment (
+CREATE OR REPLACE PROCEDURE PCD_GENERATE_PAYMENT (
 p_pru_id IN NUMBER
 ) IS
 v_receiver_email VARCHAR2(500);
@@ -129,7 +129,7 @@ DBMS_OUTPUT.PUT_LINE('Período: ' || v_prl_month || '/' || v_prl_year);
 DBMS_OUTPUT.PUT_LINE('Monto neto: ₡' || TO_CHAR(v_pru_amount, 'FM999,999,990.00'));
 DBMS_OUTPUT.PUT_LINE('--------------------------------------');
 
-PKG_Emails.PCD_Send_Mail(
+PKG_EMAILS.PCD_SEND_EMAIL(
     pReceiverEmail => v_receiver_email,
     pSenderEmail   => v_sender_email,
     pEmailKey      => FNC_DecryptEmailKey(v_email_key),
@@ -156,5 +156,5 @@ WHEN OTHERS THEN
     ROLLBACK;
     DBMS_OUTPUT.PUT_LINE('ERROR al enviar correo: ' || SQLERRM);
     RAISE;
-END PCD_GeneratePayment;
+END PCD_GENERATE_PAYMENT;
 /

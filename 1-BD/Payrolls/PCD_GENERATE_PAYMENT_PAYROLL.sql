@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PCD_GeneratePaymentPayroll (
+CREATE OR REPLACE PROCEDURE PCD_GENERATE_PAYMENT_PAYROLL (
 p_prl_id IN NUMBER
 ) IS
 v_exist_count       NUMBER := 0;
@@ -48,7 +48,7 @@ END IF;
 
 -- Verificar si está autorizado
 IF v_authorized = 'N' THEN
-    RAISE_APPLICATION_ERROR(-20005, 'Payroll con PRL_id=' || p_prl_id || ' no está autorizado. Debe ejecutar PCD_ApprovePayroll primero.');
+    RAISE_APPLICATION_ERROR(-20005, 'Payroll con PRL_id=' || p_prl_id || ' no está autorizado.');
 END IF;
 
 -- Contar usuarios a procesar
@@ -72,7 +72,7 @@ DBMS_OUTPUT.PUT_LINE('');
 FOR rec IN c_payroll_users LOOP
     BEGIN
     -- Intentar enviar correo al usuario
-    PCD_GeneratePayment(rec.PRU_id);
+    PCD_GENERATE_PAYMENT(rec.PRU_id);
     
     v_sent_count := v_sent_count + 1;
     
@@ -132,5 +132,5 @@ WHEN OTHERS THEN
     DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
     DBMS_OUTPUT.PUT_LINE('Se hizo ROLLBACK de todos los cambios.');
     RAISE;
-END PCD_GeneratePaymentPayroll;
+END PCD_GENERATE_PAYMENT_PAYROLL;
 /

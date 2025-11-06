@@ -62,7 +62,7 @@ BEGIN
             vValoresAnteriores := TO_CHAR(:OLD.PRL_id) || ', ' || vValoresAnteriores;
             vValoresNuevos := TO_CHAR(:NEW.PRL_id) || ', ' || vValoresNuevos;
         
-            PKG_Logbook.INSERT_LOG(
+            PCD_INSERT_LOG(
                 p_table     => 'HC_Payroll',
                 p_attribute => vAtributos,
                 p_operation => 'UPDATE',
@@ -127,7 +127,7 @@ BEGIN
             vValoresAnteriores := TO_CHAR(:OLD.USR_id) || ', ' || TO_CHAR(:OLD.PRL_id) || ', ' || vValoresAnteriores;
             vValoresNuevos := TO_CHAR(:NEW.USR_id) || ', ' || TO_CHAR(:NEW.PRL_id) || ', ' || vValoresNuevos;
         
-            PKG_Logbook.INSERT_LOG(
+            PCD_INSERT_LOG(
                 p_table     => 'HC_PayrollXUser',
                 p_attribute => vAtributos,
                 p_operation => 'UPDATE',
@@ -228,7 +228,7 @@ BEGIN
             vValoresAnteriores := TO_CHAR(:OLD.PRM_id) || ', ' || vValoresAnteriores;
             vValoresNuevos := TO_CHAR(:NEW.PRM_id) || ', ' || vValoresNuevos;
         
-            PKG_Logbook.INSERT_LOG(
+            PCD_INSERT_LOG(
                 p_table     => 'HC_PayrollMovement',
                 p_attribute => vAtributos,
                 p_operation => 'UPDATE',
@@ -299,7 +299,7 @@ BEGIN
             vValoresAnteriores := TO_CHAR(:OLD.MSC_id) || ', ' || vValoresAnteriores;
             vValoresNuevos := TO_CHAR(:NEW.MSC_id) || ', ' || vValoresNuevos;
         
-            PKG_Logbook.INSERT_LOG(
+            PCD_INSERT_LOG(
                 p_table     => 'HC_MonthScale',
                 p_attribute => vAtributos,
                 p_operation => 'UPDATE',
@@ -418,7 +418,7 @@ BEGIN
             vValoresAnteriores := TO_CHAR(:OLD.TMS_id) || ', ' || vValoresAnteriores;
             vValoresNuevos := TO_CHAR(:NEW.TMS_id) || ', ' || vValoresNuevos;
         
-            PKG_Logbook.INSERT_LOG(
+            PCD_INSERT_LOG(
                 p_table     => 'HC_TurnXMonthScale',
                 p_attribute => vAtributos,
                 p_operation => 'UPDATE',

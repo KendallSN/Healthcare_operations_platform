@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE PCD_ApprovePayroll (
+CREATE OR REPLACE PROCEDURE PCD_APPROVE_PAYROLL (
   p_prl_id IN NUMBER
 ) IS
   v_exist_count NUMBER := 0;
@@ -53,5 +53,5 @@ EXCEPTION
     ROLLBACK;
     DBMS_OUTPUT.PUT_LINE('ERROR al autorizar payroll: ' || SQLERRM);
     RAISE;
-END PCD_ApprovePayroll;
+END PCD_APPROVE_PAYROLL;
 /

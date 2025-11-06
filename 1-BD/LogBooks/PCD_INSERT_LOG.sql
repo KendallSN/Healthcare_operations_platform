@@ -1,18 +1,4 @@
-CREATE OR REPLACE PACKAGE PKG_Logbook AUTHID DEFINER IS
-    PROCEDURE INSERT_LOG (
-        p_table     IN VARCHAR2,
-        p_attribute IN VARCHAR2,
-        p_operation IN VARCHAR2,
-        p_old_value IN VARCHAR2 DEFAULT NULL,
-        p_new_value IN VARCHAR2 DEFAULT NULL
-    );
-
-END PKG_Logbook;
-/
-
-CREATE OR REPLACE PACKAGE BODY PKG_Logbook IS
-
-    PROCEDURE INSERT_LOG (
+CREATE OR REPLACE PROCEDURE PCD_INSERT_LOG (
         p_table     IN VARCHAR2,
         p_attribute IN VARCHAR2,
         p_operation IN VARCHAR2,
@@ -68,7 +54,4 @@ CREATE OR REPLACE PACKAGE BODY PKG_Logbook IS
     EXCEPTION
         WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('ERROR al insertar en HC_Logbook: ' || SQLERRM);
-    END INSERT_LOG;
-
-END PKG_Logbook;
-/
+    END PCD_INSERT_LOG;

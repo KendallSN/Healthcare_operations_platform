@@ -109,7 +109,6 @@ BEGIN
     </body>
     </html>';
 
-    -- Enviar correo usando PKG_Emails
     DBMS_OUTPUT.PUT_LINE('======================================');
     DBMS_OUTPUT.PUT_LINE('Enviando notificación de job');
     DBMS_OUTPUT.PUT_LINE('======================================');
@@ -118,7 +117,7 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Fecha: ' || v_current_date);
     DBMS_OUTPUT.PUT_LINE('--------------------------------------');
     
-    PKG_Emails.PCD_Send_Mail(
+    PKG_EMAILS.PCD_SEND_EMAIL(
         pReceiverEmail => v_receiver_email,
         pSenderEmail   => v_sender_email,
         pEmailKey      => FNC_DecryptEmailKey(v_email_key),

@@ -1,5 +1,5 @@
-CREATE OR REPLACE PACKAGE PKG_Emails IS
-    PROCEDURE PCD_Send_Mail(
+CREATE OR REPLACE PACKAGE PKG_EMAILS IS
+    PROCEDURE PCD_SEND_EMAIL(
         pReceiverEmail in VARCHAR2,
         pSenderEmail in VARCHAR2,
         pEmailKey in VARCHAR2,
@@ -7,10 +7,10 @@ CREATE OR REPLACE PACKAGE PKG_Emails IS
         pHTML in VARCHAR2
     );
     
-END PKG_Emails;
+END PKG_EMAILS;
 /
 
-CREATE OR REPLACE PACKAGE BODY PKG_Emails IS
+CREATE OR REPLACE PACKAGE BODY PKG_EMAILS IS
 
     -- Funcion para codificar en Base 64
     FUNCTION encode_base64(p_string IN VARCHAR2) RETURN VARCHAR2 IS
@@ -20,7 +20,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_Emails IS
         RETURN v_EncodedString;
     END encode_base64;
 
-    PROCEDURE PCD_Send_Mail(
+    PROCEDURE PCD_SEND_EMAIL(
             pReceiverEmail in VARCHAR2,
             pSenderEmail in VARCHAR2,
             pEmailKey in VARCHAR2,
@@ -74,7 +74,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_Emails IS
     EXCEPTION
         WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('Error enviando el correo '|| SQLERRM);
-    END PCD_Send_Mail;
+    END PCD_SEND_EMAIL;
 
-END PKG_Emails;
+END PKG_EMAILS;
 /
