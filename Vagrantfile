@@ -18,7 +18,7 @@ Vagrant.configure("2") do |config|
   # Shared folders
   config.vm.synced_folder ".", "/vagrant"
   config.vm.synced_folder "config", "/vagrant_config"
-  config.vm.synced_folder "2-Standby/shared_scripts", "/vagrant_scripts"
+  config.vm.synced_folder "2-Standby/infrastructure", "/vagrant_scripts"
   config.vm.synced_folder "software", "/vagrant_software"
   config.vm.synced_folder "2-Standby/automation", "/vagrant_automation"
   config.vm.synced_folder "1-BD/SQL-VM scripts", "/vagrant_sql_scripts"
@@ -63,11 +63,11 @@ Vagrant.configure("2") do |config|
 
     primary.vm.provision "shell", path: "2-Standby/scripts/primary/setup.sh"
     primary.vm.provision "shell",
-      path: "2-Standby/scripts/shared/deploy_sql_and_directories.sh",
+      path: "2-Standby/scripts/optional/deploy_sql_and_directories.sh",
       name: "deploy_sql_and_directories",
       run: "never"
     primary.vm.provision "shell",
-      path: "2-Standby/scripts/shared/setup_oracle_autostart.sh",
+      path: "2-Standby/scripts/optional/setup_oracle_autostart.sh",
       name: "setup_oracle_autostart",
       run: "never"
   end
@@ -111,11 +111,11 @@ Vagrant.configure("2") do |config|
 
     standby.vm.provision "shell", path: "2-Standby/scripts/standby/setup.sh"
     standby.vm.provision "shell",
-      path: "2-Standby/scripts/shared/deploy_sql_and_directories.sh",
+      path: "2-Standby/scripts/optional/deploy_sql_and_directories.sh",
       name: "deploy_sql_and_directories",
       run: "never"
     standby.vm.provision "shell",
-      path: "2-Standby/scripts/shared/setup_oracle_autostart.sh",
+      path: "2-Standby/scripts/optional/setup_oracle_autostart.sh",
       name: "setup_oracle_autostart",
       run: "never"
   end
