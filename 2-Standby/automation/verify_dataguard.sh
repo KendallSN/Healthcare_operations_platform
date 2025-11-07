@@ -65,8 +65,7 @@ EOF
 echo ""
 echo "=== RECENT LOG SWITCHES ==="
 sqlplus -s / as sysdba <<EOF
-SELECT sequence#, first_time, next_time,
-       ROUND((next_time - first_time) * 24 * 60, 2) AS minutes_to_fill
+SELECT sequence#, thread#, first_time, first_change#
 FROM v\$log_history
 WHERE first_time > SYSDATE - 1
 ORDER BY sequence# DESC
@@ -128,7 +127,8 @@ EOF
 # 11. Custom Schema Verification
 echo ""
 echo "=== CUSTOM SCHEMA VERIFICATION (in PDB) ==="
-sqlplus -s sys/${SYS_PASSWORD}@localhost:1521/${PDB_NAME} as sysdba <<EOF
+sqlplus -s / as sysdba <<EOF
+ALTER SESSION SET CONTAINER=${PDB_NAME};
 SET LINESIZE 150
 COL owner FORMAT A15
 COL table_name FORMAT A30

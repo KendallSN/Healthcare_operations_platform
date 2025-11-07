@@ -31,22 +31,66 @@ if [ ! -f "/vagrant/1-BD/${APP_SCHEMA_SQL}" ]; then
   exit 1
 fi
 
-sqlplus / as sysdba <<EOF
+# Preprocess the SQL script to fix paths and passwords
+echo "Preprocessing ${APP_SCHEMA_SQL} to fix datafile paths and password substitution..."
+
+TEMP_SQL="/tmp/${APP_SCHEMA_SQL}.processed"
+
+# Read the SQL file and make substitutions:
+# 1. Replace hardcoded 'password' with actual password from config
+# 2. Fix datafile paths: /opt/oracle/oradata/ -> /u01/oradata/CDB1/pdb1/
+sed -e "s/identified by password/identified by ${APP_SCHEMA_PASSWORD}/g" \
+    -e "s|/opt/oracle/oradata/|${DATA_DIR}/${ORACLE_SID^^}/${PDB_NAME}/|g" \
+    "/vagrant/1-BD/${APP_SCHEMA_SQL}" > "${TEMP_SQL}"
+
+echo "Preprocessed SQL saved to ${TEMP_SQL}"
+echo "Changes applied:"
+echo "  - Password: 'password' -> '${APP_SCHEMA_PASSWORD}'"
+echo "  - Datafile path: /opt/oracle/oradata/ -> ${DATA_DIR}/${ORACLE_SID^^}/${PDB_NAME}/"
+
+# Execute the preprocessed SQL with error handling
+sqlplus -S / as sysdba <<EOF
+WHENEVER SQLERROR EXIT SQL.SQLCODE
 -- Connect to the PDB
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 
--- Execute the schema creation script
-@/vagrant/1-BD/${APP_SCHEMA_SQL}
+-- Execute the preprocessed schema creation script
+@${TEMP_SQL}
 
 EXIT;
 EOF
+
+SQL_EXIT_CODE=$?
+if [ ${SQL_EXIT_CODE} -ne 0 ]; then
+  echo "ERROR: Schema creation failed with exit code ${SQL_EXIT_CODE}"
+  echo "Check the SQL output above for errors"
+  exit ${SQL_EXIT_CODE}
+fi
+
+echo "Schema user ${APP_SCHEMA} and tablespace HC_TS created successfully"
+
+# Verify HC_TS tablespace was created
+echo "Verifying HC_TS tablespace creation..."
+sqlplus -S / as sysdba <<EOF
+SET HEADING OFF
+SET FEEDBACK OFF
+ALTER SESSION SET CONTAINER=${PDB_NAME};
+SELECT 'HC_TS tablespace: ' || tablespace_name || ' at ' || file_name
+FROM dba_data_files
+WHERE tablespace_name = 'HC_TS';
+EXIT;
+EOF
+
+# Clean up temporary file
+rm -f "${TEMP_SQL}"
 
 # Deploy the schema to the PDB
 echo "******************************************************************************"
 echo "Executing ScriptProyectoBD.SQL as ${APP_SCHEMA}..." `date`
 echo "******************************************************************************"
 
-sqlplus / as sysdba <<EOF
+sqlplus -S / as sysdba <<EOF
+WHENEVER SQLERROR EXIT SQL.SQLCODE
 -- Connect to the PDB and set current schema
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 ALTER SESSION SET CURRENT_SCHEMA=${APP_SCHEMA};
@@ -66,6 +110,15 @@ ORDER BY table_name;
 
 EXIT;
 EOF
+
+SQL_EXIT_CODE=$?
+if [ ${SQL_EXIT_CODE} -ne 0 ]; then
+  echo "ERROR: ScriptProyectoBD.SQL execution failed with exit code ${SQL_EXIT_CODE}"
+  echo "Check the SQL output above for errors"
+  exit ${SQL_EXIT_CODE}
+fi
+
+echo "ScriptProyectoBD.SQL executed successfully"
 
 echo "******************************************************************************"
 echo "Verify sequences were created..." `date`
