@@ -99,7 +99,7 @@ COL value FORMAT A20
 COL unit FORMAT A15
 COL time_computed FORMAT A20
 
-SELECT name, value, unit, TO_CHAR(time_computed, 'YYYY-MM-DD HH24:MI:SS') AS time_computed
+SELECT name, value, unit, time_computed
 FROM v\$dataguard_stats
 WHERE name IN ('transport lag', 'apply lag');
 EOF
