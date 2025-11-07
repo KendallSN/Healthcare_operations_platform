@@ -48,6 +48,9 @@ sh ${ORACLE_HOME}/root.sh
 # Create primary database
 su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/oracle_create_database.sh'
 
+# Setup UTL_MAIL (if enabled) - must run before schema deployment
+su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/setup_utl_mail.sh'
+
 # Deploy custom schema
 su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/deploy_custom_schema.sh'
 

@@ -39,14 +39,17 @@ TEMP_SQL="/tmp/${APP_SCHEMA_SQL}.processed"
 # Read the SQL file and make substitutions:
 # 1. Replace hardcoded 'password' with actual password from config
 # 2. Fix datafile paths: /opt/oracle/oradata/ -> /u01/oradata/CDB1/pdb1/
+# 3. Comment out Administrator role grant (role doesn't exist in Oracle 21c)
 sed -e "s/identified by password/identified by ${APP_SCHEMA_PASSWORD}/g" \
     -e "s|/opt/oracle/oradata/|${DATA_DIR}/${ORACLE_SID^^}/${PDB_NAME}/|g" \
+    -e "s/^GRANT Administrator/-- GRANT Administrator (role does not exist) --/" \
     "/vagrant/1-BD/${APP_SCHEMA_SQL}" > "${TEMP_SQL}"
 
 echo "Preprocessed SQL saved to ${TEMP_SQL}"
 echo "Changes applied:"
 echo "  - Password: 'password' -> '${APP_SCHEMA_PASSWORD}'"
 echo "  - Datafile path: /opt/oracle/oradata/ -> ${DATA_DIR}/${ORACLE_SID^^}/${PDB_NAME}/"
+echo "  - Administrator role grant: commented out (role does not exist in Oracle 21c)"
 
 # Execute the preprocessed SQL with error handling
 sqlplus -S / as sysdba <<EOF
