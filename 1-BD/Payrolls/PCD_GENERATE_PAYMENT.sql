@@ -99,7 +99,7 @@ WHERE GP_name = 'SENDER_EMAIL';
 
 SELECT GP_value INTO v_email_key
     FROM GeneralParameters
-WHERE GP_name = 'EMAILKEY';
+WHERE GP_name = 'EMAIL_KEY';
 
 -- Configurar destinatario y asunto
 v_receiver_email := v_usr_email;
@@ -132,7 +132,7 @@ DBMS_OUTPUT.PUT_LINE('--------------------------------------');
 PKG_EMAILS.PCD_SEND_EMAIL(
     pReceiverEmail => v_receiver_email,
     pSenderEmail   => v_sender_email,
-    pEmailKey      => FNC_DECRYPT_EMAIL_KEY(v_email_key),
+    pEmailKey      => FNC_DECRYPT(v_email_key),
     pSubject       => v_subject,
     pHTML          => v_html_final
 );

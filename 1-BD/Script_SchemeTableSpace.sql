@@ -1,38 +1,44 @@
--- Desde sys como dba crear el esquema HC_SCHEMA que va a ser el dueño de las tablas y procedimientos
-create user HC_SCHEMA identified by password;
-GRANT EXECUTE ON DBMS_CRYPTO TO HC_SCHEMA;
-GRANT create session to HC_SCHEMA;
-GRANT resource to HC_SCHEMA;
-GRANT connect to HC_SCHEMA;
-GRANT recovery_catalog_owner to HC_SCHEMA;
-GRANT SELECT ON DBA_DATA_FILES TO HC_SCHEMA;
-GRANT SELECT ON DBA_FREE_SPACE TO HC_SCHEMA;
-GRANT EXECUTE ON UTL_MAIL TO HC_SCHEMA;
-GRANT EXECUTE ON UTL_SMTP TO HC_SCHEMA;
-GRANT CREATE ROLE TO HC_SCHEMA;
-GRANT SELECT ON DBA_ROLES TO HC_SCHEMA;
-GRANT SELECT ON DBA_ROLES TO HC_SCHEMA;
-GRANT SELECT ON DBA_ROLE_PRIVS TO HC_SCHEMA;
-grant sysbackup to HC_SCHEMA;
-GRANT EXECUTE ON DBMS_SCHEDULER TO HC_SCHEMA;
-GRANT SCHEDULER_ADMIN TO HC_SCHEMA;
-GRANT CREATE USER TO HC_SCHEMA;
-GRANT GRANT ANY ROLE TO HC_SCHEMA;
-GRANT CREATE ANY DIRECTORY TO HC_SCHEMA;
-GRANT DROP ANY DIRECTORY TO HC_SCHEMA;
-GRANT CREATE VIEW TO HC_SCHEMA;
-
+-- Desde sys como dba crear el esquema HC_SCHEME que va a ser el dueño de las tablas y procedimientos
+create user HC_SCHEME identified by password;
+GRANT EXECUTE ON DBMS_CRYPTO TO HC_SCHEME;
+GRANT create session to HC_SCHEME;
+GRANT resource to HC_SCHEME;
+GRANT connect to HC_SCHEME;
+GRANT recovery_catalog_owner to HC_SCHEME;
+GRANT SELECT ON DBA_DATA_FILES TO HC_SCHEME;
+GRANT SELECT ON DBA_FREE_SPACE TO HC_SCHEME;
+GRANT EXECUTE ON UTL_MAIL TO HC_SCHEME;
+GRANT EXECUTE ON UTL_SMTP TO HC_SCHEME;
+GRANT CREATE ROLE TO HC_SCHEME;
+grant sysbackup to HC_SCHEME;
+GRANT EXECUTE ON DBMS_SCHEDULER TO HC_SCHEME;
+GRANT SCHEDULER_ADMIN TO HC_SCHEME;
+GRANT CREATE USER TO HC_SCHEME;
+GRANT GRANT ANY ROLE TO HC_SCHEME;
+GRANT CREATE ANY DIRECTORY TO HC_SCHEME;
 
 -- Tambien desde sys como dba crear el tablespace principal para las tablas y procedimientos
 create tablespace HC_TS datafile '/opt/oracle/oradata/hc_ts.DBF' SIZE 1g autoextend on next 100m MAXSIZE 5g;
-alter user HC_SCHEMA default tablespace HC_TS;
-ALTER USER HC_SCHEMA QUOTA UNLIMITED ON HC_TS;
+alter user HC_SCHEME default tablespace HC_TS;
+ALTER USER HC_SCHEME QUOTA UNLIMITED ON HC_TS;
 
--- Crear el usuario con privilegios de administrador (Solo usables al activarlos)
-create user HC_ADMIN identificación by password
-GRANT Administrator TO HC WITH ADMIN OPTION;
+create user HC_ADMIN identified by password;
+GRANT EXECUTE ON DBMS_CRYPTO TO HC_ADMIN;
+GRANT create session to HC_ADMIN;
+GRANT resource to HC_ADMIN;
+GRANT connect to HC_ADMIN;
+GRANT recovery_catalog_owner to HC_ADMIN;
+GRANT SELECT ON DBA_DATA_FILES TO HC_ADMIN;
+GRANT SELECT ON DBA_FREE_SPACE TO HC_ADMIN;
+GRANT EXECUTE ON UTL_MAIL TO HC_ADMIN;
+GRANT EXECUTE ON UTL_SMTP TO HC_ADMIN;
+GRANT CREATE ROLE TO HC_ADMIN;
+grant sysbackup to HC_ADMIN;
+GRANT EXECUTE ON DBMS_SCHEDULER TO HC_ADMIN;
+GRANT SCHEDULER_ADMIN TO HC_ADMIN;
+GRANT CREATE USER TO HC_ADMIN;
+GRANT GRANT ANY ROLE TO HC_ADMIN;
+GRANT CREATE ANY DIRECTORY TO HC_ADMIN;
 
--- Comando para revisar si el tablespace HC_TS se hizo correctamente
-select tablespace_name, file_name, bytes
-from dba_data_files
-where tablespace_name = 'HC_TS';
+alter user HC_ADMIN default tablespace HC_TS;
+ALTER USER HC_ADMIN QUOTA UNLIMITED ON HC_TS;

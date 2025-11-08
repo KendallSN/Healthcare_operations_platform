@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE PKG_FUNCTIONS_JOBS IS
+CREATE OR REPLACE PACKAGE PKG_FUNCTIONS_JOBS AUTHID DEFINER IS
 
 PROCEDURE PCD_SEND_JOB_EMAIL(p_subject    IN VARCHAR2,
                         p_body    IN VARCHAR2,
@@ -120,7 +120,7 @@ BEGIN
     PKG_EMAILS.PCD_SEND_EMAIL(
         pReceiverEmail => v_receiver_email,
         pSenderEmail   => v_sender_email,
-        pEmailKey      => FNC_DECRYPT_EMAIL_KEY(v_email_key),
+        pEmailKey      => FNC_DECRYPT(v_email_key),
         pSubject       => p_subject,
         pHTML          => v_html_final
     );

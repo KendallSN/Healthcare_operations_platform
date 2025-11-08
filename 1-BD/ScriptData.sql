@@ -245,27 +245,27 @@ INSERT INTO HC_ProcedureType (PCT_id, PCT_name, PCT_description, version) VALUES
 
 -- Procedures
 -- HCN 1
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Consulta General HC1 - Ana', 'Consulta general en Clinica Norte', 15000, 6000, 1, TO_DATE('2025-10-05','YYYY-MM-DD'), 1, 1, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Urgencia Leve HC1 - Juan', 'Urgencia leve en Clinica Norte', 22000, 9000, 2, TO_DATE('2025-10-12','YYYY-MM-DD'), 3, 1, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Procedimiento Especial HC1 - Ana', 'Procedimiento de alto costo en Clinica Norte', 2000000, 1000000, 1, TO_DATE('2025-10-18','YYYY-MM-DD'), 1, 1, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (1, 'Consulta General HC1 - Ana', 'Consulta general en Clinica Norte', 15000, 6000, 1, TO_DATE('2025-10-05','YYYY-MM-DD'), 1, 1, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (2, 'Urgencia Leve HC1 - Juan', 'Urgencia leve en Clinica Norte', 22000, 9000, 2, TO_DATE('2025-10-12','YYYY-MM-DD'), 3, 1, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (3, 'Procedimiento Especial HC1 - Ana', 'Procedimiento de alto costo en Clinica Norte', 2000000, 1000000, 1, TO_DATE('2025-10-18','YYYY-MM-DD'), 1, 1, 'N', 1);
 
 -- HCN 2
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Consulta Pediatria HC2 - Maria', 'Consulta pediatria en Centro Salud Central', 1000000, 6500, 3, TO_DATE('2025-10-07','YYYY-MM-DD'), 2, 2, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Procedimiento Menor HC2 - Carlos', 'Procedimiento menor en Centro Salud Central', 18000, 7000, 4, TO_DATE('2025-10-15','YYYY-MM-DD'), 1, 2, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Urgencia HC2 - Luisa', 'Atencion de urgencia en Centro Salud Central', 24000, 10000, 2, TO_DATE('2025-10-20','YYYY-MM-DD'), 3, 2, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (4, 'Consulta Pediatria HC2 - Maria', 'Consulta pediatria en Centro Salud Central', 1000000, 6500, 3, TO_DATE('2025-10-07','YYYY-MM-DD'), 2, 2, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (5, 'Procedimiento Menor HC2 - Carlos', 'Procedimiento menor en Centro Salud Central', 18000, 7000, 4, TO_DATE('2025-10-15','YYYY-MM-DD'), 1, 2, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (6, 'Urgencia HC2 - Luisa', 'Atencion de urgencia en Centro Salud Central', 24000, 10000, 2, TO_DATE('2025-10-20','YYYY-MM-DD'), 3, 2, 'N', 1);
 
 -- HCN 3
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Consulta General HC3 - Carlos', 'Consulta general en Unidad Sur', 15000, 6000, 4, TO_DATE('2025-10-03','YYYY-MM-DD'), 1, 3, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Consulta Pediatria HC3 - Luisa', 'Consulta pediatria en Unidad Sur', 16500, 7000, 1, TO_DATE('2025-10-09','YYYY-MM-DD'), 2, 3, 'N', 1);
-INSERT INTO HC_Procedure (PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
-  VALUES ('Urgencia HC3 - Diego', 'Atencion de urgencia en Unidad Sur', 26000, 10500, 2, TO_DATE('2025-10-22','YYYY-MM-DD'), 3, 3, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (7, 'Consulta General HC3 - Carlos', 'Consulta general en Unidad Sur', 15000, 6000, 4, TO_DATE('2025-10-03','YYYY-MM-DD'), 1, 3, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (8, 'Consulta Pediatria HC3 - Luisa', 'Consulta pediatria en Unidad Sur', 16500, 7000, 1, TO_DATE('2025-10-09','YYYY-MM-DD'), 2, 3, 'N', 1);
+INSERT INTO HC_Procedure (PCD_id, PCD_name, PCD_description, PCD_health_center_price, PCD_medic_revenue, USR_id, PCD_date, PCT_id, HCN_id, PCD_processed, version)
+  VALUES (9, 'Urgencia HC3 - Diego', 'Atencion de urgencia en Unidad Sur', 26000, 10500, 2, TO_DATE('2025-10-22','YYYY-MM-DD'), 3, 3, 'N', 1);
 
 COMMIT;

@@ -1,0 +1,21 @@
+CREATE OR REPLACE FUNCTION FNC_GET_ROLE_PASSWORD RETURN VARCHAR2 AUTHID DEFINER IS
+    ROLE_PASSWORD VARCHAR2(500);
+BEGIN
+
+    SELECT GP_value
+    INTO ROLE_PASSWORD
+    FROM GeneralParameters gp
+    WHERE gp.GP_name = 'ROLE_PASSWORD';
+
+    RETURN FNC_DECRYPT(ROLE_PASSWORD);
+
+EXCEPTION
+    WHEN no_data_found THEN
+    DBMS_OUTPUT.PUT_LINE('No se encontro parametro general ROLE_PASSWORD');
+    RAISE;
+    WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Error obteniendo parametro general ROLE_PASSWORD. ' ||
+                        SQLERRM);
+    RAISE;
+    
+END FNC_GET_ROLE_PASSWORD;
