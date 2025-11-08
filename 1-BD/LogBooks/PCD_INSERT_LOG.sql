@@ -34,7 +34,7 @@ CREATE OR REPLACE PROCEDURE PCD_INSERT_LOG (
         LBK_date,
         LBK_host
         ) VALUES (
-        SEQ_HC_LGB_id.NEXTVAL,
+        SEQ_HC_LBK_id.NEXTVAL,
         SYS_CONTEXT('USERENV', 'OS_USER'),     
         SYS_CONTEXT('USERENV', 'SESSION_USER'),
         SYS_CONTEXT('USERENV', 'TERMINAL'),    

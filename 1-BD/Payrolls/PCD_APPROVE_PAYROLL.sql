@@ -11,7 +11,7 @@ BEGIN
   SELECT COUNT(*), MAX(PRL_authorized), MAX(PRL_month), MAX(PRL_year)
     INTO v_exist_count, v_authorized, v_prl_month, v_prl_year
     FROM HC_Payroll
-   WHERE PRL_id = p_prl_id;
+  WHERE PRL_id = p_prl_id;
 
   IF v_exist_count = 0 THEN
     RAISE_APPLICATION_ERROR(-20003, 'Payroll con PRL_id=' || p_prl_id || ' no existe.');
@@ -21,7 +21,7 @@ BEGIN
   SELECT pt.PRT_name INTO v_prt_name
     FROM HC_Payroll p
     JOIN HC_PayrollType pt ON p.PRT_id = pt.PRT_id
-   WHERE p.PRL_id = p_prl_id;
+  WHERE p.PRL_id = p_prl_id;
 
   -- Verificar si ya está autorizado
   IF v_authorized = 'Y' THEN
@@ -36,8 +36,8 @@ BEGIN
 
   -- Autorizar el Payroll
   UPDATE HC_Payroll
-     SET PRL_authorized = 'Y'
-   WHERE PRL_id = p_prl_id;
+    SET PRL_authorized = 'Y'
+  WHERE PRL_id = p_prl_id;
 
   COMMIT;
 
