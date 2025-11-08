@@ -29,6 +29,10 @@ v_pru_notified   VARCHAR2(1);
 v_total_income   NUMBER := 0;
 v_total_ded      NUMBER := 0;
 
+-- Variables para desglose de movimientos
+v_income_detail  CLOB := '';
+v_deduction_detail CLOB := '';
+
 v_exist_count    NUMBER := 0;
 
 BEGIN
@@ -79,18 +83,60 @@ IF v_pru_notified = 'Y' THEN
     DBMS_OUTPUT.PUT_LINE('ADVERTENCIA: El usuario ' || v_usr_name || ' ya fue notificado anteriormente para este payroll.');
 END IF;
 
--- Calcular totales de ingresos y deducciones
-SELECT NVL(SUM(PRM_amount), 0) INTO v_total_income
-    FROM HC_PayrollMovement
-WHERE USR_id = v_usr_id
-    AND PRL_id = v_prl_id
-    AND PRM_type = 'I';
+-- Calcular totales y desglose de ingresos
+FOR mov_inc IN (
+    SELECT 
+        mt.MVT_name,
+        COUNT(*) as cantidad,
+        SUM(pm.PRM_amount) as total_tipo
+    FROM HC_PayrollMovement pm
+    JOIN HC_MovementType mt ON pm.MVT_id = mt.MVT_id
+    WHERE pm.USR_id = v_usr_id
+        AND pm.PRL_id = v_prl_id
+        AND pm.PRM_type = 'I'
+    GROUP BY mt.MVT_name
+    ORDER BY SUM(pm.PRM_amount) DESC
+) LOOP
+    v_total_income := v_total_income + mov_inc.total_tipo;
+    v_income_detail := v_income_detail || 
+        '<div style="margin:5px 0;padding:8px;background:#f0f9ff;border-radius:4px">' ||
+        '<strong>' || mov_inc.MVT_name || '</strong>: ' ||
+        mov_inc.cantidad || ' movimiento(s) = &#8353; ' || 
+        TO_CHAR(mov_inc.total_tipo, 'FM999,999,990.00') ||
+        '</div>';
+END LOOP;
 
-SELECT NVL(SUM(PRM_amount), 0) INTO v_total_ded
-    FROM HC_PayrollMovement
-WHERE USR_id = v_usr_id
-    AND PRL_id = v_prl_id
-    AND PRM_type = 'D';
+-- Calcular totales y desglose de deducciones
+FOR mov_ded IN (
+    SELECT 
+        mt.MVT_name,
+        COUNT(*) as cantidad,
+        SUM(pm.PRM_amount) as total_tipo
+    FROM HC_PayrollMovement pm
+    JOIN HC_MovementType mt ON pm.MVT_id = mt.MVT_id
+    WHERE pm.USR_id = v_usr_id
+        AND pm.PRL_id = v_prl_id
+        AND pm.PRM_type = 'D'
+    GROUP BY mt.MVT_name
+    ORDER BY SUM(pm.PRM_amount) DESC
+) LOOP
+    v_total_ded := v_total_ded + mov_ded.total_tipo;
+    v_deduction_detail := v_deduction_detail || 
+        '<div style="margin:5px 0;padding:8px;background:#fff3f3;border-radius:4px">' ||
+        '<strong>' || mov_ded.MVT_name || '</strong>: ' ||
+        mov_ded.cantidad || ' movimiento(s) = &#8353; ' || 
+        TO_CHAR(mov_ded.total_tipo, 'FM999,999,990.00') ||
+        '</div>';
+END LOOP;
+
+-- Si no hay detalles, mostrar mensaje
+IF v_income_detail IS NULL OR LENGTH(v_income_detail) = 0 THEN
+    v_income_detail := '<div style="margin:5px 0;padding:8px;color:#666">No hay movimientos de ingreso</div>';
+END IF;
+
+IF v_deduction_detail IS NULL OR LENGTH(v_deduction_detail) = 0 THEN
+    v_deduction_detail := '<div style="margin:5px 0;padding:8px;color:#666">No hay movimientos de deducción</div>';
+END IF;
 
 -- Obtener parámetros de correo
 SELECT GP_value INTO v_sender_email
@@ -116,6 +162,8 @@ v_html_final := REPLACE(v_html_final, '{{PRU_AMOUNT}}', '&#8353; ' || TO_CHAR(v_
 v_html_final := REPLACE(v_html_final, '{{PRU_ACCOUNT}}', v_pru_account);
 v_html_final := REPLACE(v_html_final, '{{TOTAL_INCOME}}', '&#8353; ' || TO_CHAR(v_total_income, 'FM999,999,990.00'));
 v_html_final := REPLACE(v_html_final, '{{TOTAL_DEDUCTIONS}}', '&#8353; ' || TO_CHAR(v_total_ded, 'FM999,999,990.00'));
+v_html_final := REPLACE(v_html_final, '{{INCOME_DETAIL}}', v_income_detail);
+v_html_final := REPLACE(v_html_final, '{{DEDUCTION_DETAIL}}', v_deduction_detail);
 v_html_final := REPLACE(v_html_final, '{{PRL_ID}}', TO_CHAR(v_prl_id));
 v_html_final := REPLACE(v_html_final, '{{PRU_ID}}', TO_CHAR(p_pru_id));
 

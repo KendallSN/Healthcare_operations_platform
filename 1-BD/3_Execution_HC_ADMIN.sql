@@ -1,6 +1,6 @@
 -- El usuario debe activar su rol en cada inicio de sesión para poder utilizar los elementos de HC_SCHEME
 -- Previo a activarlo una consulta no debe funcionar.
---SELECT * FROM HC_SCHEME.HC_USER;
+SELECT * FROM HC_SCHEME.HC_USER;
 BEGIN
     HC_SCHEME.PCD_ACTIVATE_ROLE('Administrator');
 END;
