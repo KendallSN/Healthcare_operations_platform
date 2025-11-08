@@ -51,9 +51,9 @@ BEGIN
     RAISE_APPLICATION_ERROR(-20001,'MonthScale ya existe para ese healthcenter/mes/año.');
   END IF;
 
-  -- Insertar MonthScale (el trigger rellenará MSC_id desde la secuencia) y se obtiene el id del creado para usarlo en los TurnXMonthScale
-  INSERT INTO HC_MonthScale (HCN_id, MSC_month, MSC_year, MSC_state, version)
-  VALUES (p_hcn_id, v_month_abbr, TO_CHAR(p_year), 'B', 1)
+  -- Insertar MonthScale
+  INSERT INTO HC_MonthScale (MSC_id, HCN_id, MSC_month, MSC_year, MSC_state, version)
+  VALUES (SEQ_HC_MSC_id.NEXTVAL, p_hcn_id, v_month_abbr, TO_CHAR(p_year), 'B', 1)
   RETURNING MSC_id INTO v_msc_id;
 
   -- Calcular primer y último día del mes
@@ -71,11 +71,12 @@ BEGIN
       -- comparar abreviatura del día en inglés (MON,TUE,...) con el day of week de turn
       IF TO_CHAR(v_date,'DY','NLS_DATE_LANGUAGE=ENGLISH') = v_pos_rec.TRN_day_of_week THEN
         INSERT INTO HC_TurnXMonthScale (
-          MSC_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
+          TMS_id, MSC_id, TMS_compliance, TMS_partial_worked_hours, TMS_date,
           USR_id, TMS_hourly_price, TMS_hourly_payment, TMS_name,
           TMS_description, TMS_processed, TMS_start_hour, TMS_end_hour,
           TMS_payment_type, TMS_price_type, TMS_full_price, TMS_full_payment, version
         ) VALUES (
+          SEQ_HC_TMS_id.NEXTVAL,
           v_msc_id,
           'PDG', -- pendiente por defecto
           NULL,

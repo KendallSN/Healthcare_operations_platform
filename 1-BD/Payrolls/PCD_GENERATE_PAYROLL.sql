@@ -124,8 +124,8 @@ BEGIN
   END;
 
   -- crear payroll
-  INSERT INTO HC_Payroll (PRT_id, PRL_month, PRL_year, PRL_authorized, PRL_deposited, version)
-  VALUES (p_prt_id, v_month_abbr, TO_CHAR(p_year), 'N', 'N', 1)
+  INSERT INTO HC_Payroll (PRL_id, PRT_id, PRL_month, PRL_year, PRL_authorized, PRL_deposited, version)
+  VALUES (SEQ_HC_PRL_id.NEXTVAL, p_prt_id, v_month_abbr, TO_CHAR(p_year), 'N', 'N', 1)
   RETURNING PRL_id INTO v_prl_id;
 
   -- Primero: Procesar todos los usuarios del payroll type (Procedimientos y Salarios Base)
@@ -145,8 +145,8 @@ BEGIN
     END;
 
     -- insertar relación payrollXuser
-    INSERT INTO HC_PayrollXUser (USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
-      VALUES (v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1)
+    INSERT INTO HC_PayrollXUser (PRU_id, USR_id, PRL_id, PRU_amount, PRU_account_number, PRU_notified, version)
+      VALUES (SEQ_HC_PRU_id.NEXTVAL, v_usr_rec.USR_id, v_prl_id, 0, v_bank_acc, 'N', 1)
       RETURNING PRU_id INTO v_pru_id;
     
     -- Agregar PRU_id a la lista
@@ -174,8 +174,8 @@ BEGIN
 
           v_amt := NVL(v_proc_all.PCD_medic_revenue,0);
 
-          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-          VALUES (v_amt, 'A', 'Procedimiento: '||v_proc_all.PCD_name, 'Proc generada: '||v_proc_all.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
+          INSERT INTO HC_PayrollMovement (PRM_id, PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (SEQ_HC_PRM_id.NEXTVAL, v_amt, 'A', 'Procedimiento: '||v_proc_all.PCD_name, 'Proc generada: '||v_proc_all.PCD_name, SYSDATE, 'I', NVL(v_mvt_proc,1), v_usr_rec.USR_id, v_prl_id, 1);
 
           -- Marcar procedimiento como procesado
           UPDATE HC_Procedure
@@ -192,8 +192,8 @@ BEGIN
         SELECT NVL(USR_base_salary,0) INTO v_base_sal FROM HC_User WHERE USR_id = v_usr_rec.USR_id;
         
         IF v_base_sal > 0 THEN
-          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-          VALUES (v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
+          INSERT INTO HC_PayrollMovement (PRM_id, PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (SEQ_HC_PRM_id.NEXTVAL, v_base_sal, 'A', 'Salario base', 'Salario base mensual', SYSDATE, 'I', NVL(v_mvt_base,3), v_usr_rec.USR_id, v_prl_id, 1);
         END IF;
       EXCEPTION WHEN NO_DATA_FOUND THEN
         NULL;
@@ -278,8 +278,8 @@ BEGIN
                               ' | PAGO FIJO POR TURNO: ₡'||TO_CHAR(v_amt,'FM999,999,990.00');
             END IF;
 
-            INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-            VALUES (v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), v_description, SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
+            INSERT INTO HC_PayrollMovement (PRM_id, PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+            VALUES (SEQ_HC_PRM_id.NEXTVAL, v_amt, 'A', 'Turno: '||TO_CHAR(v_turn_rec.TMS_date,'YYYY-MM-DD'), v_description, SYSDATE, 'I', NVL(v_mvt_turn,2), v_usr_rec.USR_id, v_prl_id, 1);
           END;
 
           -- Marcar TurnXMonthScale como procesado
@@ -356,8 +356,9 @@ BEGIN
           END IF;
 
           -- insertar movimiento automático (tipo I o D según MVT_type)
-          INSERT INTO HC_PayrollMovement (PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
-          VALUES (v_amt,
+          INSERT INTO HC_PayrollMovement (PRM_id, PRM_amount, PRM_amount_type, PRM_name, PRM_description, PRM_date, PRM_type, MVT_id, USR_id, PRL_id, version)
+          VALUES (SEQ_HC_PRM_id.NEXTVAL,
+                  v_amt,
                   CASE WHEN v_auto_rec.MVT_amount_type = 'P' THEN 'P' ELSE 'A' END,
                   'Auto: '||v_auto_rec.MVT_name,
                   'Movimiento automático: '||v_auto_rec.MVT_name,

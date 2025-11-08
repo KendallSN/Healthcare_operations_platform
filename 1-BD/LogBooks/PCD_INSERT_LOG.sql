@@ -17,7 +17,7 @@ CREATE OR REPLACE PROCEDURE PCD_INSERT_LOG (
             v_roles := '';
         END;
 
-        -- Insertar en HC_Logbook
+        -- Insertar en HC_Logbook usando la secuencia
         INSERT INTO HC_Logbook (
         LBK_id,
         LBK_os_user,
@@ -34,7 +34,7 @@ CREATE OR REPLACE PROCEDURE PCD_INSERT_LOG (
         LBK_date,
         LBK_host
         ) VALUES (
-        1,
+        SEQ_HC_LBK_id.NEXTVAL,
         SYS_CONTEXT('USERENV', 'OS_USER'),     
         SYS_CONTEXT('USERENV', 'SESSION_USER'),
         SYS_CONTEXT('USERENV', 'TERMINAL'),    
