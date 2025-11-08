@@ -128,9 +128,11 @@ El sistema replica la base de datos principal en tiempo real a una base de datos
         \item Oracle Database 21c Enterprise Edition.
 \item Container Database (CDB): \texttt{cdb1}.
         \item Pluggable Database (PDB): \texttt{pdb1}.
-        \item Esquema de aplicación: (Definido por scripts, \texttt{HC} por defecto).
+        \item Esquema de aplicación: (Definido por scripts personalizables, por defecto \texttt{HC}).
         \item Servidor: \texttt{ol8-21-dg1.localdomain} (\texttt{192.168.56.101}).
 \end{itemize}
+    \vspace{0.3em}
+    \textit{Nota: Los detalles del esquema de aplicación (tablas, procedimientos, lógica de negocio) están fuera del alcance de esta guía de infraestructura. Solo se documentan las credenciales de conexión.}
     \item \textbf{Base de Datos \textit{Standby}}
     \begin{itemize}
         \item Réplica física exacta del \textit{primary}.
@@ -209,7 +211,7 @@ Ambas bases de datos tienen el mismo \texttt{DB\_NAME} (\texttt{cdb1}) porque so
 \begin{itemize}
     \item \textbf{Alta Disponibilidad (HA):} Minimiza el \textit{downtime}.
 Las métricas clave son \textbf{RTO} (\textit{Recovery Time Objective}) y \textbf{RPO} (\textit{Recovery Point Objective}).
-\item \textbf{Recuperación ante Desastres (DR):} Protege contra fallos catastficos.
+\item \textbf{Recuperación ante Desastres (DR):} Protege contra fallos catastróficos.
 \end{itemize}
 
 Con Data Guard \texttt{MAXAVAILABILITY}, se garantiza un \textbf{RPO de cero segundos} (cero pérdida de datos) y un \textbf{RTO de minutos}.
@@ -678,6 +680,56 @@ vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
 \item \textbf{Validación:} Ejecutar \texttt{RESTORE DATABASE VALIDATE} para simular una restauración sin afectar la base de datos.
 \end{itemize}
 
+\subsection{Diagrama de Flujo de Backups}
+
+El siguiente diagrama ilustra el flujo completo de backup automatizado, desde la generación en el Primary hasta la transferencia y validación en el Standby:
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.2cm,
+    process/.style={rectangle, rounded corners, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=4cm, thick, align=center, font=\small},
+    decision/.style={diamond, draw=orange!80, fill=orange!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\small, aspect=2},
+    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=1cm, minimum width=3cm, thick, align=center, font=\small},
+    arrow/.style={-{Stealth[length=3mm]}, thick},
+    success/.style={draw=green!70!black, thick},
+    error/.style={draw=red!70, thick}
+  ]
+
+    % Proceso de Backup
+    \node (cron) [process] {\textbf{Cron Job 1:00 AM} \\ \texttt{rman\_daily\_backup.sh}};
+    \node (rman) [process, below=of cron] {\textbf{RMAN Backup} \\ \texttt{BACKUP DATABASE} \\ \texttt{PLUS ARCHIVELOG}};
+    \node (compress) [process, below=of rman] {\textbf{Compresión} \\ Backupset comprimido};
+    \node (fra) [storage, below=of compress] {\textbf{FRA Primary} \\ \texttt{/u02/fra}};
+
+    % Proceso de Limpieza
+    \node (cleanup) [process, right=3cm of rman] {\textbf{Limpieza} \\ \texttt{DELETE OBSOLETE} \\ (Retención: 7 días)};
+
+    % Transferencia
+    \node (transfer) [process, below=of fra] {\textbf{Transferencia rsync} \\ SSH sobre 192.168.56.x};
+    \node (standby_storage) [storage, below=of transfer] {\textbf{Standby Storage} \\ \texttt{/u02/backup\_from\_primary}};
+
+    % Validación
+    \node (validate) [decision, below=of standby_storage] {\textbf{Validación} \\ exitosa?};
+    \node (log_success) [process, below left=0.8cm and 1cm of validate, success] {\textbf{Log: SUCCESS} \\ Backup disponible \\ para DR};
+    \node (log_error) [process, below right=0.8cm and 1cm of validate, error] {\textbf{Log: ERROR} \\ Alerta al DBA};
+
+    % Conexiones
+    \draw [arrow] (cron) -- (rman);
+    \draw [arrow] (rman) -- (compress);
+    \draw [arrow] (compress) -- (fra);
+    \draw [arrow] (rman) -- (cleanup);
+    \draw [arrow] (fra) -- (transfer);
+    \draw [arrow] (transfer) -- (standby_storage);
+    \draw [arrow] (standby_storage) -- (validate);
+    \draw [arrow, success] (validate) -- node[right, font=\footnotesize] {Sí} (log_success);
+    \draw [arrow, error] (validate) -- node[left, font=\footnotesize] {No} (log_error);
+
+  \end{tikzpicture}
+  \caption{Flujo de backup automatizado diario con transferencia al Standby.}
+  \label{fig:backup_flow}
+\end{figure}
+
 \section{Switchover Planificado}
 
 \subsection{Procedimiento de Cambio de Roles}
@@ -693,6 +745,62 @@ SWITCHOVER TO cdb1_stby;
 \end{enumerate}
 
 \section{Failover de Emergencia}
+
+\subsection{Árbol de Decisión para Failover}
+
+El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situación de emergencia:
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.5cm and 2cm,
+    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=1.2cm, minimum width=3cm, thick, align=center, font=\footnotesize, aspect=1.5},
+    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
+    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
+    arrow/.style={-{Stealth[length=2.5mm]}, thick}
+  ]
+
+    % Nivel 1
+    \node (start) [question] {¿Primary \\ responde?};
+
+    % Nivel 2 - Sí responde
+    \node (check_perf) [question, below left=1.5cm and 3cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
+
+    % Nivel 2 - No responde
+    \node (check_standby) [question, below right=1.5cm and 3cm of start] {¿Standby \\ sincronizado? \\ (Apply Lag $<$ 5s)};
+
+    % Nivel 3 - Performance issue
+    \node (investigate) [action, below left=1.2cm and 0.5cm of check_perf] {\textbf{Investigar} \\ No hacer failover \\ Optimizar Primary};
+
+    \node (switchover) [action, below right=1.2cm and 0.5cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento \\ planificado};
+
+    % Nivel 3 - Primary caído y standby OK
+    \node (failover_immediate) [critical, below left=1.2cm and 0.5cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
+
+    \node (assess_loss) [question, below right=1.2cm and 0.5cm of check_standby] {¿Pérdida de \\ datos \\ aceptable?};
+
+    % Nivel 4 - Decisión final
+    \node (failover_with_loss) [critical, below=1cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida \\ (Documentar RPO)};
+
+    \node (wait_recover) [action, right=2cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar Primary \\ si es posible};
+
+    % Conexiones
+    \draw [arrow] (start) -- node[above left, font=\tiny] {Sí} (check_perf);
+    \draw [arrow] (start) -- node[above right, font=\tiny] {No} (check_standby);
+
+    \draw [arrow] (check_perf) -- node[above left, font=\tiny] {Sí} (investigate);
+    \draw [arrow] (check_perf) -- node[above right, font=\tiny] {No} (switchover);
+
+    \draw [arrow] (check_standby) -- node[above left, font=\tiny] {Sí} (failover_immediate);
+    \draw [arrow] (check_standby) -- node[above right, font=\tiny] {No} (assess_loss);
+
+    \draw [arrow] (assess_loss) -- node[left, font=\tiny] {Sí} (failover_with_loss);
+    \draw [arrow] (assess_loss) -- node[above, font=\tiny] {No} (wait_recover);
+
+  \end{tikzpicture}
+  \caption{Árbol de decisión para operaciones de failover y switchover.}
+  \label{fig:failover_decision}
+\end{figure}
 
 \subsection{Procedimiento de Activación}
 \begin{enumerate}
@@ -746,7 +854,269 @@ Para la mayoría de los errores, la primera acción es revisar el \textbf{\texti
 
 \newpage
 % *************************************************
-% CAPÍTULO 9: CONCLUSIONES Y RECOMENDACIONES (99)
+% CAPÍTULO 5: PROCEDIMIENTOS DE PRUEBA Y VALIDACIÓN
+% *************************************************
+
+\chapter{Procedimientos de Prueba y Validación}
+
+Esta sección documenta los procedimientos de prueba esenciales para validar el correcto funcionamiento del entorno Data Guard, incluyendo simulaciones de desastres y validación de backups.
+
+\section{Pruebas de Switchover}
+
+\subsection{Propósito}
+Validar que el cambio planificado de roles entre Primary y Standby funcione correctamente sin pérdida de datos.
+
+\subsection{Procedimiento de Prueba}
+\begin{enumerate}
+    \item \textbf{Pre-validación:}
+    \begin{lstlisting}[language=bash, caption={Verificación Pre-Switchover}]
+vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+    \end{lstlisting}
+    Confirmar: \texttt{Apply Lag < 5 segundos}, \texttt{Switchover Status = TO STANDBY}, \texttt{Configuration Status = SUCCESS}.
+
+    \item \textbf{Crear Datos de Prueba:}
+    \begin{lstlisting}[language=SQL, caption={Insertar Registro de Prueba en Primary}]
+-- Conectarse al Primary
+sqlplus HC/password@localhost:1521/pdb1
+
+-- Crear tabla de prueba
+CREATE TABLE TEST_SWITCHOVER (
+    test_id NUMBER PRIMARY KEY,
+    test_timestamp TIMESTAMP,
+    test_message VARCHAR2(100)
+);
+
+-- Insertar datos
+INSERT INTO TEST_SWITCHOVER VALUES (
+    1, SYSTIMESTAMP, 'Pre-switchover test record'
+);
+COMMIT;
+    \end{lstlisting}
+
+    \item \textbf{Ejecutar Switchover:}
+    \begin{lstlisting}[language=bash, caption={Comando de Switchover}]
+vagrant ssh primary -c "dgmgrl / <<EOF
+SHOW CONFIGURATION;
+SWITCHOVER TO cdb1_stby;
+SHOW CONFIGURATION;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Post-validación:}
+    \begin{itemize}
+        \item Verificar que \texttt{cdb1\_stby} ahora tiene rol \texttt{PRIMARY}.
+        \item Verificar que \texttt{cdb1} ahora tiene rol \texttt{PHYSICAL STANDBY}.
+        \item Confirmar que los datos de prueba están accesibles desde el nuevo Primary (puerto 1522).
+    \end{itemize}
+
+    \item \textbf{Switchover de Regreso (Rollback):}
+    \begin{lstlisting}[language=bash, caption={Revertir Roles}]
+vagrant ssh standby -c "dgmgrl / <<EOF
+SWITCHOVER TO cdb1;
+EXIT;
+EOF"
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Criterios de Éxito}
+\begin{itemize}
+    \item Downtime total $<$ 5 minutos.
+    \item Cero pérdida de datos (datos de prueba presentes en ambos nodos).
+    \item Replicación reanudada automáticamente después del switchover.
+    \item \texttt{Apply Lag} regresa a $<$ 5 segundos dentro de 2 minutos.
+\end{itemize}
+
+\section{Simulación de Failover de Emergencia}
+
+\subsection{Propósito}
+Simular la falla catastrófica del Primary y validar la activación del Standby.
+
+\subsection{Procedimiento de Prueba}
+\begin{enumerate}
+    \item \textbf{Simular Falla del Primary:}
+    \begin{lstlisting}[language=bash, caption={Apagar Primary Bruscamente}]
+vagrant halt primary --force
+    \end{lstlisting}
+    \advertencia{Este comando simula una falla de hardware. El Primary se detendrá abruptamente sin \textit{shutdown} limpio.}
+
+    \item \textbf{Ejecutar Failover desde Standby:}
+    \begin{lstlisting}[language=bash, caption={Activación de Standby}]
+vagrant ssh standby -c "dgmgrl sys/S1sPassword1!@cdb1_stby <<EOF
+SHOW CONFIGURATION;
+FAILOVER TO cdb1_stby;
+SHOW CONFIGURATION;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Validar Acceso a Datos:}
+    \begin{lstlisting}[language=SQL, caption={Verificar Disponibilidad}]
+-- Conectarse al nuevo Primary (ex-Standby, puerto 1522)
+sqlplus HC/password@localhost:1522/pdb1
+
+SELECT * FROM TEST_SWITCHOVER;
+    \end{lstlisting}
+
+    \item \textbf{Recuperar Primary Original (Reinstatement):}
+    \begin{lstlisting}[language=bash, caption={Reinstauración con Flashback}]
+# Reiniciar Primary
+vagrant reload primary
+
+# Esperar que Oracle inicie
+sleep 60
+
+# Reinstaurar como nuevo Standby
+vagrant ssh standby -c "dgmgrl / <<EOF
+REINSTATE DATABASE cdb1;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Verificar Configuración Final:}
+    \begin{lstlisting}[language=bash, caption={Validación Post-Reinstatement}]
+vagrant ssh standby -c "/home/oracle/automation/verify_dataguard.sh"
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Criterios de Éxito}
+\begin{itemize}
+    \item Failover completado en $<$ 10 minutos.
+    \item Pérdida de datos mínima o nula (solo transacciones no confirmadas del Primary).
+    \item Reinstatement exitoso usando Flashback Database en $<$ 10 minutos.
+    \item Configuración de Data Guard completamente funcional después del reinstatement.
+\end{itemize}
+
+\section{Validación de Backups RMAN}
+
+\subsection{Propósito}
+Confirmar que los backups automáticos son válidos y restaurables.
+
+\subsection{Procedimiento de Prueba}
+\begin{enumerate}
+    \item \textbf{Forzar Backup Manual:}
+    \begin{lstlisting}[language=bash, caption={Ejecutar Backup On-Demand}]
+vagrant ssh primary -c "/home/oracle/automation/manual_backup.sh"
+    \end{lstlisting}
+
+    \item \textbf{Verificar Existencia de Backups:}
+    \begin{lstlisting}[language=SQL, caption={Listar Backups Disponibles}]
+vagrant ssh primary -c "rman target / <<EOF
+LIST BACKUP SUMMARY;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Validar Backup (Sin Restaurar):}
+    \begin{lstlisting}[language=SQL, caption={RMAN Validation}]
+vagrant ssh primary -c "rman target / <<EOF
+RESTORE DATABASE VALIDATE;
+EXIT;
+EOF"
+    \end{lstlisting}
+    Este comando simula una restauración completa sin escribir archivos, validando la integridad de todos los backupsets.
+
+    \item \textbf{Verificar Transferencia al Standby:}
+    \begin{lstlisting}[language=bash, caption={Confirmar Copia en Standby}]
+vagrant ssh standby -c "ls -lh /u02/backup_from_primary/"
+    \end{lstlisting}
+
+    \item \textbf{Validar Backup desde Standby:}
+    \begin{lstlisting}[language=SQL, caption={Validación desde Nodo Standby}]
+vagrant ssh standby -c "rman target / <<EOF
+CATALOG START WITH '/u02/backup_from_primary/';
+RESTORE DATABASE VALIDATE;
+EXIT;
+EOF"
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Criterios de Éxito}
+\begin{itemize}
+    \item Comando \texttt{RESTORE DATABASE VALIDATE} completa sin errores.
+    \item Backup transferido correctamente al Standby (tamaño $>$ 500 MB).
+    \item Validación desde Standby exitosa (capacidad de restauración desde nodo remoto).
+    \item Logs de RMAN no muestran errores \texttt{ORA-}.
+\end{itemize}
+
+\section{Prueba de Recuperación de Archive Gaps}
+
+\subsection{Propósito}
+Validar la capacidad del sistema para recuperarse de una brecha en los archive logs.
+
+\subsection{Procedimiento de Prueba}
+\begin{enumerate}
+    \item \textbf{Simular Gap (Entorno de Prueba Únicamente):}
+    \begin{lstlisting}[language=SQL, caption={Detener Aplicación de Logs}]
+vagrant ssh standby -c "sqlplus / as sysdba <<EOF
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Generar Transacciones en Primary:}
+    \begin{lstlisting}[language=SQL, caption={Forzar Log Switches}]
+vagrant ssh primary -c "sqlplus / as sysdba <<EOF
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Detectar Gap:}
+    \begin{lstlisting}[language=SQL, caption={Consulta de Archive Gap}]
+vagrant ssh standby -c "sqlplus / as sysdba <<EOF
+SELECT * FROM V\$ARCHIVE_GAP;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Recuperación Automática:}
+    \begin{lstlisting}[language=SQL, caption={Reiniciar Aplicación de Logs}]
+vagrant ssh standby -c "sqlplus / as sysdba <<EOF
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+EXIT;
+EOF"
+    \end{lstlisting}
+
+    \item \textbf{Verificar Resolución:}
+    \begin{lstlisting}[language=bash, caption={Confirmar Gap Resuelto}]
+vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Criterios de Éxito}
+\begin{itemize}
+    \item Gap detectado correctamente por consulta \texttt{V\$ARCHIVE\_GAP}.
+    \item Gap resuelto automáticamente en $<$ 5 minutos (FAL server transfiere logs faltantes).
+    \item \texttt{Apply Lag} regresa a $<$ 5 segundos después de recuperación.
+\end{itemize}
+
+\section{Plan de Simulacros (Disaster Recovery Drills)}
+
+\subsection{Frecuencia Recomendada}
+\begin{itemize}
+    \item \textbf{Switchover:} Trimestral (cada 3 meses).
+    \item \textbf{Failover:} Semestral (cada 6 meses).
+    \item \textbf{Validación de Backups:} Mensual.
+    \item \textbf{Recuperación de Gaps:} Bajo demanda (si se detecta en producción).
+\end{itemize}
+
+\subsection{Documentación de Resultados}
+Para cada simulacro, documentar:
+\begin{itemize}
+    \item Fecha y hora de inicio/fin.
+    \item Duración de downtime (si aplica).
+    \item RTO real vs. objetivo (meta: $<$ 5 min para switchover, $<$ 10 min para failover).
+    \item RPO real (pérdida de datos, si aplica).
+    \item Problemas encontrados y resolución.
+    \item Lecciones aprendidas y mejoras al proceso.
+\end{itemize}
+
+\newpage
+% *************************************************
+% CAPÍTULO 6: CONCLUSIONES Y RECOMENDACIONES
 % *************************************************
 
 \chapter{Conclusiones y Recomendaciones Finales}
@@ -1139,7 +1509,353 @@ Verifica \textbf{11} secciones que incluyen: \texttt{PRIMARY} status, \texttt{MR
 \newpage
 
 % *************************************************
-% APÉNDICE D: BIBLIOGRAFÍA
+% APÉNDICE D: GLOSARIO DE TÉRMINOS Y ACRÓNIMOS
+% *************************************************
+
+\chapter{Glosario de Términos y Acrónimos}
+
+Esta sección proporciona definiciones rápidas de los términos técnicos y acrónimos utilizados en este manual.
+
+\section{Acrónimos de Oracle Database}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[CDB] \textit{Container Database}. Base de datos contenedora que aloja PDBs en la arquitectura multitenant de Oracle 12c+.
+
+    \item[PDB] \textit{Pluggable Database}. Base de datos autónoma dentro de un CDB, con sus propios usuarios y esquemas.
+
+    \item[FRA] \textit{Fast Recovery Area}. Área de almacenamiento dedicada para backups, archive logs y flashback logs. Ubicado en \texttt{/u02} en este proyecto.
+
+    \item[RMAN] \textit{Recovery Manager}. Herramienta de Oracle para backups, restauraciones y recuperación de bases de datos.
+
+    \item[SYS] Usuario administrativo de Oracle con máximos privilegios (\texttt{SYSDBA}).
+\end{description}
+
+\section{Acrónimos de Data Guard}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[DG] \textit{Data Guard}. Solución de alta disponibilidad y disaster recovery de Oracle basada en replicación de redo logs.
+
+    \item[DGMGRL] \textit{Data Guard Manager Command Line}. Herramienta CLI para administrar configuraciones de Data Guard Broker.
+
+    \item[MRP / MRP0] \textit{Managed Recovery Process}. Proceso en el standby que aplica los archive logs recibidos para mantener la sincronización.
+
+    \item[LNS] \textit{Log Network Server}. Proceso en el primary que envía redo data al standby a través de la red.
+
+    \item[RFS] \textit{Remote File Server}. Proceso en el standby que recibe redo data del primary.
+
+    \item[FAL] \textit{Fetch Archive Log}. Mecanismo para recuperar archive logs faltantes (cerrar gaps) automáticamente.
+
+    \item[LGWR] \textit{Log Writer}. Proceso que escribe cambios de transacciones a los redo logs.
+
+    \item[ARCn] \textit{Archiver Process}. Proceso que copia online redo logs completados a archive logs.
+\end{description}
+
+\section{Términos de Alta Disponibilidad}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[HA] \textit{High Availability} (Alta Disponibilidad). Capacidad de un sistema para permanecer operativo con mínimo downtime.
+
+    \item[DR] \textit{Disaster Recovery} (Recuperación ante Desastres). Estrategia para recuperar sistemas críticos después de fallos catastróficos.
+
+    \item[RTO] \textit{Recovery Time Objective}. Tiempo máximo aceptable para recuperar un sistema después de un fallo. Meta: $<$ 5 minutos para switchover, $<$ 10 minutos para failover.
+
+    \item[RPO] \textit{Recovery Point Objective}. Cantidad máxima aceptable de pérdida de datos medida en tiempo. Con \texttt{MAXAVAILABILITY}: RPO = 0 segundos.
+
+    \item[Switchover] Cambio planificado de roles entre primary y standby sin pérdida de datos. Usado para mantenimiento.
+
+    \item[Failover] Activación de emergencia del standby cuando el primary falla. Puede tener pérdida de datos si no está sincronizado.
+
+    \item[Reinstatement] Proceso de convertir un primary fallido en el nuevo standby usando Flashback Database.
+
+    \item[Apply Lag] Diferencia temporal entre los cambios aplicados en el primary y los aplicados en el standby. Meta: $<$ 5 segundos.
+
+    \item[Archive Gap] Brecha en la secuencia de archive logs recibidos por el standby. Debe ser cero para garantizar sincronización.
+\end{description}
+
+\section{Modos de Protección y Transporte}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[MAXAVAILABILITY] Modo de protección que garantiza cero pérdida de datos (RPO=0) con disponibilidad máxima. Primary espera confirmación del standby.
+
+    \item[MAXPROTECTION] Modo de protección más estricto. Si el standby no confirma, el primary se detiene. Garantiza RPO=0 absoluto.
+
+    \item[MAXPERFORMANCE] Modo de protección asíncrono. No espera confirmación del standby. Mejor rendimiento pero posible pérdida de datos.
+
+    \item[FASTSYNC] Modo de transporte sincrónico que espera confirmación en memoria del standby (no en disco). Balancea velocidad y protección.
+
+    \item[SYNC] Modo de transporte sincrónico que espera confirmación en disco del standby. Más lento que FASTSYNC pero más seguro.
+
+    \item[ASYNC] Modo de transporte asíncrono. No espera confirmación. Más rápido pero con riesgo de pérdida de datos.
+\end{description}
+
+\section{Términos de Infraestructura}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[VirtualBox] Hypervisor de código abierto para crear y ejecutar máquinas virtuales.
+
+    \item[Vagrant] Herramienta de orquestación para automatizar la creación y configuración de VMs mediante código (Infrastructure as Code).
+
+    \item[Provisioning] Proceso de instalar software y configurar un sistema automáticamente después de su creación.
+
+    \item[Synced Folders] Directorios compartidos entre el host (Windows) y las VMs (Linux) para transferir archivos.
+
+    \item[CRLF vs LF] Formatos de line endings. Windows usa CRLF (\texttt{\textbackslash r\textbackslash n}), Linux usa LF (\texttt{\textbackslash n}). Scripts Bash requieren LF.
+
+    \item[XFS] Sistema de archivos de alto rendimiento recomendado por Oracle para almacenamiento de bases de datos.
+
+    \item[SSH] \textit{Secure Shell}. Protocolo para acceso remoto seguro y transferencia de archivos (usado por rsync).
+
+    \item[rsync] Herramienta de sincronización de archivos sobre SSH, usada para transferir backups del primary al standby.
+\end{description}
+
+\section{Procesos de Automatización}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\normalfont\bfseries]
+    \item[Cron] Demonio de Unix/Linux para ejecutar tareas programadas en horarios específicos.
+
+    \item[Cron Job] Tarea programada específica en crontab (ej: backup diario a la 1:00 AM).
+
+    \item[Alert Log] Archivo de log principal de Oracle que registra eventos, errores y operaciones importantes. Ubicado en \texttt{/u01/app/oracle/diag/}.
+
+    \item[TNS] \textit{Transparent Network Substrate}. Capa de red de Oracle. Configurado en \texttt{tnsnames.ora} y \texttt{listener.ora}.
+
+    \item[Listener] Proceso de Oracle que escucha conexiones de red entrantes en el puerto 1521/1522.
+\end{description}
+
+\newpage
+
+% *************************************************
+% APÉNDICE E: TARJETA DE REFERENCIA RÁPIDA
+% *************************************************
+
+\chapter{Tarjeta de Referencia Rápida}
+
+Esta sección proporciona comandos esenciales y procedimientos de un vistazo para operaciones diarias.
+
+\section{Cadenas de Conexión}
+
+\subsection{Desde Host Windows (SQL*Plus o SQL Developer)}
+
+\begin{lstlisting}[language=bash, caption={Conexiones desde Windows Host}]
+# Primary CDB (Sistema)
+sqlplus sys/S1sPassword1!@localhost:1521/cdb1 as sysdba
+
+# Primary PDB (Aplicación - Usuario HC)
+sqlplus HC/password@localhost:1521/pdb1
+
+# Standby CDB (Sistema - Puerto 1522)
+sqlplus sys/S1sPassword1!@localhost:1522/cdb1_stby as sysdba
+\end{lstlisting}
+
+\subsection{Desde Dentro de las VMs (SSH)}
+
+\begin{lstlisting}[language=bash, caption={Conexiones Locales en VMs}]
+# Conexión SSH a VMs
+vagrant ssh primary
+vagrant ssh standby
+
+# Dentro de Primary VM
+sqlplus / as sysdba              # CDB como sysdba
+sqlplus HC/password@pdb1         # PDB esquema aplicación
+
+# Dentro de Standby VM
+sqlplus / as sysdba              # CDB como sysdba
+\end{lstlisting}
+
+\section{Comandos de Vagrant Esenciales}
+
+\begin{lstlisting}[language=bash, caption={Operaciones con Vagrant}]
+# Despliegue completo automatizado
+.\powershell\deploy.ps1
+
+# Operaciones individuales
+vagrant up primary               # Iniciar/crear Primary
+vagrant up standby               # Iniciar/crear Standby
+vagrant halt primary             # Apagar Primary
+vagrant reload primary           # Reiniciar Primary
+vagrant destroy -f               # Destruir TODAS las VMs
+vagrant ssh primary              # SSH a Primary
+
+# Destrucción completa (recomendado)
+.\powershell\destroy.ps1
+\end{lstlisting}
+
+\section{Comandos DGMGRL (Data Guard Broker)}
+
+\begin{lstlisting}[language=SQL, caption={Operaciones con Data Guard Broker}]
+# Conectarse al Broker
+dgmgrl /
+
+# Mostrar configuración
+SHOW CONFIGURATION;
+SHOW CONFIGURATION VERBOSE;
+
+# Verificar estado de bases de datos
+SHOW DATABASE cdb1;
+SHOW DATABASE cdb1_stby;
+
+# Switchover planificado
+SWITCHOVER TO cdb1_stby;
+
+# Failover de emergencia (desde standby)
+dgmgrl sys/S1sPassword1!@cdb1_stby
+FAILOVER TO cdb1_stby;
+
+# Reinstatement (después de failover)
+REINSTATE DATABASE cdb1;
+
+# Habilitar/Deshabilitar configuración
+ENABLE CONFIGURATION;
+DISABLE CONFIGURATION;
+\end{lstlisting}
+
+\section{Consultas SQL de Monitoreo}
+
+\begin{lstlisting}[language=SQL, caption={Verificación de Estado Data Guard}]
+-- Verificar rol de la base de datos
+SELECT DATABASE_ROLE, OPEN_MODE FROM V$DATABASE;
+
+-- Verificar procesos de Data Guard
+SELECT PROCESS, STATUS, THREAD#, SEQUENCE#
+FROM V$MANAGED_STANDBY;
+
+-- Verificar apply lag (en Primary)
+SELECT NAME, VALUE, DATUM_TIME
+FROM V$DATAGUARD_STATS
+WHERE NAME IN ('apply lag', 'transport lag');
+
+-- Detectar archive gaps (en Standby)
+SELECT * FROM V$ARCHIVE_GAP;
+
+-- Ver últimos archive logs aplicados (Standby)
+SELECT SEQUENCE#, FIRST_TIME, NEXT_TIME, APPLIED
+FROM V$ARCHIVED_LOG
+WHERE APPLIED = 'YES'
+ORDER BY SEQUENCE# DESC
+FETCH FIRST 10 ROWS ONLY;
+
+-- Verificar switchover status
+SELECT SWITCHOVER_STATUS FROM V$DATABASE;
+\end{lstlisting}
+
+\section{Comandos RMAN Esenciales}
+
+\begin{lstlisting}[language=SQL, caption={Operaciones de Backup con RMAN}]
+# Conectarse a RMAN
+rman target /
+
+# Listar backups existentes
+LIST BACKUP SUMMARY;
+
+# Validar backups (sin restaurar)
+RESTORE DATABASE VALIDATE;
+
+# Backup manual completo
+BACKUP DATABASE PLUS ARCHIVELOG;
+
+# Eliminar backups obsoletos
+DELETE NOPROMPT OBSOLETE;
+
+# Validar base de datos completa
+VALIDATE DATABASE;
+
+# Reporte de archivos que necesitan backup
+REPORT NEED BACKUP;
+\end{lstlisting}
+
+\section{Scripts de Automatización}
+
+\begin{lstlisting}[language=bash, caption={Scripts Disponibles en /home/oracle/automation/}]
+# VERIFICACIÓN COMPLETA (Ejecutar manualmente)
+/home/oracle/automation/verify_dataguard.sh
+
+# BACKUP MANUAL (antes de cambios críticos)
+/home/oracle/automation/manual_backup.sh
+
+# SINCRONIZACIÓN MANUAL (forzar log switch)
+/home/oracle/automation/manual_sync.sh
+
+# Scripts Cron (ejecutados automáticamente)
+# - check_log_transport.sh       (cada 10 min - Primary)
+# - rman_daily_backup.sh          (1:00 AM - Primary)
+# - delete_archives_primary.sh    (2:00 AM - Primary)
+# - delete_archives_standby.sh    (11:00 PM - Standby)
+\end{lstlisting}
+
+\section{Procedimientos de Emergencia}
+
+\subsection{Primary Caído - Activar Standby}
+
+\begin{lstlisting}[language=bash, caption={Failover de Emergencia}]
+# 1. Conectarse al Standby
+vagrant ssh standby
+
+# 2. Ejecutar failover
+dgmgrl sys/S1sPassword1!@cdb1_stby <<EOF
+SHOW CONFIGURATION;
+FAILOVER TO cdb1_stby;
+EXIT;
+EOF
+
+# 3. Verificar nuevo Primary
+sqlplus / as sysdba <<EOF
+SELECT DATABASE_ROLE, OPEN_MODE FROM V\$DATABASE;
+EXIT;
+EOF
+\end{lstlisting}
+
+\subsection{Recuperar Apply Lag Alto}
+
+\begin{lstlisting}[language=SQL, caption={Resolver Retraso en Standby}]
+-- En Standby, reiniciar MRP
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE
+    DISCONNECT FROM SESSION;
+
+-- En Primary, forzar log switch
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+\end{lstlisting}
+
+\subsection{Resolver Archive Gap}
+
+\begin{lstlisting}[language=SQL, caption={Recuperación de Logs Faltantes}]
+-- En Standby, detectar gap
+SELECT * FROM V$ARCHIVE_GAP;
+
+-- Copiar manualmente archives faltantes (si FAL falla)
+-- En Primary:
+scp /u01/app/oracle/fra/cdb1/archivelog/archivo_X.arc \
+    oracle@ol8-21-dg2:/u01/app/oracle/fra/cdb1_stby/
+
+-- En Standby, registrar archive log
+ALTER DATABASE REGISTER LOGFILE
+    '/u01/app/oracle/fra/cdb1_stby/archivo_X.arc';
+\end{lstlisting}
+
+\section{Información de Contacto y Logs}
+
+\begin{lstlisting}[language=bash, caption={Ubicaciones Importantes}]
+# Alert Logs de Oracle
+# Primary:
+/u01/app/oracle/diag/rdbms/cdb1/cdb1/trace/alert_cdb1.log
+
+# Standby:
+/u01/app/oracle/diag/rdbms/cdb1_stby/cdb1_stby/trace/alert_cdb1_stby.log
+
+# Logs de automatización
+/home/oracle/logs/automation/
+
+# Configuración de red Oracle
+/u01/app/oracle/product/21.0.0/dbhome_1/network/admin/
+    - tnsnames.ora
+    - listener.ora
+    - sqlnet.ora
+\end{lstlisting}
+
+\newpage
+
+% *************************************************
+% APÉNDICE F: BIBLIOGRAFÍA
 % *************************************************
 
 \chapter{Bibliografía y Recursos Adicionales}
