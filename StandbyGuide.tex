@@ -692,7 +692,7 @@ El siguiente diagrama ilustra el flujo completo de backup automatizado, desde la
     node distance=1.2cm,
     process/.style={rectangle, rounded corners, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=4cm, thick, align=center, font=\small},
     decision/.style={diamond, draw=orange!80, fill=orange!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\small, aspect=2},
-    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\small},
+    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=0.5cm, minimum width=3cm, thick, align=center, font=\small, aspect=0.25},
     arrow/.style={-{Stealth[length=3mm]}, thick},
     success/.style={draw=green!70!black, thick},
     error/.style={draw=red!70, thick}
@@ -755,36 +755,36 @@ El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situac
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[
-    node distance=1cm and 1.5cm,
-    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\footnotesize, aspect=1.5},
-    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\footnotesize},
-    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\footnotesize},
-    arrow/.style={-{Stealth[length=2.5mm]}, thick}
+    node distance=0.7cm and 1.2cm,
+    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=0.8cm, minimum width=2cm, thick, align=center, font=\tiny, aspect=1.5},
+    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.6cm, minimum width=2.5cm, thick, align=center, font=\tiny},
+    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.6cm, minimum width=2.5cm, thick, align=center, font=\tiny},
+    arrow/.style={-{Stealth[length=2mm]}, thick}
   ]
 
     % Nivel 1
     \node (start) [question] {¿Primary \\ responde?};
 
     % Nivel 2 - Sí responde
-    \node (check_perf) [question, below left=1.2cm and 2cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
+    \node (check_perf) [question, below left=0.9cm and 1.5cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
 
     % Nivel 2 - No responde
-    \node (check_standby) [question, below right=1.2cm and 2cm of start] {¿Standby \\ sincronizado? \\ (Apply Lag $<$ 5s)};
+    \node (check_standby) [question, below right=0.9cm and 1.5cm of start] {¿Standby \\ sincronizado? \\ (Lag $<$ 5s)};
 
-    % Nivel 3 - Performance issue
-    \node (investigate) [action, below left=1cm and 0.4cm of check_perf] {\textbf{Investigar} \\ No hacer failover \\ Optimizar Primary};
+    % Nivel 3 - Performance issue (rama izquierda más arriba)
+    \node (investigate) [action, below left=0.7cm and 0.7cm of check_perf] {\textbf{Investigar} \\ No failover \\ Optimizar};
 
-    \node (switchover) [action, below right=1cm and 0.4cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento \\ planificado};
+    \node (switchover) [action, below right=0.9cm and 0.7cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento};
 
-    % Nivel 3 - Primary caído y standby OK
-    \node (failover_immediate) [critical, below left=1cm and 0.4cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
+    % Nivel 3 - Primary caído (rama derecha más abajo para separar)
+    \node (failover_immediate) [critical, below left=0.9cm and 0.7cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
 
-    \node (assess_loss) [question, below right=1cm and 0.4cm of check_standby] {¿Pérdida de \\ datos \\ aceptable?};
+    \node (assess_loss) [question, below right=1.1cm and 0.7cm of check_standby] {¿Pérdida \\ aceptable?};
 
     % Nivel 4 - Decisión final
-    \node (failover_with_loss) [critical, below=0.8cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida \\ (Documentar RPO)};
+    \node (failover_with_loss) [critical, below=0.6cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida};
 
-    \node (wait_recover) [action, right=1.5cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar Primary \\ si es posible};
+    \node (wait_recover) [action, right=1.2cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar};
 
     % Conexiones
     \draw [arrow] (start) -- node[above left, font=\tiny] {Sí} (check_perf);
