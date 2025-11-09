@@ -147,18 +147,16 @@ BEGIN
 
     SELECT COUNT(*)
     INTO v_invalid_count
-    FROM ALL_OBJECTS
-    WHERE status = 'INVALID'
-    AND owner = USER;
+    FROM DBA_OBJECTS
+    WHERE status = 'INVALID';
 
     IF v_invalid_count > 0 THEN
-        FOR obj IN (SELECT object_name, object_type
-                    FROM ALL_OBJECTS
-                    WHERE status = 'INVALID'
-                    AND owner = USER) LOOP
-            v_invalid_list := v_invalid_list || 
-                '<li><strong>' || obj.object_name || '</strong> - <em>Tipo:</em> ' || 
-                obj.object_type || '</li>';
+        FOR obj IN (SELECT object_name, object_type, owner
+            FROM DBA_OBJECTS
+            WHERE status = 'INVALID') LOOP
+        v_invalid_list := v_invalid_list ||
+            '<li><strong>' || obj.object_name || '</strong> - <em>Tipo:</em> ' ||
+            obj.object_type || ' - <em>Owner:</em> ' || obj.owner || '</li>';
         END LOOP;
         
         -- Construir el cuerpo HTML con el nuevo formato

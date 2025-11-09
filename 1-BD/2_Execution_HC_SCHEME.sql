@@ -13,6 +13,7 @@
 @Encryption\FNC_ENCRYPT.sql;
 @Encryption\FNC_DECRYPT.sql;
 @Notifications\PKG_FUNCTIONS_JOBS.pkg;
+@Notifications\Script_Jobs.sql;
 @Payrolls\PCD_APPROVE_PAYROLL.sql;
 @Payrolls\PCD_GENERATE_PAYMENT.sql;
 @Payrolls\PCD_GENERATE_PAYMENT_PAYROLL.sql;
