@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Healthcare Management System with Oracle 21c Data Guard high availability setup. This is a database-centric application managing healthcare centers, users (medics and administrative staff), payrolls, work shifts/schedules (month scales), medical procedures, and document management.
+Oracle 21c Data Guard high availability infrastructure with a simple test schema for verifying replication capabilities.
 
-The project consists of two main components:
-1. **Database Schema & Business Logic** (`1-BD/`) - Oracle PL/SQL database with healthcare management system
-2. **Infrastructure** (`2-Standby/`) - Oracle Data Guard setup for high availability with primary/standby replication
+The project consists of two independent components:
+1. **Database Schema & Business Logic** (`1-BD/`) - Oracle PL/SQL database with healthcare management system (managed by separate team)
+2. **Infrastructure** (`2-Standby/`) - **STANDALONE** Oracle Data Guard setup with simple test schema for replication testing
+
+**IMPORTANT**: The `2-Standby/` infrastructure is completely independent and does NOT depend on `1-BD/` files. It includes its own simple schema for testing Data Guard replication.
 
 ## Repository Structure
 
@@ -28,7 +30,10 @@ ROOT/
 │   ├── NationalRegister/          # National ID verification
 │   └── Tests/                     # Database tests
 │
-├── 2-Standby/                     # Oracle Data Guard infrastructure
+├── 2-Standby/                     # Oracle Data Guard infrastructure (STANDALONE)
+│   ├── schema/                    # Simple test schema for Data Guard testing
+│   │   ├── create_user.sql        # User creation (dgtest with default tablespace)
+│   │   └── simple_schema.sql      # Tables, sequences, procedures for replication testing
 │   ├── scripts/primary/           # Primary DB setup scripts
 │   ├── scripts/standby/           # Standby DB setup scripts
 │   ├── scripts/optional/          # Optional on-demand provisioners
@@ -85,10 +90,11 @@ vagrant destroy -f          # Destroy all VMs
 
 ### Schema Deployment Process
 
-The database schema is deployed automatically during `vagrant up primary` via:
-- Script location on VM: `/vagrant/1-BD/ScriptProyectoBD.SQL`
+The simple test schema is deployed automatically during `vagrant up primary` via:
+- Schema scripts on VM: `/vagrant/2-Standby/schema/` (create_user.sql, simple_schema.sql)
 - Deployment script: `2-Standby/scripts/primary/deploy_custom_schema.sh`
-- Target: PDB named `pdb1` with schema user `HEALTHCENTER`
+- Target: PDB named `pdb1` with schema user `dgtest`
+- Tablespace: Uses default `USERS` tablespace (no custom tablespace needed)
 
 ### Manual Database Operations
 
@@ -97,72 +103,92 @@ Connect to the database from Windows host:
 # Primary CDB (Container Database)
 sqlplus sys/S1sPassword1!@localhost:1521/cdb1 as sysdba
 
-# Primary PDB (Pluggable Database - where app schema lives)
+# Primary PDB (Pluggable Database - where test schema lives)
 sqlplus sys/S1sPassword1!@localhost:1521/pdb1 as sysdba
 
-# Application schema (healthcare system)
-sqlplus HEALTHCENTER/HCApp2025!@localhost:1521/pdb1
+# Test schema (Data Guard replication testing)
+sqlplus dgtest/DGTest2025!@localhost:1521/pdb1
 
 # Standby CDB
 sqlplus sys/S1sPassword1!@localhost:1522/cdb1_stby as sysdba
+
+# Standby PDB (read-only - for verifying replication)
+sqlplus sys/S1sPassword1!@localhost:1522/pdb1 as sysdba
 ```
 
-### Key Procedures & Workflow
+### Testing Data Guard Replication
 
-The healthcare system follows this operational workflow:
+The simple test schema provides easy ways to verify Data Guard replication:
 
-**1. Create Monthly Work Schedule (Month Scale)**
+**1. Insert Test Data on Primary**
 ```sql
--- Generate month scale for health center
--- Parameters: month ('01'-'12'), year (YYYY), health_center_id
-EXEC generate_month_scale('10', 2025, 1);
+-- Connect to primary database
+sqlplus dgtest/DGTest2025!@localhost:1521/pdb1
+
+-- Insert test data using the procedure
+DECLARE
+  v_test_id NUMBER;
+BEGIN
+  insert_test_data('My Test Record', 'Testing Data Guard replication', v_test_id);
+  DBMS_OUTPUT.PUT_LINE('Created test record with ID: ' || v_test_id);
+END;
+/
+
+-- Or insert directly
+INSERT INTO replication_test (id, test_name, test_data)
+VALUES (seq_replication_test.NEXTVAL, 'Manual Test', 'Inserted at ' || SYSTIMESTAMP);
+COMMIT;
 ```
 
-**2. Approve Month Scale & Mark Shifts Complete**
+**2. Verify Replication on Standby**
 ```sql
--- Marks all shifts in the month scale as finished ('F')
--- Changes month scale state to 'P' (Payment pending)
-EXEC pkg_utilities.approve_month_scale(1);  -- param: MSC_id
+-- Connect to standby database (read-only)
+sqlplus dgtest/DGTest2025!@localhost:1522/pdb1
+
+-- Query replicated data
+SELECT id, test_name, created_at, created_on_db
+FROM replication_test
+ORDER BY created_at DESC;
+
+-- Check replication status
+SET SERVEROUTPUT ON
+EXEC check_replication_status;
 ```
 
-**3. Generate Payroll**
-```sql
--- Generate payroll for specific month, year, and payroll type
--- Payroll Type: 1=Medics, 2=Administrative
-EXEC generate_payroll('10', 2025, 1);
+**3. Monitor Data Guard Lag**
+```bash
+# SSH into primary VM
+vagrant ssh primary
+
+# Run Data Guard verification script
+/home/oracle/automation/verify_dataguard.sh
+
+# Check log transport status
+/home/oracle/automation/check_log_transport.sh
 ```
 
-**4. Process Payment**
-```sql
--- Generate payment calculations for payroll
-EXEC PCD_GeneratePayment(1);  -- param: PRL_id
-```
+### Test Schema Components
 
-### Application Schema Key Components
+**Schema User**: `dgtest` (password: `DGTest2025!`)
 
-**Schema User**: `HEALTHCENTER` (password: `HCApp2025!`)
+**Test Tables**:
+- `replication_test` - Main test table with timestamps and DB name tracking
+- `replication_details` - Secondary table for testing foreign key replication
+- `audit_log` - Simple audit trail for tracking operations
 
-**Core Tables**:
-- `HC_User` - Users (medics and administrative staff)
-- `HC_HealthCenter` - Healthcare facilities
-- `HC_MonthScale` - Monthly work schedules per health center
-- `HC_TurnXMonthScale` - Individual work shifts/turns in a month
-- `HC_Payroll` - Payroll records (monthly)
-- `HC_PayrollXUser` - Payroll per user
-- `HC_PayrollMovement` - Individual payroll line items (incomes/deductions)
-- `HC_Procedure` - Medical procedures performed (generates revenue for medics)
-- `HC_Position` - Job positions at health centers
-- `HC_Turn` - Base turn/shift definitions
+**Sequences**:
+- `seq_replication_test` - ID generator for replication_test
+- `seq_replication_details` - ID generator for replication_details
+- `seq_audit_log` - ID generator for audit_log
 
-**Key Packages**:
-- `PKG_UTILITIES` - Core utilities (approve_month_scale, etc.)
-- `PKG_LOGBOOK` - Audit logging
-- `PKG_EMAILS` - Email notifications
-- `PKG_FUNCTIONS_JOBS` - Scheduled job functions
+**Procedures**:
+- `insert_test_data(test_name, test_data, OUT test_id)` - Insert test records with automatic auditing
+- `check_replication_status()` - Display replication status and record counts
 
-**Month Scale States**: B=Building, A=Active, R=Review, P=Payment, C=Complete
-**Payroll Movement Types**: I=Income, D=Deduction
-**Amount Types**: A=Absolute, P=Percentage
+**Key Columns for Testing**:
+- `created_at` - Timestamp when record was created (compare primary vs standby)
+- `updated_at` - Timestamp when record was last updated
+- `created_on_db` - Database unique name where record originated
 
 ## Infrastructure Details
 
@@ -207,6 +233,7 @@ Inside VMs:
 
 **`config/install.env`** - Key environment variables:
 - Database credentials (SYS_PASSWORD, PDB_PASSWORD, APP_SCHEMA_PASSWORD)
+- Test schema configuration (APP_SCHEMA=dgtest, uses default USERS tablespace)
 - Network configuration (NODE1_PUBLIC_IP, NODE2_PUBLIC_IP)
 - Data Guard settings (PROTECTION_MODE, ARCHIVE_LAG_TARGET)
 - Backup settings (BACKUP_RETENTION_DAYS, ARCHIVE_RETENTION_DAYS)
@@ -220,18 +247,19 @@ Inside VMs:
 
 When modifying infrastructure:
 
-1. **Database schema path**: Scripts reference `/vagrant/1-BD/ScriptProyectoBD.SQL` inside VMs
+1. **Database schema path**: Scripts reference `/vagrant/2-Standby/schema/` inside VMs (completely standalone)
 2. **Vagrantfile syncs**:
    - Root directory → `/vagrant`
    - `config/` → `/vagrant_config`
    - `software/` → `/vagrant_software`
    - `2-Standby/scripts/` → accessed via `/vagrant/2-Standby/scripts/`
+   - `2-Standby/schema/` → accessed via `/vagrant/2-Standby/schema/`
    - `2-Standby/automation/` → `/vagrant_automation`
    - `2-Standby/infrastructure/` → `/vagrant_scripts`
-   - `1-BD/SQL-VM scripts/` → `/vagrant_sql_scripts`
-   - `1-BD/directories/` → `/vagrant_directories`
 
 3. **PowerShell scripts**: Located in `powershell/` at root, use `..` to reference parent directories
+
+**NOTE**: The obsolete synced folders `1-BD/SQL-VM scripts/` and `1-BD/directories/` have been removed. The 2-Standby infrastructure no longer depends on any 1-BD files.
 
 ## Common Issues
 
@@ -268,4 +296,27 @@ vagrant reload
 
 ## Testing
 
-Database tests located in `1-BD/Tests/Script-Tests.sql`. Connect to PDB as HEALTHCENTER user to run tests.
+The simple test schema (`dgtest`) is designed for testing Data Guard replication:
+
+```sql
+-- Connect to primary
+sqlplus dgtest/DGTest2025!@localhost:1521/pdb1
+
+-- Insert test data
+EXEC insert_test_data('Test ' || TO_CHAR(SYSDATE, 'HH24:MI:SS'), 'Auto test data');
+
+-- View all test records
+SELECT * FROM replication_test ORDER BY created_at DESC;
+
+-- Connect to standby (after waiting for log transport)
+sqlplus dgtest/DGTest2025!@localhost:1522/pdb1
+
+-- Verify data replicated
+SELECT * FROM replication_test ORDER BY created_at DESC;
+
+-- Check replication status
+SET SERVEROUTPUT ON
+EXEC check_replication_status;
+```
+
+For testing the healthcare schema in `1-BD/`, see `1-BD/Tests/Script-Tests.sql` (requires HEALTHCENTER schema deployment via optional provisioner).

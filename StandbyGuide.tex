@@ -76,6 +76,9 @@
     language=bash
 }
 
+% Configurar nombres en español para listings
+\renewcommand{\lstlistingname}{Código}
+
 \lstdefinelanguage{SQL}{
   keywords={SELECT, FROM, WHERE, AND, OR, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TABLE, VIEW, INDEX, AS, INTO, VALUES, COMMIT, ROLLBACK, BEGIN, END, SET, EXIT, 
 ON, ALL, DATABASE, RECOVER, MANAGED, STANDBY, DISCONNECT, SESSION, LOGFILE, ARCHIVE, CURRENT, V, FROM, NOT, NULL, MAX, COUNT, ORDER, BY, GROUP, SHOW, PARAMETER, VDATABASE, VARCHIVEDLOG, VMANAGEDSTANDBY, VLOGFILE, VLOGHISTORY, VDATAGUARDSTATS, VARCHIVEGAP, VINSTANCE, DGMGRL, SYSTEM, REGISTER, LOG, UNTIL, SEQUENCE, THREAD, TO_CHAR, SYSDATE, USING, WITH, PDB, PLUGGABLE, ADD, DATAFILE, RESIZE, RUN, ALLOCATE, CHANNEL, FOR, MAINTENANCE, DEVICE, TYPE, DISK, DELETE, NOPROMPT, OBSOLETE, CROSSCHECK, LIST, BACKUP, SUMMARY, VALIDATE, RESTORE, RMAN, PLUS, DELETION, POLICY, RECOVERY, WINDOW, CONTROLFILE, AUTOBACKUP, FORMAT, RELEASE, REPORT, NEED, BLOCK, OFFLINE, ONLINE, SIZE, MEMBER},
@@ -118,7 +121,7 @@ ON, ALL, DATABASE, RECOVER, MANAGED, STANDBY, DISCONNECT, SESSION, LOGFILE, ARCH
 
 Este manual documenta la implementación completa de un sistema de alta disponibilidad utilizando Oracle Database 21c y Oracle Data Guard. El proceso está totalmente automatizado mediante scripts de Vagrant y Bash, permitiendo desplegar un entorno replicado (Principal y Standby) en minutos.
 
-El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar la \textbf{cero pérdida de datos} y la \textbf{continuidad del servicio}. El enfoque de este manual está en cómo la arquitectura Data Guard automatizada resuelve la necesidad de \textbf{alta disponibilidad} para cualquier aplicación que lo requiera.
+El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar la cero pérdida de datos y la continuidad del servicio. El enfoque de este manual está en cómo la arquitectura Data Guard automatizada resuelve la necesidad de \textbf{alta disponibilidad} para cualquier aplicación que lo requiera.
 
 \subsection{Componentes Principales del Entorno}
 
@@ -128,11 +131,11 @@ El sistema replica la base de datos principal en tiempo real a una base de datos
         \item Oracle Database 21c Enterprise Edition.
 \item Container Database (CDB): \texttt{cdb1}.
         \item Pluggable Database (PDB): \texttt{pdb1}.
-        \item Esquema de aplicación: (Definido por scripts personalizables, por defecto \texttt{HC}).
+        \item Esquema de prueba: \texttt{dgtest} (esquema simple para validar replicación de Data Guard).
         \item Servidor: \texttt{ol8-21-dg1.localdomain} (\texttt{192.168.56.101}).
 \end{itemize}
     \vspace{0.3em}
-    \textit{Nota: Los detalles del esquema de aplicación (tablas, procedimientos, lógica de negocio) están fuera del alcance de esta guía de infraestructura. Solo se documentan las credenciales de conexión.}
+    \textit{Nota: El esquema de prueba incluye tablas básicas con timestamps para verificar la replicación. Para esquemas de aplicación complejos, consulte la documentación en \texttt{1-BD/}.}
     \item \textbf{Base de Datos \textit{Standby}}
     \begin{itemize}
         \item Réplica física exacta del \textit{primary}.
@@ -237,7 +240,7 @@ Los \textbf{Archive Logs} son la copia histórica de los \textbf{Online Redo Log
     \item \textbf{VirtualBox:} Es el \textbf{hypervisor} (motor de virtualización) que crea y ejecuta las Máquinas Virtuales (VMs) Oracle Linux 8.
     \item \textbf{Vagrant:} Es la herramienta de \textbf{orquestación} que lee el \texttt{Vagrantfile} y automatiza la creación, configuración y \textit{provisioning} de las VMs.
     \item \textbf{Provisioning (Aprovisionamiento):} En el contexto de Vagrant, este es el proceso de instalar software, configurar el sistema y ejecutar scripts automáticamente en la VM después de que esta ha sido creada. En este proyecto, los \textit{provisioners} son los scripts Bash que instalan Oracle y configuran Data Guard.
-    \item \textbf{Synced Folders:} Permiten compartir directorios entre el \textit{host} (Windows) y las VMs (Linux), lo cual es **indispensable** para que los \textit{scripts} de \textit{provisioning} accedan al software de Oracle.
+    \item \textbf{Synced Folders:} Permiten compartir directorios entre el \textit{host} (Windows) y las VMs (Linux), lo cual es indispensable para que los \textit{scripts} de \textit{provisioning} accedan al software de Oracle.
 \end{itemize}
 
 El Vagrantfile y Vagrant eliminan la necesidad de configurar manualmente las VMs, la red y el sistema operativo, siendo el comando clave \texttt{vagrant up}.
@@ -254,7 +257,7 @@ El uso del Broker es la práctica moderna recomendada por Oracle para administra
 
 \section{Requisitos y Configuración Inicial}
 
-Antes de iniciar el despliegue automatizado, es **necesario** verificar el cumplimiento de los siguientes requisitos.
+Antes de iniciar el despliegue automatizado, es necesario verificar el cumplimiento de los siguientes requisitos.
 \subsection{Requisitos de Hardware del Sistema Host (Su PC)}
 
 Se recomienda un mínimo de \textbf{12 GB de RAM} para el sistema host, aunque \textbf{16 GB o más} son preferibles para un rendimiento fluido, ya que cada VM consumirá 4 GB.
@@ -292,12 +295,16 @@ Asegúrese de que existe el archivo del software de Oracle y los archivos de con
 
 \subsubsection{Configuración del Archivo \texttt{install.env}}
 
-Este archivo contiene todas las variables de entorno usadas por los scripts Bash dentro de las VMs.
+Este archivo contiene todas las variables de entorno usadas por los scripts Bash dentro de las VMs.\footnote{Nota: El archivo \texttt{install.env} contiene contraseñas en texto plano. Se recomienda no subirlo a repositorios públicos y usar contraseñas fuertes en entornos de producción.}
 \begin{lstlisting}[language=bash, caption={Valores de configuración en install.env}]
 # Passwords (cambiar en producción)
 SYS_PASSWORD="S1sPassword1!"
 PDB_PASSWORD="PdbPassword1!"
-APP_SCHEMA_PASSWORD="password"
+
+# Simple Test Schema Configuration (para pruebas de Data Guard)
+APP_SCHEMA=dgtest
+APP_SCHEMA_PASSWORD="DGTest2025!"
+
 # IPs de Red (debe coincidir con vagrant.yml)
 NODE1_PUBLIC_IP=192.168.56.101
 NODE2_PUBLIC_IP=192.168.56.102
@@ -312,9 +319,6 @@ BACKUP_RETENTION_DAYS=7       # Retener backups 7 días
 ARCHIVE_RETENTION_DAYS=3      # Retener archives 3 días
 \end{lstlisting}
 
-\advertencia{El archivo \texttt{install.env} contiene contraseñas en texto plano.
-Asegúrese de que no se suba a repositorios públicos y de usar contraseñas fuertes en entornos de producción.}
-
 \chapter{Arquitectura y Configuración Detallada}
 
 \section{Arquitectura Completa del Sistema}
@@ -327,7 +331,7 @@ El sistema opera bajo una arquitectura de 3 capas (Presentación, Aplicación, D
 \item \textbf{Primary Virtual Machine:} \texttt{ol8-21-dg1.localdomain} (\texttt{192.168.56.101}).
     \begin{itemize}
         \item Oracle Database 21c, CDB \texttt{cdb1}, PDB \texttt{pdb1}.
-        \item Esquema de aplicación (por defecto \texttt{HC}).
+        \item Esquema de prueba: \texttt{dgtest} (con tablespace por defecto USERS).
 \item Rol: \texttt{PRIMARY}, \textit{Read-Write}.
         \item Recursos: 4 GB RAM, 2 CPUs, 200 GB disco.
 \end{itemize}
@@ -341,17 +345,17 @@ El sistema opera bajo una arquitectura de 3 capas (Presentación, Aplicación, D
 \end{enumerate}
 
 \subsection{Diagrama de Arquitectura}
-La arquitectura de red y almacenamiento se resume en el siguiente diagrama:
+La arquitectura de red y almacenamiento se resume en la Figura~\ref{fig:arquitectura_tikz}:
 
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[
-    node distance=1cm and 1.5cm,
-    host/.style={rectangle, rounded corners, draw=black, fill=gray!10, minimum height=12cm, minimum width=15cm, label=above:\textbf{Host (Windows/Linux/macOS)}},
+    node distance=0.8cm and 1.5cm,
+    host/.style={rectangle, rounded corners, draw=black, fill=gray!10, minimum height=9cm, minimum width=15cm, label=above:\textbf{Host (Windows/Linux/macOS)}},
     % Corrección: Ancho reducido (min width 6cm -> 5.5cm)
-    vm/.style={rectangle, rounded corners, draw=blue!80, fill=blue!5, minimum height=6.5cm, minimum width=5.5cm, thick, 
+    vm/.style={rectangle, rounded corners, draw=blue!80, fill=blue!5, minimum height=5cm, minimum width=5.5cm, thick,
               drop shadow={opacity=0.7}},
-    disk/.style={shape=cylinder, shape border rotate=90, draw=gray, fill=gray!20, aspect=0.3, minimum height=0.7cm, minimum width=2.5cm, font=\tiny},
+    disk/.style={shape=cylinder, shape border rotate=90, draw=gray, fill=gray!20, aspect=0.3, minimum height=0.6cm, minimum width=2.5cm, font=\tiny},
     net/.style={rectangle, draw=green!60!black, dashed, fill=green!5, minimum width=14cm, font=\small},
     arrow/.style={-{Stealth[length=3mm]}, thick, draw=black!70},
     repl_arrow/.style={<->, Stealth-Stealth, thick, red!80, dashed}
@@ -370,8 +374,8 @@ La arquitectura de red y almacenamiento se resume en el siguiente diagrama:
     };
     
     % Discos dentro de la VM
-    \node (disk1_u01) [disk, at={(vm1.south)}, yshift=2.2cm] {\texttt{/u01} (Data/SW)};
-    \node (disk1_u02) [disk, below=0.2cm of disk1_u01] {\texttt{/u02} (FRA/Backup)};
+    \node (disk1_u01) [disk, at={(vm1.south)}, yshift=1.7cm] {\texttt{/u01} (Data/SW)};
+    \node (disk1_u02) [disk, below=0.15cm of disk1_u01] {\texttt{/u02} (FRA/Backup)};
     
     % VM2 - Standby
     % Corrección: Aumentada separación horizontal (de 3.5 a 4.5)
@@ -384,12 +388,12 @@ La arquitectura de red y almacenamiento se resume en el siguiente diagrama:
     };
 
     % Discos dentro de la VM
-    \node (disk2_u01) [disk, at={(vm2.south)}, yshift=2.2cm] {\texttt{/u01} (Data/SW)};
-    \node (disk2_u02) [disk, below=0.2cm of disk2_u01] {\texttt{/u02} (FRA/Backup)};
+    \node (disk2_u01) [disk, at={(vm2.south)}, yshift=1.7cm] {\texttt{/u01} (Data/SW)};
+    \node (disk2_u02) [disk, below=0.15cm of disk2_u01] {\texttt{/u02} (FRA/Backup)};
     
     % Redes
-    \node (net_hostonly) [net, below=1cm of host.south, anchor=center] {\textbf{Red Host-Only (192.168.56.0/24)}};
-    \node (net_nat) [net, above=1cm of host.north, anchor=center] {\textbf{Red NAT (Acceso a Internet)}};
+    \node (net_hostonly) [net, below=0.7cm of host.south, anchor=center] {\textbf{Red Host-Only (192.168.56.0/24)}};
+    \node (net_nat) [net, above=0.7cm of host.north, anchor=center] {\textbf{Red NAT (Acceso a Internet)}};
 
     % Conexiones
     \draw [arrow] (vm1.south) -- (vm1.south |- net_hostonly.north);
@@ -402,7 +406,7 @@ La arquitectura de red y almacenamiento se resume en el siguiente diagrama:
     \draw [arrow] (vm2.north) -- (vm2.north |- net_nat.south);
     
   \end{tikzpicture}
-  \caption{Diagrama de la arquitectura de despliegue (TikZ).}
+  \caption{Diagrama de la arquitectura de despliegue.}
   \label{fig:arquitectura_tikz}
 \end{figure}
 
@@ -480,7 +484,10 @@ Define las variables de entorno de la aplicación Oracle y Data Guard, leído po
 # Passwords (cambiar en producción)
 SYS_PASSWORD="S1sPassword1!"
 PDB_PASSWORD="PdbPassword1!"
-APP_SCHEMA_PASSWORD="password"
+
+# Simple Test Schema Configuration (para pruebas de Data Guard)
+APP_SCHEMA=dgtest
+APP_SCHEMA_PASSWORD="DGTest2025!"
 
 # IPs de Red (debe coincidir con vagrant.yml)
 NODE1_PUBLIC_IP=192.168.56.101
@@ -536,6 +543,8 @@ Esta acción previene el fallo de \textbf{todos} los \textit{provisioners} Bash.
 
 Antes de ejecutar cualquier comando, asegúrese de haber cumplido todos los requisitos de software listados en la Sección 1.8, incluyendo la descarga del archivo \texttt{LINUX.X64\_213000\_db\_home.zip} en la carpeta \texttt{software/}.
 
+\advertencia{\textbf{Configuración de Puertos:} Si los puertos \texttt{1521}, \texttt{1522}, \texttt{5500} o \texttt{5501} ya están en uso por otros servicios en su computadora, debe modificar el \texttt{Vagrantfile} antes del despliegue. Busque las líneas \texttt{forwarded\_port} y cambie los valores \texttt{host:} a puertos disponibles. Por ejemplo, puede usar \texttt{15210} en lugar de \texttt{1521} para el primary y \texttt{15220} en lugar de \texttt{1522} para el standby.}
+
 \subsection{Despliegue Completo Automatizado}
 
 La manera más eficiente de desplegar el sistema es a través del \textit{script} orquestador:
@@ -543,6 +552,8 @@ La manera más eficiente de desplegar el sistema es a través del \textit{script
 \begin{lstlisting}[language=bash, caption={Comando Principal de Despliegue}]
 .\powershell\deploy.ps1
 \end{lstlisting}
+
+\advertencia{El script \texttt{deploy.ps1} ejecuta \texttt{vagrant destroy -f} al inicio, eliminando las VMs existentes y todos sus datos. Para reanudar VMs existentes de manera segura, use \texttt{vagrant reload} seguido de \texttt{vagrant provision --provision-with setup\_oracle\_autostart}.}
 
 Este comando se encargará de instalar todo, desde el sistema operativo en las VMs hasta la configuración final de Data Guard Broker, incluyendo la creación del \textit{standby} con \quotes{...RMAN DUPLICATE FOR STANDBY FROM ACTIVE DATABASE.}
 
@@ -575,8 +586,8 @@ Este comando garantiza que se eliminen completamente las VMs, los discos virtual
         \textbf{Rol / Usuario} & \textbf{Conexión (Puerto Host)} & \textbf{Contraseña} \\
         \midrule
         \textbf{Primary (SYSDBA)} & \texttt{sys/S1sPassword1!@localhost:1521/cdb1} & \texttt{S1sPassword1!} \\
-        \textbf{Primary (Schema)} & \texttt{HC/password@localhost:1521/pdb1} & \texttt{password} \\
-        \textbf{Standby (SYSDBA)} 
+        \textbf{Primary (Schema)} & \texttt{dgtest/DGTest2025!@localhost:1521/pdb1} & \texttt{DGTest2025!} \\
+        \textbf{Standby (SYSDBA)}
 & \texttt{sys/S1sPassword1!@localhost:1522/cdb1\_stby} & \texttt{S1sPassword1!} \\
         \bottomrule
     \end{tabular}
@@ -585,11 +596,11 @@ Este comando garantiza que se eliminen completamente las VMs, los discos virtual
 Recuerde que el puerto para el \textit{Standby} desde el \textit{Host} es \texttt{1522}, debido al reenvío de puertos configurado en el \texttt{Vagrantfile}.
 
 \subsubsection{Conexión con SQL Developer (o GUI similar)}
-Para conectarse a la Pluggable Database (PDB) donde reside el esquema de aplicación (por defecto \texttt{HC}) usando una herramienta gráfica, es importante usar la configuración de red correcta.
+Para conectarse a la Pluggable Database (PDB) donde reside el esquema de prueba (por defecto \texttt{dgtest}) usando una herramienta gráfica, es importante usar la configuración de red correcta.
 
 \begin{itemize}
-    \item \textbf{Username:} \texttt{HC}
-    \item \textbf{Password:} \texttt{password} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
+    \item \textbf{Username:} \texttt{dgtest}
+    \item \textbf{Password:} \texttt{DGTest2025!} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
     \item \textbf{Hostname:} \texttt{localhost}
     \item \textbf{Port:} \texttt{1521} (para el Primary)
     \item \textbf{Connection Type:} Seleccione \textbf{Service name} (No usar SID).
@@ -602,7 +613,7 @@ El \textit{service name} \texttt{pdb1.world} es el nombre global de la base de d
 El script más importante para el monitoreo post-despliegue es:
 
 \begin{lstlisting}[language=bash, caption={Verificación Completa de Data Guard}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
 \end{lstlisting}
 Este script produce un reporte consolidado con el rol de la base de datos, el estado de los procesos (\texttt{MRP} / \texttt{LNS}), el \textit{apply lag} (debe ser $\mathbf{0\text{ segundos}}$), y la verificación de la replicación del esquema de aplicación.
 \section{Scripts de Mantenimiento y Automatización}
@@ -657,7 +668,7 @@ Esta sección documenta los procedimientos esenciales que el DBA debe ejecutar p
 \subsection{Verificación Manual (\texttt{verify\_dataguard.sh})}
 El DBA debe ejecutar este reporte para confirmar el estado:
 \begin{lstlisting}[language=bash, caption={Uso del Script de Verificación}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
 \end{lstlisting}
 \destacado{Puntos Clave a Revisar:} \texttt{Configuration Status} debe ser \texttt{SUCCESS}, \texttt{Apply Lag} debe ser mínimo, y \texttt{Archive Gap} debe ser \texttt{no rows selected}.
 \subsection{Monitoreo de Recursos}
@@ -670,7 +681,7 @@ vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
 
 \subsection{Ejecución On-Demand (\texttt{manual\_backup.sh})}
 \begin{enumerate}
-    \item Ejecutar \texttt{/home/oracle/automation/manual\_backup.sh} en el \textit{Primary}.
+    \item Conectarse al \textit{Primary} vía SSH y cambiar al usuario oracle (contraseña: \texttt{oracle}), luego ejecutar \texttt{/home/oracle/automation/manual\_backup.sh}.
 \item Confirmar \textit{backup} y transferencia al \textit{Standby}.
 \end{enumerate}
 
@@ -690,7 +701,7 @@ El siguiente diagrama ilustra el flujo completo de backup automatizado, desde la
     node distance=1.2cm,
     process/.style={rectangle, rounded corners, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=4cm, thick, align=center, font=\small},
     decision/.style={diamond, draw=orange!80, fill=orange!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\small, aspect=2},
-    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=1cm, minimum width=3cm, thick, align=center, font=\small},
+    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=0.5cm, minimum width=3cm, thick, align=center, font=\small, aspect=0.25},
     arrow/.style={-{Stealth[length=3mm]}, thick},
     success/.style={draw=green!70!black, thick},
     error/.style={draw=red!70, thick}
@@ -753,49 +764,49 @@ El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situac
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[
-    node distance=1.5cm and 2cm,
-    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=1.2cm, minimum width=3cm, thick, align=center, font=\footnotesize, aspect=1.5},
-    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
-    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
-    arrow/.style={-{Stealth[length=2.5mm]}, thick}
+    node distance=1.0cm and 1.5cm,
+    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=0.8cm, minimum width=2.2cm, thick, align=center, font=\scriptsize, aspect=2},
+    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.7cm, minimum width=2.8cm, thick, align=center, font=\scriptsize},
+    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.7cm, minimum width=2.8cm, thick, align=center, font=\scriptsize},
+    arrow/.style={-{Stealth[length=2mm]}, thick}
   ]
 
-    % Nivel 1
+    % Nivel 1 - Raíz central
     \node (start) [question] {¿Primary \\ responde?};
 
-    % Nivel 2 - Sí responde
-    \node (check_perf) [question, below left=1.5cm and 3cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
+    % Rama izquierda (Primary responde SÍ)
+    \node (check_perf) [question, below left=1.5cm and 2.0cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
+    
+    \node (investigate) [action, below left=1.0cm and 0.5cm of check_perf] {\textbf{Investigar} \\ No failover \\ Optimizar};
+    
+    \node (switchover) [action, below right=0.5cm and 0.5cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento};
 
-    % Nivel 2 - No responde
-    \node (check_standby) [question, below right=1.5cm and 3cm of start] {¿Standby \\ sincronizado? \\ (Apply Lag $<$ 5s)};
+    % Rama derecha (Primary responde NO)
+    \node (check_standby) [question, below right=1.5cm and 2.0cm of start] {¿Standby \\ sincronizado? \\ (Lag $<$ 5s)};
+    
+    \node (failover_immediate) [critical, below left=1.5cm and 0.5cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
+    
+    \node (assess_loss) [question, below right=1.0cm and 0.5cm of check_standby] {¿Pérdida \\ aceptable?};
+    
+    \node (failover_with_loss) [critical, below=1.0cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida};
+    
+    \node (wait_recover) [action, below left=1.0cm and 0.5cm of assess_loss] {\textbf{ESPERAR} \\ Recuperar};
 
-    % Nivel 3 - Performance issue
-    \node (investigate) [action, below left=1.2cm and 0.5cm of check_perf] {\textbf{Investigar} \\ No hacer failover \\ Optimizar Primary};
+    % Conexiones desde raíz
+    \draw [arrow] (start) -| node[above left, pos=0.25, font=\scriptsize] {Sí} (check_perf);
+    \draw [arrow] (start) -| node[above right, pos=0.25, font=\scriptsize] {No} (check_standby);
 
-    \node (switchover) [action, below right=1.2cm and 0.5cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento \\ planificado};
+    % Conexiones rama izquierda
+    \draw [arrow] (check_perf) -| node[above left, pos=0.3, font=\scriptsize] {Sí} (investigate);
+    \draw [arrow] (check_perf) -| node[above right, pos=0.3, font=\scriptsize] {No} (switchover);
 
-    % Nivel 3 - Primary caído y standby OK
-    \node (failover_immediate) [critical, below left=1.2cm and 0.5cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
+    % Conexiones rama derecha
+    \draw [arrow] (check_standby) -| node[above left, pos=0.3, font=\scriptsize] {Sí} (failover_immediate);
+    \draw [arrow] (check_standby) -| node[above right, pos=0.3, font=\scriptsize] {No} (assess_loss);
 
-    \node (assess_loss) [question, below right=1.2cm and 0.5cm of check_standby] {¿Pérdida de \\ datos \\ aceptable?};
-
-    % Nivel 4 - Decisión final
-    \node (failover_with_loss) [critical, below=1cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida \\ (Documentar RPO)};
-
-    \node (wait_recover) [action, right=2cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar Primary \\ si es posible};
-
-    % Conexiones
-    \draw [arrow] (start) -- node[above left, font=\tiny] {Sí} (check_perf);
-    \draw [arrow] (start) -- node[above right, font=\tiny] {No} (check_standby);
-
-    \draw [arrow] (check_perf) -- node[above left, font=\tiny] {Sí} (investigate);
-    \draw [arrow] (check_perf) -- node[above right, font=\tiny] {No} (switchover);
-
-    \draw [arrow] (check_standby) -- node[above left, font=\tiny] {Sí} (failover_immediate);
-    \draw [arrow] (check_standby) -- node[above right, font=\tiny] {No} (assess_loss);
-
-    \draw [arrow] (assess_loss) -- node[left, font=\tiny] {Sí} (failover_with_loss);
-    \draw [arrow] (assess_loss) -- node[above, font=\tiny] {No} (wait_recover);
+    % Conexiones desde evaluación de pérdida
+    \draw [arrow] (assess_loss) -- node[right, font=\scriptsize] {Sí} (failover_with_loss);
+    \draw [arrow] (assess_loss) -| node[above, font=\scriptsize] {No} (wait_recover);
 
   \end{tikzpicture}
   \caption{Árbol de decisión para operaciones de failover y switchover.}
@@ -822,7 +833,7 @@ FAILOVER TO cdb1_stby;
 dgmgrl /
 REINSTATE DATABASE cdb1;
 \end{lstlisting}
-\advertencia{El comando \texttt{REINSTATE} depende de que \textbf{Flashback Database} esté activo y que el tiempo de retención de los \textit{flashback logs} no haya sido excedido. Si falla, se requerirá una recreación manual del standby.}
+\advertencia{El comando \texttt{REINSTATE} depende de que \textbf{Flashback Database} esté activo y que el tiempo de retención de los \textit{flashback logs} no haya sido excedido. Si falla, se requerirá una recreación manual del standby de la máquina que anteriormente era primary (similar al proceso descrito en el Apéndice B para el standby original).}
 \end{enumerate}
 \destacado{Resultado:} El \textit{old primary} se convierte en \textit{standby} en $\sim 5$ minutos gracias a \textit{Flashback Database}.
 \section{Troubleshooting General}
@@ -870,14 +881,14 @@ Validar que el cambio planificado de roles entre Primary y Standby funcione corr
 \begin{enumerate}
     \item \textbf{Pre-validación:}
     \begin{lstlisting}[language=bash, caption={Verificación Pre-Switchover}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
     Confirmar: \texttt{Apply Lag < 5 segundos}, \texttt{Switchover Status = TO STANDBY}, \texttt{Configuration Status = SUCCESS}.
 
     \item \textbf{Crear Datos de Prueba:}
     \begin{lstlisting}[language=SQL, caption={Insertar Registro de Prueba en Primary}]
 -- Conectarse al Primary
-sqlplus HC/password@localhost:1521/pdb1
+sqlplus 'dgtest/DGTest2025!@localhost:1521/pdb1'
 
 -- Crear tabla de prueba
 CREATE TABLE TEST_SWITCHOVER (
@@ -953,7 +964,7 @@ EOF"
     \item \textbf{Validar Acceso a Datos:}
     \begin{lstlisting}[language=SQL, caption={Verificar Disponibilidad}]
 -- Conectarse al nuevo Primary (ex-Standby, puerto 1522)
-sqlplus HC/password@localhost:1522/pdb1
+sqlplus 'dgtest/DGTest2025!@localhost:1522/pdb1'
 
 SELECT * FROM TEST_SWITCHOVER;
     \end{lstlisting}
@@ -975,7 +986,7 @@ EOF"
 
     \item \textbf{Verificar Configuración Final:}
     \begin{lstlisting}[language=bash, caption={Validación Post-Reinstatement}]
-vagrant ssh standby -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh standby -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
 \end{enumerate}
 
@@ -996,7 +1007,7 @@ Confirmar que los backups automáticos son válidos y restaurables.
 \begin{enumerate}
     \item \textbf{Forzar Backup Manual:}
     \begin{lstlisting}[language=bash, caption={Ejecutar Backup On-Demand}]
-vagrant ssh primary -c "/home/oracle/automation/manual_backup.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/manual_backup.sh'"
     \end{lstlisting}
 
     \item \textbf{Verificar Existencia de Backups:}
@@ -1082,7 +1093,7 @@ EOF"
 
     \item \textbf{Verificar Resolución:}
     \begin{lstlisting}[language=bash, caption={Confirmar Gap Resuelto}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
 \end{enumerate}
 
@@ -1140,16 +1151,16 @@ Si esta arquitectura se traslada a un entorno de producción:
 
 \subsection{Infraestructura y Red}
 \begin{itemize}
-    \item \textbf{Hardware Dedicado:} Utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con \textbf{mínimo 32 GB de RAM} y \textbf{dispositivos SSD empresariales} para el almacenamiento.
-\item \textbf{Red Geográfica:} Colocar los nodos \textit{Primary} y \textit{Standby} en \textbf{centros de datos separados} para protección real ante desastres regionales.
-\item \textbf{Conectividad:} Garantizar \textbf{1 Gbps de ancho de banda dedicado} y baja latencia para la replicación \texttt{FASTSYNC}.
+    \item \textbf{Hardware Dedicado:} Utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento.
+\item \textbf{Red Geográfica:} Colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales.
+\item \textbf{Conectividad:} Garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
 \end{itemize}
 
 \subsection{Operación y Seguridad}
 \begin{itemize}
-    \item \textbf{Monitoreo Enterprise:} Reemplazar scripts Bash por \textbf{Oracle Enterprise Manager (OEM)} o herramientas como \textbf{Prometheus/Grafana} para alertas automatizadas (email/SMS).
-\item \textbf{TDE:} Implementar \textbf{Transparent Data Encryption (TDE)} para cifrar los \textit{datafiles} de la base de datos en reposo.
-\item \textbf{Pruebas de DR:} Realizar ejercicios de \textit{Switchover} y \textit{Failover} al menos \textbf{trimestralmente} para validar procedimientos y medir el \texttt{RTO} real.
+    \item \textbf{Monitoreo Enterprise:} Reemplazar scripts Bash por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS).
+\item \textbf{TDE:} Implementar Transparent Data Encryption (TDE) para cifrar los \textit{datafiles} de la base de datos en reposo.
+\item \textbf{Pruebas de DR:} Realizar ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real.
 \item \textbf{Licenciamiento:} Verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
 \end{itemize}
 
@@ -1181,7 +1192,7 @@ Si bien la automatización de la infraestructura con herramientas como Vagrant y
 % APÉNDICE A: FLUJO DE DESPLIEGUE DEL NODO PRIMARY
 % *************************************************
 
-\chapter{Análisis Detallado: Despliegue del Nodo Principal}
+\chapter[Apéndice A: Despliegue Primary]{Análisis Detallado: Despliegue del Nodo Principal}
 
 Esta sección documenta detalladamente el proceso de \textit{provisioning} del nodo \textit{primary} (\texttt{ol8-21-dg1}).
 El flujo se inicia con \texttt{vagrant up primary} que llama al \textit{wrapper} \texttt{setup.sh} y se orquesta completamente en \texttt{root\_setup.sh}.
@@ -1194,7 +1205,7 @@ El script es minimalista para simplificar la traza de logs de Vagrant, siendo su
 # Run root setup script
 sudo bash -c 'sh /vagrant/2-Standby/scripts/primary/root\_setup.sh'
 \end{lstlisting}
-El uso de \texttt{sudo} es **necesario** ya que los pasos iniciales de instalación requieren privilegios de \texttt{root} para modificar el sistema operativo.
+El uso de \texttt{sudo} es necesario ya que los pasos iniciales de instalación requieren privilegios de \texttt{root} para modificar el sistema operativo.
 \section{Orquestador Principal (\texttt{root\_setup.sh})}
 
 El script \texttt{root\_setup.sh} coordina la secuencia de 12 pasos (del 3 al 16) necesarios para construir un nodo primario de Oracle Data Guard completamente funcional, desde la preparación de discos hasta la instalación de \textit{cron jobs}.
@@ -1238,7 +1249,7 @@ Este script prepara el sistema operativo a nivel de kernel y paquetes para la in
 Este \textit{tuning} \textbf{afecta directamente el rendimiento} de la transferencia de \textit{archive logs} de Data Guard.
 \item \textbf{Seguridad:} Deshabilita \texttt{SELinux} (a modo \texttt{permissive}) y \texttt{firewalld} para el entorno de desarrollo.
 \end{enumerate}
-El paquete \texttt{chrony} instalado es **un requisito** para la sincronización de tiempo, ya que Data Guard Broker la necesita para operar sin fallos de consistencia.
+El paquete \texttt{chrony} instalado es un requisito para la sincronización de tiempo, ya que Data Guard Broker la necesita para operar sin fallos de consistencia.
 
 \section{Configuración de Red (\texttt{configure\_network.sh})}
 
@@ -1274,14 +1285,16 @@ export TNS_ADMIN=${ORACLE_HOME}/network/admin
         \end{lstlisting}
     \item \textbf{Persistencia:} Agrega el \textit{source} de \texttt{setEnv.sh} a \texttt{/home/oracle/.bash\_profile} para que las variables se carguen automáticamente en cada sesión.
 \end{enumerate}
-\destacado{Diferencia Clave:} En el \textit{primary}, \texttt{ORACLE\_UNQNAME} se establece como \texttt{cdb1}. En el \textit{standby}, el script equivalente lo establece como \texttt{cdb1\_stby}.
+
+En el \textit{primary}, \texttt{ORACLE\_UNQNAME} se establece como \texttt{cdb1}. En el \textit{standby}, el script equivalente lo establece como \texttt{cdb1\_stby}.
+
 \section{Instalación de Software Oracle (\texttt{oracle\_db\_software\_installation.sh})}
 
 Este es el paso de instalación de binarios, ejecutado como usuario \texttt{oracle} para asegurar permisos correctos.
 \subsection{Instalación Silenciosa}
 \begin{enumerate}
     \item \textbf{Copia y Descompresión:} El script primero copia el ZIP de Oracle de la carpeta compartida de Vagrant (\texttt{/vagrant\_software/}) a un directorio local (\texttt{/u01/software/}) y lo descomprime directamente en \texttt{ORACLE\_HOME}.
-\item \textbf{\textit{Response File}:} Genera un \textit{response file} (\texttt{db\_install.rsp}) para la instalación silenciosa en modo \textbf{Software Only} (\texttt{INSTALL\_DB\_SWONLY}) y \textbf{Enterprise Edition} (\texttt{EE}).
+\item \textbf{\textit{Response File}:} Genera un \textit{response file} (\texttt{db\_install.rsp}) para la instalación silenciosa en modo \textbf{Software Only} (\texttt{INSTALL\_DB\_SWONLY}) y Enterprise Edition (\texttt{EE}).
 \item \textbf{Ejecución del Instalador:} Ejecuta \texttt{runInstaller} en modo silencioso.
         \begin{lstlisting}[language=bash, caption={Ejecución runInstaller Silencioso}]
 ${ORACLE_HOME}/runInstaller -ignorePrereq -waitforcompletion -silent \
@@ -1315,12 +1328,12 @@ EOF
 \destacado{Resultado:} Este comando habilita automáticamente el modo \texttt{ARCHIVELOG}, \texttt{FORCE LOGGING}, configura \texttt{STANDBY REDO LOGS}, \texttt{Flashback Database} y el \textit{Fast Recovery Area} (\texttt{FRA} en \texttt{/u02}), dejando el \textit{primary} 100\% listo para la conexión del \textit{standby}.
 \section{Despliegue de Esquema (\texttt{deploy\_custom\_schema.sh})}
 
-Una vez que la base de datos está preparada, este script despliega el esquema de aplicación.
+Una vez que la base de datos está preparada, este script despliega el esquema de prueba simple.
 \subsection{Flujo del Esquema}
 \begin{enumerate}
     \item \textbf{Apertura de PDB:} Se asegura de que \texttt{pdb1} esté en modo \texttt{OPEN}.
-\item \textbf{Creación de Usuario/Tablespace:} Ejecuta \texttt{Script\_SchemeTableSpace.sql} para crear el usuario (por defecto \texttt{HC}) y su \textit{tablespace}.
-\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{ScriptProyectoBD.SQL} para crear todos los objetos de la base de datos (tablas, secuencias, etc.). El contenido de este script es personalizable.
+\item \textbf{Creación de Usuario:} Ejecuta \texttt{2-Standby/schema/create\_user.sql} para crear el usuario \texttt{dgtest} con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado).
+\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{audit\_log}), secuencias y procedimientos de prueba. Este esquema está diseñado específicamente para validar la replicación de Data Guard.
 \item \textbf{Replicación:} Se fuerza un \textit{log switch} (\texttt{ALTER SYSTEM ARCHIVE LOG CURRENT}) para garantizar que todas estas sentencias DDL y DML de creación se empaqueten inmediatamente en un \textit{archive log} y estén listas para ser replicadas al \textit{standby}.
 \end{enumerate}
 El esquema de aplicación creado aquí es una de las primeras cosas que el \textit{standby} clonará. Si el \textit{schema} no se replica correctamente, Data Guard fallará en la validación.
@@ -1378,7 +1391,7 @@ El proceso de \textit{provisioning} del nodo primario está oficialmente complet
 % APÉNDICE B: FLUJO DE DESPLIEGUE DEL NODO STANDBY
 % *************************************************
 
-\chapter{Análisis Detallado: Despliegue del Nodo Standby}
+\chapter[Apéndice B: Despliegue Standby]{Análisis Detallado: Despliegue del Nodo Standby}
 
 \section{Punto de Entrada (\texttt{setup.sh})}
 
@@ -1430,7 +1443,7 @@ exit;
 EOF
         \end{lstlisting}
 \end{enumerate}
-\destacado{Resultado:} Una copia idéntica de la base de datos \texttt{cdb1} (\texttt{CDB}, \texttt{PDB}, esquema de aplicación y datos) se crea en el almacenamiento local del \textit{standby}.
+\destacado{Resultado:} Una copia idéntica de la base de datos \texttt{cdb1} (\texttt{CDB}, \texttt{PDB}, esquema de prueba \texttt{dgtest} y datos) se crea en el almacenamiento local del \textit{standby}.
 \subsection{Configuración Data Guard Broker y MAXAVAILABILITY}
 \begin{enumerate}
     \item \textbf{Flashback Database:} Se habilita \texttt{FLASHBACK DATABASE} en el \textit{standby}.
@@ -1460,7 +1473,7 @@ El \textit{standby} solo tiene este \textit{cron job} de limpieza. El monitoreo,
 % APÉNDICE C: ANÁLISIS DE SCRIPTS DE AUTOMATIZACIÓN
 % *************************************************
 
-\chapter{Análisis Detallado: Scripts de Automatización}
+\chapter[Apéndice C: Scripts Automatización]{Análisis Detallado: Scripts de Automatización}
 
 Esta sección documenta los scripts de automatización ubicados en \texttt{/home/oracle/automation/} que se utilizan para mantener, monitorear y verificar la salud del sistema Data Guard de forma continua.
 \section{Monitoreo de Transferencia (\texttt{check\_log\_transport.sh})}
@@ -1638,13 +1651,13 @@ Esta sección proporciona comandos esenciales y procedimientos de un vistazo par
 
 \begin{lstlisting}[language=bash, caption={Conexiones desde Windows Host}]
 # Primary CDB (Sistema)
-sqlplus sys/S1sPassword1!@localhost:1521/cdb1 as sysdba
+sqlplus 'sys/S1sPassword1!@localhost:1521/cdb1' as sysdba
 
-# Primary PDB (Aplicación - Usuario HC)
-sqlplus HC/password@localhost:1521/pdb1
+# Primary PDB (Aplicación - Usuario dgtest)
+sqlplus 'dgtest/DGTest2025!@localhost:1521/pdb1'
 
 # Standby CDB (Sistema - Puerto 1522)
-sqlplus sys/S1sPassword1!@localhost:1522/cdb1_stby as sysdba
+sqlplus 'sys/S1sPassword1!@localhost:1522/cdb1_stby' as sysdba
 \end{lstlisting}
 
 \subsection{Desde Dentro de las VMs (SSH)}
@@ -1655,8 +1668,8 @@ vagrant ssh primary
 vagrant ssh standby
 
 # Dentro de Primary VM
-sqlplus / as sysdba              # CDB como sysdba
-sqlplus HC/password@pdb1         # PDB esquema aplicación
+sqlplus / as sysdba                      # CDB como sysdba
+sqlplus 'dgtest/DGTest2025!@pdb1'        # PDB esquema de prueba
 
 # Dentro de Standby VM
 sqlplus / as sysdba              # CDB como sysdba
@@ -1855,11 +1868,12 @@ ALTER DATABASE REGISTER LOGFILE
 \newpage
 
 % *************************************************
-% APÉNDICE F: BIBLIOGRAFÍA
+% BIBLIOGRAFÍA
 % *************************************************
 
-\chapter{Bibliografía y Recursos Adicionales}
+\chapter*{Bibliografía y Recursos Adicionales}
 \addcontentsline{toc}{chapter}{Bibliografía y Recursos Adicionales}
+\markboth{Bibliografía}{Bibliografía}
 
 \begin{thebibliography}{9}
 
@@ -1892,5 +1906,6 @@ HashiCorp. (2025). \textit{Vagrant Docs: Provisioning}.
 \url{https://developer.hashicorp.com/vagrant/docs/provisioning}
 
 \end{thebibliography}
+
 
 \end{document}
