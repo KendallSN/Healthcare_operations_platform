@@ -131,11 +131,11 @@ El sistema replica la base de datos principal en tiempo real a una base de datos
         \item Oracle Database 21c Enterprise Edition.
 \item Container Database (CDB): \texttt{cdb1}.
         \item Pluggable Database (PDB): \texttt{pdb1}.
-        \item Esquema de aplicación: (Definido por scripts personalizables, por defecto \texttt{HC}).
+        \item Esquema de prueba: \texttt{dgtest} (esquema simple para validar replicación de Data Guard).
         \item Servidor: \texttt{ol8-21-dg1.localdomain} (\texttt{192.168.56.101}).
 \end{itemize}
     \vspace{0.3em}
-    \textit{Nota: Los detalles del esquema de aplicación (tablas, procedimientos, lógica de negocio) están fuera del alcance de esta guía de infraestructura. Solo se documentan las credenciales de conexión.}
+    \textit{Nota: El esquema de prueba incluye tablas básicas con timestamps para verificar la replicación. Para esquemas de aplicación complejos, consulte la documentación en \texttt{1-BD/}.}
     \item \textbf{Base de Datos \textit{Standby}}
     \begin{itemize}
         \item Réplica física exacta del \textit{primary}.
@@ -300,7 +300,11 @@ Este archivo contiene todas las variables de entorno usadas por los scripts Bash
 # Passwords (cambiar en producción)
 SYS_PASSWORD="S1sPassword1!"
 PDB_PASSWORD="PdbPassword1!"
-APP_SCHEMA_PASSWORD="password"
+
+# Simple Test Schema Configuration (para pruebas de Data Guard)
+APP_SCHEMA=dgtest
+APP_SCHEMA_PASSWORD="DGTest2025!"
+
 # IPs de Red (debe coincidir con vagrant.yml)
 NODE1_PUBLIC_IP=192.168.56.101
 NODE2_PUBLIC_IP=192.168.56.102
@@ -327,7 +331,7 @@ El sistema opera bajo una arquitectura de 3 capas (Presentación, Aplicación, D
 \item \textbf{Primary Virtual Machine:} \texttt{ol8-21-dg1.localdomain} (\texttt{192.168.56.101}).
     \begin{itemize}
         \item Oracle Database 21c, CDB \texttt{cdb1}, PDB \texttt{pdb1}.
-        \item Esquema de aplicación (por defecto \texttt{HC}).
+        \item Esquema de prueba: \texttt{dgtest} (con tablespace por defecto USERS).
 \item Rol: \texttt{PRIMARY}, \textit{Read-Write}.
         \item Recursos: 4 GB RAM, 2 CPUs, 200 GB disco.
 \end{itemize}
@@ -480,7 +484,10 @@ Define las variables de entorno de la aplicación Oracle y Data Guard, leído po
 # Passwords (cambiar en producción)
 SYS_PASSWORD="S1sPassword1!"
 PDB_PASSWORD="PdbPassword1!"
-APP_SCHEMA_PASSWORD="password"
+
+# Simple Test Schema Configuration (para pruebas de Data Guard)
+APP_SCHEMA=dgtest
+APP_SCHEMA_PASSWORD="DGTest2025!"
 
 # IPs de Red (debe coincidir con vagrant.yml)
 NODE1_PUBLIC_IP=192.168.56.101
@@ -536,6 +543,8 @@ Esta acción previene el fallo de \textbf{todos} los \textit{provisioners} Bash.
 
 Antes de ejecutar cualquier comando, asegúrese de haber cumplido todos los requisitos de software listados en la Sección 1.8, incluyendo la descarga del archivo \texttt{LINUX.X64\_213000\_db\_home.zip} en la carpeta \texttt{software/}.
 
+\advertencia{\textbf{Configuración de Puertos:} Si los puertos \texttt{1521}, \texttt{1522}, \texttt{5500} o \texttt{5501} ya están en uso por otros servicios en su computadora, debe modificar el \texttt{Vagrantfile} antes del despliegue. Busque las líneas \texttt{forwarded\_port} y cambie los valores \texttt{host:} a puertos disponibles. Por ejemplo, puede usar \texttt{15210} en lugar de \texttt{1521} para el primary y \texttt{15220} en lugar de \texttt{1522} para el standby.}
+
 \subsection{Despliegue Completo Automatizado}
 
 La manera más eficiente de desplegar el sistema es a través del \textit{script} orquestador:
@@ -577,8 +586,8 @@ Este comando garantiza que se eliminen completamente las VMs, los discos virtual
         \textbf{Rol / Usuario} & \textbf{Conexión (Puerto Host)} & \textbf{Contraseña} \\
         \midrule
         \textbf{Primary (SYSDBA)} & \texttt{sys/S1sPassword1!@localhost:1521/cdb1} & \texttt{S1sPassword1!} \\
-        \textbf{Primary (Schema)} & \texttt{HC/password@localhost:1521/pdb1} & \texttt{password} \\
-        \textbf{Standby (SYSDBA)} 
+        \textbf{Primary (Schema)} & \texttt{dgtest/DGTest2025!@localhost:1521/pdb1} & \texttt{DGTest2025!} \\
+        \textbf{Standby (SYSDBA)}
 & \texttt{sys/S1sPassword1!@localhost:1522/cdb1\_stby} & \texttt{S1sPassword1!} \\
         \bottomrule
     \end{tabular}
@@ -587,11 +596,11 @@ Este comando garantiza que se eliminen completamente las VMs, los discos virtual
 Recuerde que el puerto para el \textit{Standby} desde el \textit{Host} es \texttt{1522}, debido al reenvío de puertos configurado en el \texttt{Vagrantfile}.
 
 \subsubsection{Conexión con SQL Developer (o GUI similar)}
-Para conectarse a la Pluggable Database (PDB) donde reside el esquema de aplicación (por defecto \texttt{HC}) usando una herramienta gráfica, es importante usar la configuración de red correcta.
+Para conectarse a la Pluggable Database (PDB) donde reside el esquema de prueba (por defecto \texttt{dgtest}) usando una herramienta gráfica, es importante usar la configuración de red correcta.
 
 \begin{itemize}
-    \item \textbf{Username:} \texttt{HC}
-    \item \textbf{Password:} \texttt{password} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
+    \item \textbf{Username:} \texttt{dgtest}
+    \item \textbf{Password:} \texttt{DGTest2025!} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
     \item \textbf{Hostname:} \texttt{localhost}
     \item \textbf{Port:} \texttt{1521} (para el Primary)
     \item \textbf{Connection Type:} Seleccione \textbf{Service name} (No usar SID).
@@ -879,7 +888,7 @@ vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard
     \item \textbf{Crear Datos de Prueba:}
     \begin{lstlisting}[language=SQL, caption={Insertar Registro de Prueba en Primary}]
 -- Conectarse al Primary
-sqlplus HC/password@localhost:1521/pdb1
+sqlplus 'dgtest/DGTest2025!@localhost:1521/pdb1'
 
 -- Crear tabla de prueba
 CREATE TABLE TEST_SWITCHOVER (
@@ -955,7 +964,7 @@ EOF"
     \item \textbf{Validar Acceso a Datos:}
     \begin{lstlisting}[language=SQL, caption={Verificar Disponibilidad}]
 -- Conectarse al nuevo Primary (ex-Standby, puerto 1522)
-sqlplus HC/password@localhost:1522/pdb1
+sqlplus 'dgtest/DGTest2025!@localhost:1522/pdb1'
 
 SELECT * FROM TEST_SWITCHOVER;
     \end{lstlisting}
@@ -1319,12 +1328,12 @@ EOF
 \destacado{Resultado:} Este comando habilita automáticamente el modo \texttt{ARCHIVELOG}, \texttt{FORCE LOGGING}, configura \texttt{STANDBY REDO LOGS}, \texttt{Flashback Database} y el \textit{Fast Recovery Area} (\texttt{FRA} en \texttt{/u02}), dejando el \textit{primary} 100\% listo para la conexión del \textit{standby}.
 \section{Despliegue de Esquema (\texttt{deploy\_custom\_schema.sh})}
 
-Una vez que la base de datos está preparada, este script despliega el esquema de aplicación.
+Una vez que la base de datos está preparada, este script despliega el esquema de prueba simple.
 \subsection{Flujo del Esquema}
 \begin{enumerate}
     \item \textbf{Apertura de PDB:} Se asegura de que \texttt{pdb1} esté en modo \texttt{OPEN}.
-\item \textbf{Creación de Usuario/Tablespace:} Ejecuta \texttt{Script\_SchemeTableSpace.sql} para crear el usuario (por defecto \texttt{HC}) y su \textit{tablespace}.
-\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{ScriptProyectoBD.SQL} para crear todos los objetos de la base de datos (tablas, secuencias, etc.). El contenido de este script es personalizable.
+\item \textbf{Creación de Usuario:} Ejecuta \texttt{2-Standby/schema/create\_user.sql} para crear el usuario \texttt{dgtest} con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado).
+\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{audit\_log}), secuencias y procedimientos de prueba. Este esquema está diseñado específicamente para validar la replicación de Data Guard.
 \item \textbf{Replicación:} Se fuerza un \textit{log switch} (\texttt{ALTER SYSTEM ARCHIVE LOG CURRENT}) para garantizar que todas estas sentencias DDL y DML de creación se empaqueten inmediatamente en un \textit{archive log} y estén listas para ser replicadas al \textit{standby}.
 \end{enumerate}
 El esquema de aplicación creado aquí es una de las primeras cosas que el \textit{standby} clonará. Si el \textit{schema} no se replica correctamente, Data Guard fallará en la validación.
@@ -1434,7 +1443,7 @@ exit;
 EOF
         \end{lstlisting}
 \end{enumerate}
-\destacado{Resultado:} Una copia idéntica de la base de datos \texttt{cdb1} (\texttt{CDB}, \texttt{PDB}, esquema de aplicación y datos) se crea en el almacenamiento local del \textit{standby}.
+\destacado{Resultado:} Una copia idéntica de la base de datos \texttt{cdb1} (\texttt{CDB}, \texttt{PDB}, esquema de prueba \texttt{dgtest} y datos) se crea en el almacenamiento local del \textit{standby}.
 \subsection{Configuración Data Guard Broker y MAXAVAILABILITY}
 \begin{enumerate}
     \item \textbf{Flashback Database:} Se habilita \texttt{FLASHBACK DATABASE} en el \textit{standby}.
@@ -1642,13 +1651,13 @@ Esta sección proporciona comandos esenciales y procedimientos de un vistazo par
 
 \begin{lstlisting}[language=bash, caption={Conexiones desde Windows Host}]
 # Primary CDB (Sistema)
-sqlplus sys/S1sPassword1!@localhost:1521/cdb1 as sysdba
+sqlplus 'sys/S1sPassword1!@localhost:1521/cdb1' as sysdba
 
-# Primary PDB (Aplicación - Usuario HC)
-sqlplus HC/password@localhost:1521/pdb1
+# Primary PDB (Aplicación - Usuario dgtest)
+sqlplus 'dgtest/DGTest2025!@localhost:1521/pdb1'
 
 # Standby CDB (Sistema - Puerto 1522)
-sqlplus sys/S1sPassword1!@localhost:1522/cdb1_stby as sysdba
+sqlplus 'sys/S1sPassword1!@localhost:1522/cdb1_stby' as sysdba
 \end{lstlisting}
 
 \subsection{Desde Dentro de las VMs (SSH)}
@@ -1659,8 +1668,8 @@ vagrant ssh primary
 vagrant ssh standby
 
 # Dentro de Primary VM
-sqlplus / as sysdba              # CDB como sysdba
-sqlplus HC/password@pdb1         # PDB esquema aplicación
+sqlplus / as sysdba                      # CDB como sysdba
+sqlplus 'dgtest/DGTest2025!@pdb1'        # PDB esquema de prueba
 
 # Dentro de Standby VM
 sqlplus / as sysdba              # CDB como sysdba
