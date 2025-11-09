@@ -76,6 +76,9 @@
     language=bash
 }
 
+% Configurar nombres en español para listings
+\renewcommand{\lstlistingname}{Código}
+
 \lstdefinelanguage{SQL}{
   keywords={SELECT, FROM, WHERE, AND, OR, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TABLE, VIEW, INDEX, AS, INTO, VALUES, COMMIT, ROLLBACK, BEGIN, END, SET, EXIT, 
 ON, ALL, DATABASE, RECOVER, MANAGED, STANDBY, DISCONNECT, SESSION, LOGFILE, ARCHIVE, CURRENT, V, FROM, NOT, NULL, MAX, COUNT, ORDER, BY, GROUP, SHOW, PARAMETER, VDATABASE, VARCHIVEDLOG, VMANAGEDSTANDBY, VLOGFILE, VLOGHISTORY, VDATAGUARDSTATS, VARCHIVEGAP, VINSTANCE, DGMGRL, SYSTEM, REGISTER, LOG, UNTIL, SEQUENCE, THREAD, TO_CHAR, SYSDATE, USING, WITH, PDB, PLUGGABLE, ADD, DATAFILE, RESIZE, RUN, ALLOCATE, CHANNEL, FOR, MAINTENANCE, DEVICE, TYPE, DISK, DELETE, NOPROMPT, OBSOLETE, CROSSCHECK, LIST, BACKUP, SUMMARY, VALIDATE, RESTORE, RMAN, PLUS, DELETION, POLICY, RECOVERY, WINDOW, CONTROLFILE, AUTOBACKUP, FORMAT, RELEASE, REPORT, NEED, BLOCK, OFFLINE, ONLINE, SIZE, MEMBER},
@@ -689,7 +692,7 @@ El siguiente diagrama ilustra el flujo completo de backup automatizado, desde la
     node distance=1.2cm,
     process/.style={rectangle, rounded corners, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=4cm, thick, align=center, font=\small},
     decision/.style={diamond, draw=orange!80, fill=orange!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\small, aspect=2},
-    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=1cm, minimum width=3cm, thick, align=center, font=\small},
+    storage/.style={shape=cylinder, shape border rotate=90, draw=green!60!black, fill=green!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\small},
     arrow/.style={-{Stealth[length=3mm]}, thick},
     success/.style={draw=green!70!black, thick},
     error/.style={draw=red!70, thick}
@@ -752,10 +755,10 @@ El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situac
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[
-    node distance=1.5cm and 2cm,
-    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=1.2cm, minimum width=3cm, thick, align=center, font=\footnotesize, aspect=1.5},
-    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
-    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.8cm, minimum width=3.5cm, thick, align=center, font=\footnotesize},
+    node distance=1cm and 1.5cm,
+    question/.style={diamond, draw=blue!80, fill=blue!10, minimum height=1cm, minimum width=2.5cm, thick, align=center, font=\footnotesize, aspect=1.5},
+    action/.style={rectangle, rounded corners, draw=green!70!black, fill=green!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\footnotesize},
+    critical/.style={rectangle, rounded corners, draw=red!70, fill=red!10, minimum height=0.7cm, minimum width=3cm, thick, align=center, font=\footnotesize},
     arrow/.style={-{Stealth[length=2.5mm]}, thick}
   ]
 
@@ -763,25 +766,25 @@ El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situac
     \node (start) [question] {¿Primary \\ responde?};
 
     % Nivel 2 - Sí responde
-    \node (check_perf) [question, below left=1.5cm and 3cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
+    \node (check_perf) [question, below left=1.2cm and 2cm of start] {¿Problema de \\ rendimiento \\ únicamente?};
 
     % Nivel 2 - No responde
-    \node (check_standby) [question, below right=1.5cm and 3cm of start] {¿Standby \\ sincronizado? \\ (Apply Lag $<$ 5s)};
+    \node (check_standby) [question, below right=1.2cm and 2cm of start] {¿Standby \\ sincronizado? \\ (Apply Lag $<$ 5s)};
 
     % Nivel 3 - Performance issue
-    \node (investigate) [action, below left=1.2cm and 0.5cm of check_perf] {\textbf{Investigar} \\ No hacer failover \\ Optimizar Primary};
+    \node (investigate) [action, below left=1cm and 0.4cm of check_perf] {\textbf{Investigar} \\ No hacer failover \\ Optimizar Primary};
 
-    \node (switchover) [action, below right=1.2cm and 0.5cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento \\ planificado};
+    \node (switchover) [action, below right=1cm and 0.4cm of check_perf] {\textbf{SWITCHOVER} \\ Mantenimiento \\ planificado};
 
     % Nivel 3 - Primary caído y standby OK
-    \node (failover_immediate) [critical, below left=1.2cm and 0.5cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
+    \node (failover_immediate) [critical, below left=1cm and 0.4cm of check_standby] {\textbf{FAILOVER} \\ INMEDIATO \\ (RPO $\approx$ 0)};
 
-    \node (assess_loss) [question, below right=1.2cm and 0.5cm of check_standby] {¿Pérdida de \\ datos \\ aceptable?};
+    \node (assess_loss) [question, below right=1cm and 0.4cm of check_standby] {¿Pérdida de \\ datos \\ aceptable?};
 
     % Nivel 4 - Decisión final
-    \node (failover_with_loss) [critical, below=1cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida \\ (Documentar RPO)};
+    \node (failover_with_loss) [critical, below=0.8cm of assess_loss] {\textbf{FAILOVER} \\ con pérdida \\ (Documentar RPO)};
 
-    \node (wait_recover) [action, right=2cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar Primary \\ si es posible};
+    \node (wait_recover) [action, right=1.5cm of failover_with_loss] {\textbf{ESPERAR} \\ Recuperar Primary \\ si es posible};
 
     % Conexiones
     \draw [arrow] (start) -- node[above left, font=\tiny] {Sí} (check_perf);
@@ -869,7 +872,7 @@ Validar que el cambio planificado de roles entre Primary y Standby funcione corr
 \begin{enumerate}
     \item \textbf{Pre-validación:}
     \begin{lstlisting}[language=bash, caption={Verificación Pre-Switchover}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
     Confirmar: \texttt{Apply Lag < 5 segundos}, \texttt{Switchover Status = TO STANDBY}, \texttt{Configuration Status = SUCCESS}.
 
@@ -974,7 +977,7 @@ EOF"
 
     \item \textbf{Verificar Configuración Final:}
     \begin{lstlisting}[language=bash, caption={Validación Post-Reinstatement}]
-vagrant ssh standby -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh standby -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
 \end{enumerate}
 
@@ -995,7 +998,7 @@ Confirmar que los backups automáticos son válidos y restaurables.
 \begin{enumerate}
     \item \textbf{Forzar Backup Manual:}
     \begin{lstlisting}[language=bash, caption={Ejecutar Backup On-Demand}]
-vagrant ssh primary -c "/home/oracle/automation/manual_backup.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/manual_backup.sh'"
     \end{lstlisting}
 
     \item \textbf{Verificar Existencia de Backups:}
@@ -1081,7 +1084,7 @@ EOF"
 
     \item \textbf{Verificar Resolución:}
     \begin{lstlisting}[language=bash, caption={Confirmar Gap Resuelto}]
-vagrant ssh primary -c "/home/oracle/automation/verify_dataguard.sh"
+vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard.sh'"
     \end{lstlisting}
 \end{enumerate}
 
