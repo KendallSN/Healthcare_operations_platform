@@ -167,8 +167,8 @@ BEGIN
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            v_invalid_count || '</strong> objeto(s) invalido(s) en el esquema 
-            <strong>' || USER || '</strong>.</p>
+            v_invalid_count || '</strong> objeto(s) invalido(s) 
+            <strong>' || 'En Todo el Sistema' || '</strong>.</p>
             <p><strong>Lista de objetos que requieren atencion:</strong></p>
             <ul style="line-height: 1.8;">' || v_invalid_list || '</ul>
             <p style="margin-bottom:0;"><strong>Accion requerida:</strong> 

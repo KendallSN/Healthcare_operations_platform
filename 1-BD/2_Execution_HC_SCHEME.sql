@@ -4,7 +4,7 @@
 @ScriptData.sql;
     --3. Insertar Parametros generales
 @Script_Parameters.sql;
-    --4. Crear Paquetes, Procedimientos y funciones
+    --4. Crear Paquetes, Procedimientos, Funciones y Jobs
 @Emails\PKG_EMAILS.pkg;
 @LogBooks\PCD_INSERT_LOG.sql;
 @MonthScales\PCD_GENERATE_MONTH_SCALE.sql;

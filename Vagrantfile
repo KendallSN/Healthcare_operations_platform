@@ -21,8 +21,6 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "2-Standby/infrastructure", "/vagrant_scripts"
   config.vm.synced_folder "software", "/vagrant_software"
   config.vm.synced_folder "2-Standby/automation", "/vagrant_automation"
-  config.vm.synced_folder "1-BD/SQL-VM scripts", "/vagrant_sql_scripts"
-  config.vm.synced_folder "1-BD/directories", "/vagrant_directories"
 
   # Primary Database Server (Node 1)
   config.vm.define "primary", primary: true do |primary|
@@ -62,10 +60,6 @@ Vagrant.configure("2") do |config|
     end
 
     primary.vm.provision "shell", path: "2-Standby/scripts/primary/setup.sh"
-    primary.vm.provision "shell",
-      path: "2-Standby/scripts/optional/deploy_sql_and_directories.sh",
-      name: "deploy_sql_and_directories",
-      run: "never"
     primary.vm.provision "shell",
       path: "2-Standby/scripts/optional/setup_oracle_autostart.sh",
       name: "setup_oracle_autostart",
@@ -110,10 +104,6 @@ Vagrant.configure("2") do |config|
     end
 
     standby.vm.provision "shell", path: "2-Standby/scripts/standby/setup.sh"
-    standby.vm.provision "shell",
-      path: "2-Standby/scripts/optional/deploy_sql_and_directories.sh",
-      name: "deploy_sql_and_directories",
-      run: "never"
     standby.vm.provision "shell",
       path: "2-Standby/scripts/optional/setup_oracle_autostart.sh",
       name: "setup_oracle_autostart",
