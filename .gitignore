@@ -13,6 +13,7 @@ software/*.jar
 
 #docs
 local_docs/
+guiastby/
 
 # Logs
 *.log
