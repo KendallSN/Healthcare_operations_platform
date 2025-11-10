@@ -43,23 +43,42 @@ echo "**************************************************************************
 echo "Create test user ${APP_SCHEMA} in ${PDB_NAME}..." `date`
 echo "******************************************************************************"
 
-# Preprocess user creation script to substitute password
-TEMP_USER_SQL="/tmp/create_user_$$.sql"
-
-# Replace 'password' placeholder with actual password from config
-sed "s/identified by password/identified by ${APP_SCHEMA_PASSWORD}/g" \
-    "${USER_SQL}" > "${TEMP_USER_SQL}"
-
 echo "Creating user with default USERS tablespace..."
 
-# Execute user creation script
+# Execute user creation directly with password from environment
+# Using heredoc to avoid shell expansion issues with special characters like !
 sqlplus -S / as sysdba <<EOF
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 -- Connect to the PDB
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 
--- Execute user creation
-@${TEMP_USER_SQL}
+-- Drop user if exists (for redeployment)
+BEGIN
+  EXECUTE IMMEDIATE 'DROP USER ${APP_SCHEMA} CASCADE';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN  -- ORA-01918: user does not exist
+      RAISE;
+    END IF;
+END;
+/
+
+-- Create user with password from config
+CREATE USER ${APP_SCHEMA} IDENTIFIED BY "${APP_SCHEMA_PASSWORD}"
+  DEFAULT TABLESPACE users
+  TEMPORARY TABLESPACE temp
+  QUOTA UNLIMITED ON users;
+
+-- Grant necessary privileges
+GRANT CONNECT, RESOURCE TO ${APP_SCHEMA};
+GRANT CREATE SESSION TO ${APP_SCHEMA};
+GRANT CREATE TABLE TO ${APP_SCHEMA};
+GRANT CREATE SEQUENCE TO ${APP_SCHEMA};
+GRANT CREATE VIEW TO ${APP_SCHEMA};
+GRANT CREATE PROCEDURE TO ${APP_SCHEMA};
+
+-- Display confirmation
+SELECT 'User ${APP_SCHEMA} created successfully' AS status FROM dual;
 
 EXIT;
 EOF
@@ -67,14 +86,10 @@ EOF
 SQL_EXIT_CODE=$?
 if [ ${SQL_EXIT_CODE} -ne 0 ]; then
   echo "ERROR: User creation failed with exit code ${SQL_EXIT_CODE}"
-  rm -f "${TEMP_USER_SQL}"
   exit ${SQL_EXIT_CODE}
 fi
 
 echo "User ${APP_SCHEMA} created successfully with default tablespace"
-
-# Clean up temporary file
-rm -f "${TEMP_USER_SQL}"
 
 # Verify user was created
 echo "Verifying user creation..."

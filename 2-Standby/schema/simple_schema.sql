@@ -96,33 +96,6 @@ BEGIN
 END;
 /
 
--- Procedure to verify replication status
-CREATE OR REPLACE PROCEDURE check_replication_status AS
-  v_db_name     VARCHAR2(50);
-  v_db_role     VARCHAR2(20);
-  v_test_count  NUMBER;
-  v_audit_count NUMBER;
-BEGIN
-  -- Get database information
-  SELECT SYS_CONTEXT('USERENV', 'DB_UNIQUE_NAME') INTO v_db_name FROM dual;
-  SELECT database_role INTO v_db_role FROM v$database;
-
-  -- Count records
-  SELECT COUNT(*) INTO v_test_count FROM replication_test;
-  SELECT COUNT(*) INTO v_audit_count FROM audit_log;
-
-  -- Display status
-  DBMS_OUTPUT.PUT_LINE('========================================');
-  DBMS_OUTPUT.PUT_LINE('Data Guard Replication Status');
-  DBMS_OUTPUT.PUT_LINE('========================================');
-  DBMS_OUTPUT.PUT_LINE('Database Name: ' || v_db_name);
-  DBMS_OUTPUT.PUT_LINE('Database Role: ' || v_db_role);
-  DBMS_OUTPUT.PUT_LINE('Test Records:  ' || v_test_count);
-  DBMS_OUTPUT.PUT_LINE('Audit Records: ' || v_audit_count);
-  DBMS_OUTPUT.PUT_LINE('========================================');
-END;
-/
-
 -- ============================================================================
 -- Insert sample test data
 -- ============================================================================
@@ -146,9 +119,6 @@ COMMIT;
 -- ============================================================================
 -- Display summary
 -- ============================================================================
-
-SET SERVEROUTPUT ON
-EXEC check_replication_status;
 
 -- Display table counts
 SELECT 'Tables created: ' || COUNT(*) AS status FROM user_tables;
