@@ -25,8 +25,11 @@
 @Logbooks\Script_Logbook_Triggers.sql;
     --6.Crear los roles
 @Security\Script_Roles.sql
+    --7.Crear perfiles.
+@Security\Script_Profiles.sql
 
 
 Grant Administrator TO HC_ADMIN;
+ALTER USER HC_ADMIN PROFILE admin_profile;
 GRANT EXECUTE ON PCD_ACTIVATE_ROLE TO HC_ADMIN;
 GRANT READ, WRITE ON DIRECTORY National_Register_Dir TO HC_ADMIN;

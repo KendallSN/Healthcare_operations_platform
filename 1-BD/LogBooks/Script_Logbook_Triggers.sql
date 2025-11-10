@@ -433,6 +433,184 @@ END;
 /
 
 
+-- TRIGGER PARA HC_Position
+
+CREATE OR REPLACE TRIGGER TRG_LOGBOOK_UPDATE_POSITION
+AFTER UPDATE ON HC_Position
+FOR EACH ROW
+DECLARE
+    vAtributos VARCHAR2(4000);
+    vValoresAnteriores VARCHAR2(4000);
+    vValoresNuevos VARCHAR2(4000);
+BEGIN
+    vAtributos := '';
+    vValoresAnteriores := '';
+    vValoresNuevos := '';
+
+    IF UPDATING THEN
+        IF :OLD.PST_name != :NEW.PST_name THEN
+            vAtributos := vAtributos || 'PST_name, ';
+            vValoresAnteriores := vValoresAnteriores || :OLD.PST_name || ', ';
+            vValoresNuevos := vValoresNuevos || :NEW.PST_name || ', ';
+        END IF;
+
+        IF :OLD.PST_description != :NEW.PST_description THEN
+            vAtributos := vAtributos || 'PST_description, ';
+            vValoresAnteriores := vValoresAnteriores || :OLD.PST_description || ', ';
+            vValoresNuevos := vValoresNuevos || :NEW.PST_description || ', ';
+        END IF;
+
+        IF :OLD.HCN_id != :NEW.HCN_id THEN
+            vAtributos := vAtributos || 'HCN_id, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.HCN_id) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.HCN_id) || ', ';
+        END IF;
+
+        IF :OLD.TRN_id != :NEW.TRN_id THEN
+            vAtributos := vAtributos || 'TRN_id, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_id) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_id) || ', ';
+        END IF;
+
+        IF :OLD.version != :NEW.version THEN
+            vAtributos := vAtributos || 'version, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.version) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.version) || ', ';
+        END IF;
+
+        IF LENGTH(vAtributos) > 2 THEN
+            vAtributos := SUBSTR(vAtributos, 1, LENGTH(vAtributos) - 2);
+            vValoresAnteriores := SUBSTR(vValoresAnteriores, 1, LENGTH(vValoresAnteriores) - 2);
+            vValoresNuevos := SUBSTR(vValoresNuevos, 1, LENGTH(vValoresNuevos) - 2);
+        END IF;
+
+        IF vAtributos IS NOT NULL THEN
+            vAtributos := 'PST_id, ' || vAtributos;
+            vValoresAnteriores := TO_CHAR(:OLD.PST_id) || ', ' || vValoresAnteriores;
+            vValoresNuevos := TO_CHAR(:NEW.PST_id) || ', ' || vValoresNuevos;
+
+            PCD_INSERT_LOG(
+                p_table     => 'HC_Position',
+                p_attribute => vAtributos,
+                p_operation => 'UPDATE',
+                p_old_value => vValoresAnteriores,
+                p_new_value => vValoresNuevos
+            );
+
+            DBMS_OUTPUT.PUT_LINE('Bitácora: HC_Position actualizado - PST_id=' || :NEW.PST_id);
+        END IF;
+    END IF;
+END;
+/
+
+
+-- TRIGGER PARA HC_Turn
+
+CREATE OR REPLACE TRIGGER TRG_LOGBOOK_UPDATE_TURN
+AFTER UPDATE ON HC_Turn
+FOR EACH ROW
+DECLARE
+    vAtributos VARCHAR2(4000);
+    vValoresAnteriores VARCHAR2(4000);
+    vValoresNuevos VARCHAR2(4000);
+BEGIN
+    vAtributos := '';
+    vValoresAnteriores := '';
+    vValoresNuevos := '';
+
+    IF UPDATING THEN
+        IF :OLD.TRN_start_hour != :NEW.TRN_start_hour THEN
+            vAtributos := vAtributos || 'TRN_start_hour, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_start_hour) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_start_hour) || ', ';
+        END IF;
+
+        IF :OLD.TRN_end_hour != :NEW.TRN_end_hour THEN
+            vAtributos := vAtributos || 'TRN_end_hour, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_end_hour) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_end_hour) || ', ';
+        END IF;
+
+        IF :OLD.USR_id != :NEW.USR_id THEN
+            vAtributos := vAtributos || 'USR_id, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.USR_id) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.USR_id) || ', ';
+        END IF;
+
+        IF :OLD.TRN_day_of_week != :NEW.TRN_day_of_week THEN
+            vAtributos := vAtributos || 'TRN_day_of_week, ';
+            vValoresAnteriores := vValoresAnteriores || :OLD.TRN_day_of_week || ', ';
+            vValoresNuevos := vValoresNuevos || :NEW.TRN_day_of_week || ', ';
+        END IF;
+
+        IF :OLD.TRN_base_hourly_payment != :NEW.TRN_base_hourly_payment THEN
+            vAtributos := vAtributos || 'TRN_base_hourly_payment, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_base_hourly_payment) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_base_hourly_payment) || ', ';
+        END IF;
+
+        IF :OLD.TRN_base_hourly_price != :NEW.TRN_base_hourly_price THEN
+            vAtributos := vAtributos || 'TRN_base_hourly_price, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_base_hourly_price) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_base_hourly_price) || ', ';
+        END IF;
+
+        IF :OLD.version != :NEW.version THEN
+            vAtributos := vAtributos || 'version, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.version) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.version) || ', ';
+        END IF;
+
+        IF :OLD.TRN_payment_type != :NEW.TRN_payment_type THEN
+            vAtributos := vAtributos || 'TRN_payment_type, ';
+            vValoresAnteriores := vValoresAnteriores || :OLD.TRN_payment_type || ', ';
+            vValoresNuevos := vValoresNuevos || :NEW.TRN_payment_type || ', ';
+        END IF;
+
+        IF :OLD.TRN_price_type != :NEW.TRN_price_type THEN
+            vAtributos := vAtributos || 'TRN_price_type, ';
+            vValoresAnteriores := vValoresAnteriores || :OLD.TRN_price_type || ', ';
+            vValoresNuevos := vValoresNuevos || :NEW.TRN_price_type || ', ';
+        END IF;
+
+        IF :OLD.TRN_base_full_price != :NEW.TRN_base_full_price THEN
+            vAtributos := vAtributos || 'TRN_base_full_price, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_base_full_price) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_base_full_price) || ', ';
+        END IF;
+
+        IF :OLD.TRN_base_full_payment != :NEW.TRN_base_full_payment THEN
+            vAtributos := vAtributos || 'TRN_base_full_payment, ';
+            vValoresAnteriores := vValoresAnteriores || TO_CHAR(:OLD.TRN_base_full_payment) || ', ';
+            vValoresNuevos := vValoresNuevos || TO_CHAR(:NEW.TRN_base_full_payment) || ', ';
+        END IF;
+
+        IF LENGTH(vAtributos) > 2 THEN
+            vAtributos := SUBSTR(vAtributos, 1, LENGTH(vAtributos) - 2);
+            vValoresAnteriores := SUBSTR(vValoresAnteriores, 1, LENGTH(vValoresAnteriores) - 2);
+            vValoresNuevos := SUBSTR(vValoresNuevos, 1, LENGTH(vValoresNuevos) - 2);
+        END IF;
+
+        IF vAtributos IS NOT NULL THEN
+            vAtributos := 'TRN_id, ' || vAtributos;
+            vValoresAnteriores := TO_CHAR(:OLD.TRN_id) || ', ' || vValoresAnteriores;
+            vValoresNuevos := TO_CHAR(:NEW.TRN_id) || ', ' || vValoresNuevos;
+
+            PCD_INSERT_LOG(
+                p_table     => 'HC_Turn',
+                p_attribute => vAtributos,
+                p_operation => 'UPDATE',
+                p_old_value => vValoresAnteriores,
+                p_new_value => vValoresNuevos
+            );
+
+            DBMS_OUTPUT.PUT_LINE('Bitácora: HC_Turn actualizado - TRN_id=' || :NEW.TRN_id);
+        END IF;
+    END IF;
+END;
+/
+
+
 -- MENSAJES DE CONFIRMACIÓN
 
 PROMPT
@@ -443,5 +621,7 @@ PROMPT - TRG_LOGBOOK_UPDATE_PAYROLLXUSER
 PROMPT - TRG_LOGBOOK_UPDATE_PAYROLLMOVEMENT
 PROMPT - TRG_LOGBOOK_UPDATE_MONTHSCALE
 PROMPT - TRG_LOGBOOK_UPDATE_TURNXMONTHSCALE
+PROMPT - TRG_LOGBOOK_UPDATE_POSITION
+PROMPT - TRG_LOGBOOK_UPDATE_TURN
 PROMPT =====================================================
 PROMPT
