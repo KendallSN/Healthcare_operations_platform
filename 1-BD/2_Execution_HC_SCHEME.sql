@@ -21,6 +21,7 @@
 @MonthScales\PCD_APPROVE_MONTH_SCALE.sql;
 @Security\FNC_GET_ROLE_PASSWORD.sql
 @Security\PCD_ACTIVATE_ROLE.sql;
+@Security\PCD_UPDATE_ROLE_PASSWORD.sql
     --5.Los triggers para las bitacoras
 @Logbooks\Script_Logbook_Triggers.sql;
     --6.Crear los roles

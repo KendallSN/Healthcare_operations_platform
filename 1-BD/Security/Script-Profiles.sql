@@ -1,4 +1,4 @@
--- Perfil para Administradores: contraseñas cambian cada 180 días, 10 intentos fallidos
+-- Perfil para Administradores: contraseñas cambian cada 365 días, 10 intentos fallidos
 CREATE PROFILE admin_profile LIMIT
     PASSWORD_LIFE_TIME 365
     FAILED_LOGIN_ATTEMPTS 10
