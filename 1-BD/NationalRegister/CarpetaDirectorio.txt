@@ -1,6 +1,0 @@
-En caso de usar docker la carpeta del directorio con el archivo PADRON_COMPLETO.txt debe ser creada en 
-C:\oracle\tablespaces
-con el nombre National_Register
-
-El archivo PADRON_COMPLETO.txt debe quedar ubicado en
-C:\oracle\tablespaces\National_Register
