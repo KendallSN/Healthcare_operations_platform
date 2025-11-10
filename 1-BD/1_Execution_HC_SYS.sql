@@ -12,6 +12,7 @@ DBMS_NETWORK_ACL_ADMIN.drop_acl(
 );
 END;
 /
+
 BEGIN
     DBMS_NETWORK_ACL_ADMIN.create_acl(
         acl          => 'smtp_acl.xml',
