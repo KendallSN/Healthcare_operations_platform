@@ -148,12 +148,19 @@ echo "**************************************************************************
 mkdir -p ${FRA_LOCATION}
 mkdir -p ${DATA_DIR}/${ORACLE_SID}/arch
 
-# Usar el comando moderno PREPARE DATABASE FOR DATA GUARD
-# Este comando automatiza la configuración de Data Guard habilitando:
-# - ARCHIVELOG mode (modo de archivo de logs)
-# - FORCE LOGGING (registro forzado de todas las transacciones)
-# - Configuración del Fast Recovery Area (FRA)
-# - Parámetros esenciales de Data Guard
+# PREPARE DATABASE FOR DATA GUARD automatiza la configuración inicial:
+# - Crea SPFILE si no existe
+# - Habilita ARCHIVELOG mode
+# - Habilita FORCE LOGGING
+# - Habilita Flashback Database
+# - Configura Fast Recovery Area (FRA)
+# - Agrega/reconfigura standby redo logs automáticamente
+# - Configura parámetros según Maximum Availability Architecture (MAA):
+#   * DB_FILES=1024, LOG_BUFFER=256M
+#   * DB_BLOCK_CHECKSUM=TYPICAL, DB_LOST_WRITE_PROTECT=TYPICAL
+#   * DB_FLASHBACK_RETENTION_TARGET=120, PARALLEL_THREADS_PER_CPU=1
+#   * DG_BROKER_START=TRUE
+# - Configura política RMAN: archive logs se eliminan después de envío a standby
 dgmgrl / <<EOF
 prepare database for data guard
   with db_unique_name is ${NODE1_DB_UNIQUE_NAME}
