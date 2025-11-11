@@ -48,7 +48,7 @@ sh ${ORACLE_HOME}/root.sh
 # Create primary database
 su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/oracle_create_database.sh'
 
-# Deploy simple test schema (no UTL_MAIL needed for basic Data Guard testing)
+# Deploy simple test schema for Data Guard replication testing
 su - oracle -c 'sh /vagrant/2-Standby/scripts/primary/deploy_custom_schema.sh'
 
 # Setup automation scripts

@@ -12,23 +12,15 @@ echo "**************************************************************************
 
 # Define schema directory and files (all within 2-Standby)
 SCHEMA_DIR="/vagrant/2-Standby/schema"
-USER_SQL="${SCHEMA_DIR}/create_user.sql"
 SCHEMA_SQL="${SCHEMA_DIR}/simple_schema.sql"
 
-# Verify schema files exist
-if [ ! -f "${USER_SQL}" ]; then
-  echo "ERROR: User creation script not found: ${USER_SQL}"
-  exit 1
-fi
-
+# Verify schema file exists
 if [ ! -f "${SCHEMA_SQL}" ]; then
   echo "ERROR: Schema script not found: ${SCHEMA_SQL}"
   exit 1
 fi
 
-echo "Schema files verified:"
-echo "  User script:   ${USER_SQL}"
-echo "  Schema script: ${SCHEMA_SQL}"
+echo "Schema file verified: ${SCHEMA_SQL}"
 
 # Open PDB if not already open
 sqlplus / as sysdba <<EOF
