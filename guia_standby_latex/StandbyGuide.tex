@@ -123,6 +123,9 @@ Este manual documenta la implementación completa de un sistema de alta disponib
 
 El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar la cero pérdida de datos y la continuidad del servicio. El enfoque de este manual está en cómo la arquitectura Data Guard automatizada resuelve la necesidad de \textbf{alta disponibilidad} para cualquier aplicación que lo requiera.
 
+\vspace{0.5em}
+\noindent\textbf{Nota importante:} Para una comprensión profunda de los comandos y configuraciones de Data Guard, consulte los \textbf{Apéndices} al final de este manual, donde se explican en detalle los parámetros críticos. Además, todos los scripts de shell (\texttt{2-Standby/scripts/}, \texttt{2-Standby/automation/}, \texttt{2-Standby/infrastructure/}) contienen comentarios explicativos en español que documentan línea por línea el propósito de cada comando.
+
 \subsection{Componentes Principales del Entorno}
 
 \begin{enumerate}
