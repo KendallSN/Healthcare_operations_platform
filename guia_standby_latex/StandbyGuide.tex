@@ -502,7 +502,7 @@ BACKUP_RETENTION_DAYS=7       # Retener backups 7 días
 ARCHIVE_RETENTION_DAYS=3      # Retener archives 3 días
 \end{lstlisting}
 
-Para modificar la configuración del ambiente (RAM, IPs, \textit{passwords}), es necesario editar estos archivos y luego ejecutar \texttt{.\textbackslash powershell\textbackslash destroy.ps1} seguido de \texttt{.\textbackslash powershell\textbackslash deploy.ps1} para aplicar los cambios.
+Para modificar la configuración del ambiente (RAM, IPs, \textit{passwords}), es necesario editar estos archivos y luego, desde el directorio \texttt{powershell/}, ejecutar \texttt{.\textbackslash destroy.ps1} seguido de \texttt{.\textbackslash deploy.ps1} para aplicar los cambios.
 
 \section{Orquestación y Compatibilidad}
 
@@ -545,10 +545,11 @@ Antes de ejecutar cualquier comando, asegúrese de haber cumplido todos los requ
 
 \subsection{Despliegue Completo Automatizado}
 
-La manera más eficiente de desplegar el sistema es a través del \textit{script} orquestador:
+La manera más eficiente de desplegar el sistema es a través del \textit{script} orquestador. Primero, navegue al directorio \texttt{powershell/} desde la raíz del proyecto:
 
 \begin{lstlisting}[language=bash, caption={Comando Principal de Despliegue}]
-.\powershell\deploy.ps1
+cd powershell
+.\deploy.ps1
 \end{lstlisting}
 
 \advertencia{El script \texttt{deploy.ps1} ejecuta \texttt{vagrant destroy -f} al inicio, eliminando las VMs existentes y todos sus datos. Para reanudar VMs existentes de manera segura, use \texttt{vagrant reload} seguido de \texttt{vagrant provision --provision-with setup\_oracle\_autostart}.}
@@ -568,7 +569,8 @@ Este comando se encargará de instalar todo, desde el sistema operativo en las V
 \subsection{Destrucción del Ambiente}
 
 \begin{lstlisting}[language=bash, caption={Destrucción Completa (Recomendado)}]
-.\powershell\destroy.ps1
+cd powershell
+.\destroy.ps1
 \end{lstlisting}
 Este comando elimina las VMs, los discos virtuales y los registros de VirtualBox, liberando espacio en disco ($\sim 200\text{ GB}$).
 \section{Conexiones a las Bases de Datos}
@@ -637,14 +639,14 @@ Todos los scripts de automatización se encuentran en \texttt{/home/oracle/autom
 
 \begin{itemize}
     \item \textbf{Problema:} Deploy falla con error \texttt{\$'\textbackslash r': command not found}.
-\item \textbf{Solución:} Ejecutar manualmente \texttt{.\textbackslash powershell\textbackslash fix-line-endings.ps1} y redesplegar.
+\item \textbf{Solución:} Ejecutar manualmente \texttt{fix-line-endings.ps1} desde el directorio \texttt{powershell/} y redesplegar.
     \item \textbf{Problema:} \texttt{ORA-12541: TNS:no listener} o \texttt{ORA-01034: ORACLE not available}.
 \item \textbf{Solución:} Iniciar manualmente el \textit{listener} (\texttt{lsnrctl start}) y la base de datos (\texttt{STARTUP}) a través de SSH. Si el problema es recurrente, configure el \textit{auto-start} con el \textit{provisioner} \texttt{setup\_oracle\_autostart}.
     \item \textbf{Problema:} \textit{Apply lag} en \textit{Standby} aumenta.
 \item \textbf{Solución:} El proceso \texttt{MRP0} del \textit{Standby} está lento o detenido. Verifique su estado con \texttt{v\$managed\_standby} y, si es necesario, reinicie la aplicación de logs (\texttt{ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION}).
 \end{itemize}
 
-Ante cualquier fallo irrecuperable, la solución más rápida es \textbf{destruir y redesplegar} con el script \texttt{deploy.ps1}, asegurando que la configuración en \texttt{install.env} y \texttt{vagrant.yml} sea correcta.
+Ante cualquier fallo irrecuperable, la solución más rápida es \textbf{destruir y redesplegar} con el script \texttt{deploy.ps1} (ejecutado desde el directorio \texttt{powershell/}), asegurando que la configuración en \texttt{install.env} y \texttt{vagrant.yml} sea correcta.
 
 \newpage
 
@@ -1179,7 +1181,7 @@ Este proyecto implementa una solución de \textbf{Alta Disponibilidad (HA)} y \t
 \subsection{Logros del Proyecto}
 \begin{itemize}
     \item \textbf{Zero Data Loss (RPO=0):} Asegurado por \texttt{MAXAVAILABILITY} y transporte \texttt{FASTSYNC}.
-\item \textbf{Deployment Automatizado:} Configuración completa en $\sim 60$-$70$ minutos con \texttt{.\textbackslash powershell\textbackslash deploy.ps1}.
+\item \textbf{Deployment Automatizado:} Configuración completa en $\sim 60$-$70$ minutos con el script de despliegue automatizado.
 \item \textbf{Recuperación Rápida:} \textit{Failover} en minutos, con \textit{reinstatement} del \textit{primary} en $\sim 5$ minutos (\textit{Flashback Database}).
 \item \textbf{Protección por Capas:} Replicación, \textit{backups} RMAN diarios y copia \textit{off-site} (\texttt{rsync} a \textit{Standby}).
 \item \textbf{Monitoreo Proactivo:} \textit{Cron jobs} cada 10 minutos para verificar \textit{apply lag} y \textit{archive gaps}.
@@ -1708,8 +1710,9 @@ sqlplus / as sysdba              # CDB como sysdba
 \section{Comandos de Vagrant}
 
 \begin{lstlisting}[language=bash, caption={Operaciones con Vagrant}]
-# Despliegue completo automatizado
-.\powershell\deploy.ps1
+# Despliegue completo automatizado (desde directorio powershell/)
+cd powershell
+.\deploy.ps1
 
 # Operaciones individuales
 vagrant up primary               # Iniciar/crear Primary
@@ -1719,8 +1722,9 @@ vagrant reload primary           # Reiniciar Primary
 vagrant destroy -f               # Destruir TODAS las VMs
 vagrant ssh primary              # SSH a Primary
 
-# Destrucción completa (recomendado)
-.\powershell\destroy.ps1
+# Destrucción completa (desde directorio powershell/)
+cd powershell
+.\destroy.ps1
 \end{lstlisting}
 
 \section{Comandos DGMGRL (Data Guard Broker)}

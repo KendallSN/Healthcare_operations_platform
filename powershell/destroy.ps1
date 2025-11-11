@@ -46,9 +46,15 @@ function Get-VBoxManagePath {
     return $null
 }
 
+# Get script directory and prepare logging
+$scriptDir = $PSScriptRoot
+$timestamp = Get-Date -Format "yyyy-MM-dd-HHmmss"
+$logDir = Join-Path $scriptDir "logs\destroy-$timestamp"
+
 Write-Info "=========================================="
 Write-Info "Oracle Data Guard Automated Destruction"
 Write-Info "=========================================="
+Write-Info "Log directory: $logDir"
 Write-Info ""
 
 # Locate VBoxManage.exe
@@ -57,6 +63,12 @@ if (!$script:VBoxManage) {
     Write-Warning "[WARNING] VBoxManage.exe not found. VirtualBox cleanup will be skipped."
     Write-Warning "           VMs can be manually removed from VirtualBox Manager."
 }
+
+# Change to project root for Vagrant operations
+Write-Info "  → Changing to project root directory..."
+$projectRoot = Split-Path -Parent $scriptDir
+Set-Location $projectRoot
+Write-Success "  [OK] Working directory: $(Get-Location)`n"
 
 $destroyStart = Get-Date
 
@@ -72,26 +84,24 @@ try {
     if ($primaryStatus -or $standbyStatus) {
         Write-Info "  → VMs are running, collecting logs before destruction..."
 
-        # Create backup directory
-        $timestamp = Get-Date -Format "yyyy-MM-dd-HHmmss"
-        $backupDir = "logs\backup-before-destroy-$timestamp"
-        New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-        Write-Info "  → Backup directory: $backupDir"
+        # Create backup directory in powershell/logs
+        New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+        Write-Info "  → Backup directory: $logDir"
 
         if ($primaryStatus) {
             Write-Info "  → Backing up primary logs..."
 
             # Primary alert log
-            vagrant ssh primary -c "sudo tail -2000 /u01/app/oracle/diag/rdbms/cdb1/cdb1/trace/alert_cdb1.log" 2>&1 | Out-File -FilePath "$backupDir\primary-alert.log" -Encoding UTF8
+            vagrant ssh primary -c "sudo tail -2000 /u01/app/oracle/diag/rdbms/cdb1/cdb1/trace/alert_cdb1.log" 2>&1 | Out-File -FilePath "$logDir\primary-alert.log" -Encoding UTF8
 
             # Primary listener log
-            vagrant ssh primary -c "sudo tail -1000 /u01/app/oracle/diag/tnslsnr/*/listener/alert/log.xml" 2>&1 | Out-File -FilePath "$backupDir\primary-listener.log" -Encoding UTF8
+            vagrant ssh primary -c "sudo tail -1000 /u01/app/oracle/diag/tnslsnr/*/listener/alert/log.xml" 2>&1 | Out-File -FilePath "$logDir\primary-listener.log" -Encoding UTF8
 
             # Primary automation logs
-            vagrant ssh primary -c "sudo tar -czf /tmp/primary-automation-logs.tar.gz -C /home/oracle/logs/automation . 2>/dev/null; sudo cat /tmp/primary-automation-logs.tar.gz" 2>$null | Set-Content -Path "$backupDir\primary-automation-logs.tar.gz" -Encoding Byte
+            vagrant ssh primary -c "sudo tar -czf /tmp/primary-automation-logs.tar.gz -C /home/oracle/logs/automation . 2>/dev/null; sudo cat /tmp/primary-automation-logs.tar.gz" 2>$null | Set-Content -Path "$logDir\primary-automation-logs.tar.gz" -Encoding Byte
 
             # Primary Data Guard status
-            vagrant ssh primary -c "sudo su - oracle -c '/home/oracle/automation/verify_dataguard.sh'" 2>&1 | Out-File -FilePath "$backupDir\primary-dataguard-status.log" -Encoding UTF8
+            vagrant ssh primary -c "sudo su - oracle -c '/home/oracle/automation/verify_dataguard.sh'" 2>&1 | Out-File -FilePath "$logDir\primary-dataguard-status.log" -Encoding UTF8
 
             Write-Success "  [OK] Primary logs backed up"
         }
@@ -100,13 +110,13 @@ try {
             Write-Info "  → Backing up standby logs..."
 
             # Standby alert log
-            vagrant ssh standby -c "sudo tail -2000 /u01/app/oracle/diag/rdbms/cdb1_stby/cdb1/trace/alert_cdb1.log" 2>&1 | Out-File -FilePath "$backupDir\standby-alert.log" -Encoding UTF8
+            vagrant ssh standby -c "sudo tail -2000 /u01/app/oracle/diag/rdbms/cdb1_stby/cdb1/trace/alert_cdb1.log" 2>&1 | Out-File -FilePath "$logDir\standby-alert.log" -Encoding UTF8
 
             # Standby listener log
-            vagrant ssh standby -c "sudo tail -1000 /u01/app/oracle/diag/tnslsnr/*/listener/alert/log.xml" 2>&1 | Out-File -FilePath "$backupDir\standby-listener.log" -Encoding UTF8
+            vagrant ssh standby -c "sudo tail -1000 /u01/app/oracle/diag/tnslsnr/*/listener/alert/log.xml" 2>&1 | Out-File -FilePath "$logDir\standby-listener.log" -Encoding UTF8
 
             # Standby automation logs
-            vagrant ssh standby -c "sudo tar -czf /tmp/standby-automation-logs.tar.gz -C /home/oracle/logs/automation . 2>/dev/null; sudo cat /tmp/standby-automation-logs.tar.gz" 2>$null | Set-Content -Path "$backupDir\standby-automation-logs.tar.gz" -Encoding Byte
+            vagrant ssh standby -c "sudo tar -czf /tmp/standby-automation-logs.tar.gz -C /home/oracle/logs/automation . 2>/dev/null; sudo cat /tmp/standby-automation-logs.tar.gz" 2>$null | Set-Content -Path "$logDir\standby-automation-logs.tar.gz" -Encoding Byte
 
             Write-Success "  [OK] Standby logs backed up"
         }
@@ -118,22 +128,22 @@ VM LOGS BACKUP BEFORE DESTRUCTION
 ========================================
 
 Backup Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-Backup Directory: $backupDir
+Backup Directory: $logDir
 
 ----------------------------------------
 BACKED UP FILES
 ----------------------------------------
-$(Get-ChildItem $backupDir | ForEach-Object {
+$(Get-ChildItem $logDir | ForEach-Object {
     $size = if ($_.Length -gt 1MB) { "$([math]::Round($_.Length/1MB, 2)) MB" } else { "$([math]::Round($_.Length/1KB, 2)) KB" }
     "  - $($_.Name) ($size)"
 } | Out-String)
 
 ========================================
 "@
-        $backupSummary | Out-File -FilePath "$backupDir\BACKUP-SUMMARY.txt" -Encoding UTF8
+        $backupSummary | Out-File -FilePath "$logDir\BACKUP-SUMMARY.txt" -Encoding UTF8
 
         $backupElapsed = (Get-Date) - $backupStart
-        Write-Success "  [OK] Logs backed up to $backupDir ($($backupElapsed.TotalSeconds.ToString('F1'))s)`n"
+        Write-Success "  [OK] Logs backed up to $logDir ($($backupElapsed.TotalSeconds.ToString('F1'))s)`n"
     } else {
         Write-Info "  → No VMs running, skipping log backup`n"
         $backupElapsed = New-TimeSpan -Seconds 0
@@ -145,8 +155,7 @@ $(Get-ChildItem $backupDir | ForEach-Object {
 
 # Phase 2: Destroy VMs
 Write-Info "[Phase 2/3] Destroying Vagrant VMs"
-$destroyLog = "logs\destroy-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
-New-Item -ItemType Directory -Force -Path "logs" | Out-Null
+$destroyLog = "$logDir\00-vagrant-destroy.log"
 $destroyVMStart = Get-Date
 
 try {
@@ -266,9 +275,7 @@ Write-Success "DESTRUCTION COMPLETED SUCCESSFULLY"
 Write-Success "=========================================="
 Write-Success "Total time: $($destroyElapsed.TotalSeconds.ToString('F1'))s"
 Write-Info ""
-if ($backupDir) {
-    Write-Info "VM logs backed up to: $backupDir"
-}
+Write-Info "VM logs backed up to: $logDir"
 Write-Info "Destruction log: $destroyLog"
 Write-Info ""
 Write-Info "To redeploy: .\deploy.ps1"
