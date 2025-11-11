@@ -360,7 +360,7 @@ La arquitectura de red y almacenamiento se resume en la Figura~\ref{fig:arquitec
 
     % VM1 - Primary
     % Corrección: Aumentada separación horizontal (de -3.5 a -4.5)
-    \node (vm1) [vm, at={(-4.5, 2.5)}] {};
+    \node (vm1) [vm, at={(-4.5, 0.8)}] {};
     % Corrección: Texto anclado al NORTE (arriba)
     \node (vm1_text) [align=center, text width=5cm, anchor=north, at=(vm1.north), yshift=-0.2cm] {
         \textbf{VM1: Primary} \\
@@ -369,12 +369,12 @@ La arquitectura de red y almacenamiento se resume en la Figura~\ref{fig:arquitec
     };
     
     % Discos dentro de la VM
-    \node (disk1_u01) [disk, at={(vm1.south)}, yshift=1.7cm] {\texttt{/u01} (Data/SW)};
+    \node (disk1_u01) [disk, at={(vm1.south)}, yshift=2.0cm] {\texttt{/u01} (Data/SW)};
     \node (disk1_u02) [disk, below=0.15cm of disk1_u01] {\texttt{/u02} (FRA/Backup)};
     
     % VM2 - Standby
     % Corrección: Aumentada separación horizontal (de 3.5 a 4.5)
-    \node (vm2) [vm, at={(4.5, 2.5)}] {};
+    \node (vm2) [vm, at={(4.5, 0.8)}] {};
     % Corrección: Texto anclado al NORTE (arriba)
     \node (vm2_text) [align=center, text width=5cm, anchor=north, at=(vm2.north), yshift=-0.2cm] {
         \textbf{VM2: Standby} \\
@@ -383,20 +383,17 @@ La arquitectura de red y almacenamiento se resume en la Figura~\ref{fig:arquitec
     };
 
     % Discos dentro de la VM
-    \node (disk2_u01) [disk, at={(vm2.south)}, yshift=1.7cm] {\texttt{/u01} (Data/SW)};
+    \node (disk2_u01) [disk, at={(vm2.south)}, yshift=2.0cm] {\texttt{/u01} (Data/SW)};
     \node (disk2_u02) [disk, below=0.15cm of disk2_u01] {\texttt{/u02} (FRA/Backup)};
     
     % Redes
-    \node (net_hostonly) [net, below=0.7cm of host.south, anchor=center] {\textbf{Red Host-Only (192.168.56.0/24)}};
-    \node (net_nat) [net, above=0.7cm of host.north, anchor=center] {\textbf{Red NAT (Acceso a Internet)}};
+    \node (net_hostonly) [net, above=0.5cm of host.south, anchor=center] {\textbf{Red Host-Only (192.168.56.0/24) - Replicación Data Guard}};
+    \node (net_nat) [net, below=0.5cm of host.north, anchor=center] {\textbf{Red NAT (Acceso a Internet)}};
 
     % Conexiones
     \draw [arrow] (vm1.south) -- (vm1.south |- net_hostonly.north);
     \draw [arrow] (vm2.south) -- (vm2.south |- net_hostonly.north);
-    
-    % Corrección: Texto "Replicación" subido (above=3pt)
-    \draw [repl_arrow] (vm1.east) -- (vm2.west) node [midway, above=3pt, fill=white, rounded corners, font=\small] {Replicación Data Guard};
-    
+
     \draw [arrow] (vm1.north) -- (vm1.north |- net_nat.south);
     \draw [arrow] (vm2.north) -- (vm2.north |- net_nat.south);
     
