@@ -8,6 +8,7 @@
 \usepackage{enumitem}
 \usepackage{fancyhdr}
 \usepackage{xcolor}
+\usepackage{float} % Para control preciso de posicionamiento de figuras con [H]
 
 % --- PAQUETES DE TIKZ PARA EL DIAGRAMA ---
 \usepackage{tikz}
@@ -350,7 +351,7 @@ El sistema opera bajo una arquitectura de 3 capas (Presentación, Aplicación, D
 \subsection{Diagrama de Arquitectura}
 La arquitectura de red y almacenamiento se resume en la Figura~\ref{fig:arquitectura_tikz}:
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
     node distance=0.8cm and 1.5cm,
@@ -696,9 +697,9 @@ vagrant ssh primary -c "su - oracle -c '/home/oracle/automation/verify_dataguard
 
 \subsection{Diagrama de Flujo de Backups}
 
-El siguiente diagrama ilustra el flujo completo de backup automatizado, desde la generación en el Primary hasta la transferencia y validación en el Standby:
+La Figura~\ref{fig:backup_flow} ilustra el flujo completo de backup automatizado, desde la generación en el Primary hasta la transferencia y validación en el Standby:
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
     node distance=1.2cm,
@@ -774,9 +775,9 @@ EOF
 
 \subsection{Árbol de Decisión para Failover}
 
-El siguiente diagrama ayuda al DBA a tomar la decisión correcta ante una situación de emergencia:
+La Figura~\ref{fig:failover_decision} ayuda al DBA a tomar la decisión correcta ante una situación de emergencia:
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
     node distance=1.0cm and 1.5cm,
