@@ -9,3 +9,8 @@ DROP TABLESPACE HC_TS INCLUDING CONTENTS AND DATAFILES CASCADE CONSTRAINTS;
 DROP ROLE Administrator;
 DROP ROLE Medic;
 DROP ROLE Administrative;
+
+-- Eliminar perfiles y reasignar usuarios al perfil DEFAULT
+DROP PROFILE admin_profile CASCADE;
+DROP PROFILE medic_profile CASCADE;
+DROP PROFILE staff_profile CASCADE;

@@ -6,11 +6,15 @@ BEGIN
 END;
 /
 
+SELECT job_name, job_type, job_action, enabled, state, last_start_date, next_run_date
+FROM dba_scheduler_jobs;
+
 SELECT * FROM HC_SCHEME.HC_NATIONALREGISTER;
 EXEC HC_SCHEME.PCD_CHARGE_NATIONAL_REGISTER('PADRON_COMPLETO.txt');
 
 SELECT * FROM HC_SCHEME.HC_MONTHSCALE;
 SELECT * FROM HC_SCHEME.HC_TURNXMONTHSCALE;
+SELECT * FROM HC_SCHEME.HC_PROCEDURE;
 -- Planilla para el mes 10, año 2025 de centro de salud 1
 EXEC HC_SCHEME.PCD_GENERATE_MONTH_SCALE('10',2025,1);
 
