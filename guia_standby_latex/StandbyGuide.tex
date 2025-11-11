@@ -1,6 +1,6 @@
 \documentclass[11pt, a4paper]{report}
 
-% --- PAQUETES ESENCIALES Y GEOMETRÍA ---
+% --- PAQUETES Y GEOMETRÍA ---
 \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -63,11 +63,14 @@
 
 % Definición del estilo de listados de código para entornos Bash y SQL
 \usepackage{listings}
+\usepackage{needspace}  % Para prevenir cortes de bloques de código entre páginas
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codeblue}{rgb}{0.0,0.0,0.6}
 \lstset{
     basicstyle=\ttfamily\footnotesize, % Reducido de \small a \footnotesize
-    breaklines=false,                 % Evita que las líneas se corten
+    breaklines=true,                   % Permite que las líneas largas se ajusten
+    breakatwhitespace=true,            % Rompe en espacios en blanco cuando sea posible
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Indicador de continuación
     frame=single,
     showstringspaces=false,
     keywordstyle=\color{codeblue}\bfseries,
@@ -79,6 +82,10 @@
 
 % Configurar nombres en español para listings
 \renewcommand{\lstlistingname}{Código}
+
+% Comando para prevenir cortes de bloques de código entre páginas
+% Uso: \lstneedspace antes de \begin{lstlisting} para bloques grandes
+\newcommand{\lstneedspace}{\needspace{10\baselineskip}}
 
 \lstdefinelanguage{SQL}{
   keywords={SELECT, FROM, WHERE, AND, OR, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TABLE, VIEW, INDEX, AS, INTO, VALUES, COMMIT, ROLLBACK, BEGIN, END, SET, EXIT, 
@@ -116,13 +123,13 @@ ON, ALL, DATABASE, RECOVER, MANAGED, STANDBY, DISCONNECT, SESSION, LOGFILE, ARCH
 % CAPÍTULO 1: INTRODUCCIÓN Y CONCEPTOS FUNDAMENTALES
 % *************************************************
 
-\chapter{Introducción y Conceptos Fundamentales}
+\chapter{Introducción y Conceptos Básicos}
 
 \section{Despliegue Automatizado de Oracle Data Guard}
 
-Este manual documenta la implementación completa de un sistema de alta disponibilidad utilizando Oracle Database 21c y Oracle Data Guard. El proceso está totalmente automatizado mediante scripts de Vagrant y Bash, permitiendo desplegar un entorno replicado (Principal y Standby) en minutos.
+Este manual documenta la implementación de un sistema de alta disponibilidad utilizando Oracle Database 21c y Oracle Data Guard. El proceso está automatizado mediante scripts de Vagrant y Bash, permitiendo desplegar un entorno replicado (Principal y Standby) en minutos.
 
-El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar la cero pérdida de datos y la continuidad del servicio. El enfoque de este manual está en cómo la arquitectura Data Guard automatizada resuelve la necesidad de \textbf{alta disponibilidad} para cualquier aplicación que lo requiera.
+El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar cero pérdida de datos y la continuidad del servicio. Este manual documenta cómo la arquitectura Data Guard automatizada proporciona \textbf{alta disponibilidad}.
 
 \vspace{0.5em}
 \noindent\textbf{Nota:} Para entender mejor los comandos y configuraciones de Data Guard, consulte los \textbf{Apéndices} al final del manual. Los scripts en \texttt{2-Standby/} también incluyen comentarios que explican cada operación.
@@ -192,7 +199,7 @@ La filosofía de Data Guard se basa en copiar instantáneamente cada transacció
 \item La \textbf{Standby database} aplica los \textit{archive logs} y se mantiene idéntica al \textit{primary}.
 \end{itemize}
 
-\section{Conceptos Fundamentales}
+\section{Conceptos Básicos}
 
 \subsection{Container Database (CDB) vs Pluggable Database (PDB)}
 
@@ -515,7 +522,7 @@ El \texttt{deploy.ps1} (PowerShell) es el orquestador principal que ejecuta todo
 \subsection{Script de Corrección de \textit{Line Endings} (\texttt{fix-line-endings.ps1})}
 
 Este script es necesario para la compatibilidad entre Windows y Linux.
-El problema $\texttt{\$'\textbackslash r': command not found}$ es el síntoma de \textit{line endings} incorrectos.
+El error \texttt{\$'\textbackslash r': command not found} aparece cuando los archivos tienen \textit{line endings} incorrectos.
 El script convierte los archivos \texttt{.sh} y \texttt{.env} de formato Windows \textbf{CRLF} (\texttt{\textbackslash r\textbackslash n}) a formato Unix \textbf{LF} (\texttt{\textbackslash n}) para que Bash pueda interpretarlos correctamente.
 
 \begin{lstlisting}[language=bash, caption={Ejecución de fix-line-endings.ps1}]
@@ -563,7 +570,7 @@ Este comando se encargará de instalar todo, desde el sistema operativo en las V
 \begin{lstlisting}[language=bash, caption={Destrucción Completa (Recomendado)}]
 .\powershell\destroy.ps1
 \end{lstlisting}
-Este comando garantiza que se eliminen completamente las VMs, los discos virtuales y los registros de VirtualBox, liberando espacio en disco ($\sim 200\text{ GB}$).
+Este comando elimina las VMs, los discos virtuales y los registros de VirtualBox, liberando espacio en disco ($\sim 200\text{ GB}$).
 \section{Conexiones a las Bases de Datos}
 
 \subsection{Conexiones desde el Host Windows}
@@ -629,7 +636,7 @@ Todos los scripts de automatización se encuentran en \texttt{/home/oracle/autom
 \section{Troubleshooting Rápido}
 
 \begin{itemize}
-    \item \textbf{Problema:} Deploy falla con \texttt{\$'\textbackslash r': command not found}.
+    \item \textbf{Problema:} Deploy falla con error \texttt{\$'\textbackslash r': command not found}.
 \item \textbf{Solución:} Ejecutar manualmente \texttt{.\textbackslash powershell\textbackslash fix-line-endings.ps1} y redesplegar.
     \item \textbf{Problema:} \texttt{ORA-12541: TNS:no listener} o \texttt{ORA-01034: ORACLE not available}.
 \item \textbf{Solución:} Iniciar manualmente el \textit{listener} (\texttt{lsnrctl start}) y la base de datos (\texttt{STARTUP}) a través de SSH. Si el problema es recurrente, configure el \textit{auto-start} con el \textit{provisioner} \texttt{setup\_oracle\_autostart}.
@@ -647,7 +654,7 @@ Ante cualquier fallo irrecuperable, la solución más rápida es \textbf{destrui
 
 \chapter{Operaciones y Mantenimiento Diario}
 
-Esta sección documenta los procedimientos esenciales que el DBA debe ejecutar para mantener la salud del sistema, incluyendo el monitoreo, \textit{switchover}, \textit{failover} y \textit{troubleshooting}.
+Esta sección documenta los procedimientos que el DBA debe ejecutar para mantener la salud del sistema, incluyendo el monitoreo, \textit{switchover}, \textit{failover} y \textit{troubleshooting}.
 \section{Monitoreo Diario de Data Guard}
 
 \subsection{Procedimientos Automatizados}
@@ -834,7 +841,7 @@ EOF
 \subsection{Reinstatement del Primary Fallido}
 \begin{enumerate}
     \item \textbf{Recuperar Host:} Reiniciar la VM del \textit{Primary} caído (\texttt{vagrant reload primary}) y esperar $\sim 30$ segundos.
-\item \textbf{Iniciar en MOUNT Mode:} \textbf{CRÍTICO} - La base de datos debe estar en modo MOUNT (no OPEN) para que FLASHBACK funcione:
+\item \textbf{Iniciar en MOUNT Mode:} La base de datos debe estar en modo MOUNT (no OPEN) para que FLASHBACK funcione:
         \begin{lstlisting}[language=bash]
 vagrant ssh primary -c "sudo su - oracle -c \
   'sqlplus / as sysdba <<< \"STARTUP MOUNT;\"'"
@@ -904,7 +911,7 @@ Para la mayoría de los errores, la primera acción es revisar el \textbf{\texti
 
 \chapter{Procedimientos de Prueba y Validación}
 
-Esta sección documenta los procedimientos de prueba esenciales para validar el correcto funcionamiento del entorno Data Guard, incluyendo simulaciones de desastres y validación de backups.
+Esta sección documenta los procedimientos de prueba para validar el correcto funcionamiento del entorno Data Guard, incluyendo simulaciones de desastres y validación de backups.
 
 \section{Pruebas de Switchover}
 
@@ -1185,11 +1192,11 @@ Si esta arquitectura se traslada a un entorno de producción:
 
 \subsection{Infraestructura y Red}
 
-Se recomienda utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento. Es fundamental colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales. En términos de conectividad, se debe garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
+Se recomienda utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento. Se recomienda colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales. En términos de conectividad, se debe garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
 
 \subsection{Operación y Seguridad}
 
-Se recomienda reemplazar los scripts Bash de monitoreo por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS). Es fundamental implementar Transparent Data Encryption (TDE) para cifrar los \textit{datafiles} de la base de datos en reposo. Debe realizarse ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real. Finalmente, es necesario verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
+Se recomienda reemplazar los scripts Bash de monitoreo por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS). Se recomienda implementar Transparent Data Encryption (TDE) para cifrar los \textit{datafiles} de la base de datos en reposo. Debe realizarse ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real. Finalmente, es necesario verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
 
 \section{Posibles Mejoras Futuras}
 
@@ -1205,7 +1212,7 @@ Asimismo, la capacidad de RMAN para clonar una base de datos completa a través 
 
 Finalmente, la gestión del ciclo de vida de la replicación (operaciones de \textit{switchover} y \textit{failover}) se reduce a comandos únicos y controlados. La capacidad de reinstaurar un \textit{primary} fallido como un nuevo \textit{standby} usando \texttt{REINSTATE DATABASE}, aprovechando \textit{Flashback Database}, subraya la resiliencia y facilidad de recuperación del sistema.
 
-Si bien la automatización de la infraestructura con herramientas como Vagrant y VirtualBox fue un facilitador clave para este entorno de demostración, el verdadero logro reside en la potencia y simplicidad que las propias herramientas de Oracle Data Guard proporcionan para garantizar la integridad de los datos y la continuidad del servicio.
+La automatización con Vagrant y VirtualBox facilita el despliegue de este entorno de demostración. Oracle Data Guard proporciona las herramientas para garantizar la integridad de los datos y la continuidad del servicio.
 
 
 \newpage
@@ -1218,7 +1225,7 @@ Si bien la automatización de la infraestructura con herramientas como Vagrant y
 \chapter[Apéndice A: Despliegue Primary]{Análisis Detallado: Despliegue del Nodo Principal}
 
 Esta sección documenta detalladamente el proceso de \textit{provisioning} del nodo \textit{primary} (\texttt{ol8-21-dg1}).
-El flujo se inicia con \texttt{vagrant up primary} que llama al \textit{wrapper} \texttt{setup.sh} y se orquesta completamente en \texttt{root\_setup.sh}.
+El flujo se inicia con \texttt{vagrant up primary} que llama al \textit{wrapper} \texttt{setup.sh} y se orquesta en \texttt{root\_setup.sh}.
 \section{Punto de Entrada (\texttt{setup.sh})}
 
 El script \texttt{setup.sh} es el primer script ejecutado por Vagrant, actuando como un \textit{wrapper} simple para delegar la ejecución del proceso al orquestador principal con privilegios de \texttt{root}.
@@ -1231,7 +1238,7 @@ sudo bash -c 'sh /vagrant/2-Standby/scripts/primary/root\_setup.sh'
 El uso de \texttt{sudo} es necesario ya que los pasos iniciales de instalación requieren privilegios de \texttt{root} para modificar el sistema operativo.
 \section{Orquestador Principal (\texttt{root\_setup.sh})}
 
-El script \texttt{root\_setup.sh} coordina la secuencia de 12 pasos (del 3 al 16) necesarios para construir un nodo primario de Oracle Data Guard completamente funcional, desde la preparación de discos hasta la instalación de \textit{cron jobs}.
+El script \texttt{root\_setup.sh} coordina la secuencia de 12 pasos (del 3 al 16) necesarios para construir un nodo primario de Oracle Data Guard funcional, desde la preparación de discos hasta la instalación de \textit{cron jobs}.
 \subsection{Secuencia de Ejecución}
 La secuencia de ejecución NO es arbitraria; el orden es importante para las dependencias de Oracle:
 \begin{enumerate}
@@ -1299,7 +1306,7 @@ Este script prepara el entorno de usuario \texttt{oracle} antes de la instalaci�
 \subsection{Configuración de Variables de Entorno}
 \begin{enumerate}
     \item \textbf{Creación de \texttt{setEnv.sh}:} Genera el script que contiene todas las variables de Oracle (\texttt{ORACLE\_HOME}, \texttt{ORACLE\_SID}, \texttt{ORACLE\_UNQNAME}, \texttt{PATH}, \texttt{TNS\_ADMIN}).
-\begin{lstlisting}[language=bash, caption={Variables Críticas de Entorno}]
+\begin{lstlisting}[language=bash, caption={Variables de Entorno}]
 export ORACLE_HOME=/u01/app/oracle/product/21.0.0/dbhome_1
 export ORACLE_SID=cdb1
 export ORACLE_UNQNAME=cdb1
@@ -1333,7 +1340,7 @@ Este es el \textbf{paso determinante} del despliegue del \textit{primary}, donde
     \item \textbf{Archivos TNS:} Crea \texttt{tnsnames.ora}, \texttt{listener.ora} y \texttt{sqlnet.ora}.
 Este último configura \textbf{Network Encryption} (\texttt{AES256}) y \textit{checksums} (\texttt{SHA256}) para proteger los logs en tránsito.
 \item \textbf{DBCA:} Crea la base de datos CDB (\texttt{cdb1}) con un PDB (\texttt{pdb1}) usando \texttt{dbca -silent} (8-12 minutos).
-\item \textbf{Password File:} Crea el archivo \texttt{orapwcdb1} para autenticación remota del \textit{sysdba}, esencial para el \textit{Broker} de Data Guard.
+\item \textbf{Password File:} Crea el archivo \texttt{orapwcdb1} para autenticación remota del \textit{sysdba}, requerido por el \textit{Broker} de Data Guard.
 \end{enumerate}
 
 \subsection{Configuración Data Guard con DGMGRL}
@@ -1452,7 +1459,7 @@ Esta etapa es el corazón del despliegue del \textit{standby} y la activación d
     \item \textbf{Conectividad TNS:} Se configuran los archivos de red para permitir la conexión al \textit{primary} y a la propia instancia auxiliar.
 \item \textbf{Instancia Auxiliar:} Se arranca una instancia mínima en modo \texttt{NOMOUNT}.
 \item \textbf{EJECUCIÓN RMAN DUPLICATE:}
-        \begin{lstlisting}[language=bash, caption={Comando Crítico de Clonación y Configuración}]
+        \begin{lstlisting}[language=bash, caption={Comando de Clonación y Configuración}]
 rman target sys/${SYS_PASSWORD}@cdb1.world auxiliary sys/${SYS_PASSWORD}@cdb1_stby.world <<EOF
 
 duplicate target database
@@ -1698,7 +1705,7 @@ sqlplus 'dgtest/DGTest2025!@pdb1'        # PDB esquema de prueba
 sqlplus / as sysdba              # CDB como sysdba
 \end{lstlisting}
 
-\section{Comandos de Vagrant Esenciales}
+\section{Comandos de Vagrant}
 
 \begin{lstlisting}[language=bash, caption={Operaciones con Vagrant}]
 # Despliegue completo automatizado
@@ -1774,7 +1781,7 @@ FETCH FIRST 10 ROWS ONLY;
 SELECT SWITCHOVER_STATUS FROM V$DATABASE;
 \end{lstlisting}
 
-\section{Comandos RMAN Esenciales}
+\section{Comandos RMAN}
 
 \begin{lstlisting}[language=SQL, caption={Operaciones de Backup con RMAN}]
 # Conectarse a RMAN
