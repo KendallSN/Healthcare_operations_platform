@@ -215,28 +215,19 @@ Recibe replicación continua y aplica los cambios. En este proyecto, \texttt{cdb
 Ambas bases de datos tienen el mismo \texttt{DB\_NAME} (\texttt{cdb1}) porque son copias físicas, pero se distinguen por el \texttt{DB\_UNIQUE\_NAME} (\texttt{cdb1} y \texttt{cdb1\_stby}).
 \subsection{Alta Disponibilidad (\textit{HA}) y Recuperación ante Desastres (\textit{DR})}
 
-\begin{itemize}
-    \item \textbf{Alta Disponibilidad (HA):} Minimiza el \textit{downtime}.
-Las métricas clave son \textbf{RTO} (\textit{Recovery Time Objective}) y \textbf{RPO} (\textit{Recovery Point Objective}).
-\item \textbf{Recuperación ante Desastres (DR):} Protege contra fallos catastróficos.
-\end{itemize}
+La Alta Disponibilidad (HA) minimiza el \textit{downtime} del sistema, mientras que la Recuperación ante Desastres (DR) protege contra fallos catastróficos. Las métricas clave para evaluar estos sistemas son RTO (\textit{Recovery Time Objective}, tiempo de recuperación) y RPO (\textit{Recovery Point Objective}, pérdida de datos tolerada).
 
-Con Data Guard \texttt{MAXAVAILABILITY}, se garantiza un \textbf{RPO de cero segundos} (cero pérdida de datos) y un \textbf{RTO de minutos}.
+Con Data Guard en modo \texttt{MAXAVAILABILITY}, se garantiza un RPO de cero segundos (cero pérdida de datos) y un RTO de minutos.
 \subsection{Replicación Sincrónica (\texttt{FASTSYNC})}
 
-\begin{itemize}
-    \item \textbf{Asincrónica (\texttt{ASYNC}):} \textit{Primary} no espera confirmación. Más rápido, pero posible pérdida de datos.
-\item \textbf{Sincrónica (\texttt{SYNC} / \texttt{FASTSYNC}):} \textit{Primary} espera confirmación del \textit{standby}. Garantiza cero pérdida de datos.
-\end{itemize}
+Existen dos modos principales de transporte de logs en Data Guard. En modo Asincrónico (\texttt{ASYNC}), el \textit{primary} no espera confirmación del \textit{standby}, lo cual es más rápido pero puede ocasionar pérdida de datos. En modo Sincrónico (\texttt{SYNC} o \texttt{FASTSYNC}), el \textit{primary} espera confirmación del \textit{standby}, garantizando cero pérdida de datos.
 
 El proyecto usa \texttt{FASTSYNC} para balancear la velocidad y la protección: el \textit{primary} espera que el \textit{standby} reciba los datos en memoria antes de continuar, lo cual es más rápido que esperar que los escriba en disco (\texttt{SYNC}) mientras mantiene el RPO en cero.
 \subsection{Archive Logs}
 
-Los \textbf{Archive Logs} son la copia histórica de los \textbf{Online Redo Logs} que contienen los registros de todos los cambios de la base de datos.
-\begin{itemize}
-    \item Son la base del mecanismo de replicación de Data Guard.
-\item El parámetro \texttt{ARCHIVE\_LAG\_TARGET=300} (\textbf{5 minutos}) fuerza un \textit{log switch} periódico, asegurando que el \textit{standby} nunca esté más de 5 minutos desactualizado.
-\end{itemize}
+Los Archive Logs son la copia histórica de los Online Redo Logs que contienen los registros de todos los cambios de la base de datos. Estos archivos son la base del mecanismo de replicación de Data Guard, ya que se transmiten continuamente del \textit{primary} al \textit{standby}.
+
+El parámetro \texttt{ARCHIVE\_LAG\_TARGET=300} (5 minutos) fuerza un \textit{log switch} periódico, asegurando que el \textit{standby} nunca esté más de 5 minutos desactualizado.
 
 \subsection{Virtualización: VirtualBox y Vagrant}
 
@@ -1198,15 +1189,15 @@ Si esta arquitectura se traslada a un entorno de producción:
 
 \subsection{Infraestructura y Red}
 
-En cuanto al \textbf{Hardware Dedicado}, se recomienda utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento. Para la \textbf{Red Geográfica}, es fundamental colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales. En términos de \textbf{Conectividad}, se debe garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
+Se recomienda utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento. Es fundamental colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales. En términos de conectividad, se debe garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
 
 \subsection{Operación y Seguridad}
 
-Respecto al \textbf{Monitoreo Enterprise}, se recomienda reemplazar scripts Bash por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS). En cuanto a seguridad, se debe implementar \textbf{TDE} (Transparent Data Encryption) para cifrar los \textit{datafiles} de la base de datos en reposo. Para \textbf{Pruebas de DR}, es necesario realizar ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real. Finalmente, sobre \textbf{Licenciamiento}, se debe verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
+Se recomienda reemplazar los scripts Bash de monitoreo por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS). Es fundamental implementar Transparent Data Encryption (TDE) para cifrar los \textit{datafiles} de la base de datos en reposo. Debe realizarse ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real. Finalmente, es necesario verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
 
 \section{Posibles Mejoras Futuras}
 
-Para el \textbf{Failover Automático (\texttt{FSFO})}, se puede habilitar \texttt{Fast-Start Failover} con un proceso \textit{Observer} para eliminar la dependencia de la intervención del DBA en caso de fallo. En cuanto a \textbf{Clonación Rápida}, es posible utilizar \texttt{SNAPSHOT STANDBY} para crear copias \textit{Read-Write} temporales para QA y desarrollo a partir del \textit{standby}. Respecto a \textbf{Automatización DevOps}, se puede lograr la integración con \texttt{Ansible} o \texttt{GitLab CI} para la gestión de configuración y el despliegue de parches.
+Se puede habilitar \texttt{Fast-Start Failover} (FSFO) con un proceso \textit{Observer} para eliminar la dependencia de la intervención del DBA en caso de fallo. Asimismo, es posible utilizar \texttt{SNAPSHOT STANDBY} para crear copias \textit{Read-Write} temporales para QA y desarrollo a partir del \textit{standby}. Finalmente, se puede lograr la integración con \texttt{Ansible} o \texttt{GitLab CI} para la gestión de configuración y el despliegue de parches.
 
 \section{Conclusión Final}
 
