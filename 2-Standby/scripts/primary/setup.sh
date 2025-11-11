@@ -1,13 +1,13 @@
 #!/bin/bash
-# Primary node setup entry point
+# Punto de entrada de configuración del nodo primario
 
 echo "******************************************************************************"
-echo "Starting PRIMARY node setup." `date`
+echo "Iniciando configuración del nodo PRIMARY." `date`
 echo "******************************************************************************"
 
-# Run root setup script
+# Ejecutar script de configuración root
 sudo bash -c 'sh /vagrant/2-Standby/scripts/primary/root_setup.sh'
 
 echo "******************************************************************************"
-echo "PRIMARY node setup complete." `date`
+echo "Configuración del nodo PRIMARY completada." `date`
 echo "******************************************************************************"

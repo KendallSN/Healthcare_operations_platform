@@ -1,14 +1,14 @@
 #!/bin/bash
-# Create PRIMARY database with Data Guard configuration
+# Crear base de datos PRIMARIA con configuración de Data Guard
 
 . /vagrant_config/install.env
 . /home/oracle/scripts/setEnv.sh
 
 echo "******************************************************************************"
-echo "Configure network scripts." `date`
+echo "Configurar scripts de red." `date`
 echo "******************************************************************************"
 
-# Create tnsnames.ora
+# Crear tnsnames.ora
 cat > ${ORACLE_HOME}/network/admin/tnsnames.ora <<EOF
 LISTENER${DB_DOMAIN_STR} = (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE1_FQ_HOSTNAME})(PORT = 1521))
 
@@ -37,7 +37,7 @@ ${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} =
   )
 EOF
 
-# Create listener.ora
+# Crear listener.ora
 cat > ${ORACLE_HOME}/network/admin/listener.ora <<EOF
 LISTENER =
   (DESCRIPTION_LIST =
@@ -71,12 +71,12 @@ ADR_BASE_LISTENER = ${ORACLE_BASE}
 INBOUND_CONNECT_TIMEOUT_LISTENER=400
 EOF
 
-# Create sqlnet.ora
+# Crear sqlnet.ora
 cat > ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
 SQLNET.INBOUND_CONNECT_TIMEOUT=400
 EOF
 
-# Add Native Network Encryption if enabled
+# Agregar Cifrado de Red Nativo si está habilitado
 if [ "${NATIVE_NETWORK_ENCRYPTION}" = "true" ]; then
   cat >> ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
 SQLNET.ENCRYPTION_SERVER=REQUIRED
@@ -100,14 +100,14 @@ EOF
 fi
 
 echo "******************************************************************************"
-echo "Start listener." `date`
+echo "Iniciar listener." `date`
 echo "******************************************************************************"
 lsnrctl stop 2>/dev/null || true
 lsnrctl start
 lsnrctl status
 
 echo "******************************************************************************"
-echo "Create database." `date`
+echo "Crear base de datos." `date`
 echo "******************************************************************************"
 dbca -silent -createDatabase \
   -templateName General_Purpose.dbc \
@@ -132,7 +132,7 @@ dbca -silent -createDatabase \
   -ignorePreReqs
 
 echo "******************************************************************************"
-echo "Set the PDB to auto-start." `date`
+echo "Configurar el PDB para inicio automático." `date`
 echo "******************************************************************************"
 sqlplus / as sysdba <<EOF
 alter system set db_create_file_dest='${DATA_DIR}';
@@ -143,12 +143,17 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Configure for Data Guard using PREPARE DATABASE command." `date`
+echo "Configurar para Data Guard usando el comando PREPARE DATABASE." `date`
 echo "******************************************************************************"
 mkdir -p ${FRA_LOCATION}
 mkdir -p ${DATA_DIR}/${ORACLE_SID}/arch
 
-# Use modern PREPARE DATABASE FOR DATA GUARD command
+# Usar el comando moderno PREPARE DATABASE FOR DATA GUARD
+# Este comando automatiza la configuración de Data Guard habilitando:
+# - ARCHIVELOG mode (modo de archivo de logs)
+# - FORCE LOGGING (registro forzado de todas las transacciones)
+# - Configuración del Fast Recovery Area (FRA)
+# - Parámetros esenciales de Data Guard
 dgmgrl / <<EOF
 prepare database for data guard
   with db_unique_name is ${NODE1_DB_UNIQUE_NAME}
@@ -158,53 +163,78 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Configure additional Data Guard parameters per guide." `date`
+echo "Configurar parámetros adicionales de Data Guard según la guía." `date`
 echo "******************************************************************************"
 sqlplus / as sysdba <<EOF
--- Archive lag target (5 minutes as per guide)
+-- Archive lag target (objetivo de retraso de archivo) - fuerza cambio de log después de 5 minutos
+-- Garantiza que los cambios se envíen al standby incluso con poca actividad transaccional
 ALTER SYSTEM SET archive_lag_target=${ARCHIVE_LAG_TARGET} SCOPE=BOTH;
 
--- Log archive configuration
+-- Log archive configuration (configuración de archivo de logs) - lista todas las bases de datos en la configuración de Data Guard
+-- DG_CONFIG identifica todas las bases de datos que participan en la configuración de Data Guard
 ALTER SYSTEM SET log_archive_config='DG_CONFIG=(${NODE1_DB_UNIQUE_NAME},${NODE2_DB_UNIQUE_NAME})' SCOPE=BOTH;
 
--- Archive destinations
+-- Archive destinations (destinos de archivo) - destino local para archive logs
+-- LOCATION: directorio local donde se guardan los archive logs
+-- VALID_FOR: aplica a todos los archivos de log y todos los roles (primary/standby)
+-- DB_UNIQUE_NAME: identifica esta base de datos en la configuración de Data Guard
 ALTER SYSTEM SET log_archive_dest_1=
   'LOCATION=${DATA_DIR}/${ORACLE_SID}/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=${NODE1_DB_UNIQUE_NAME}'
   SCOPE=BOTH;
 
--- LOG_ARCHIVE_DEST_2 is managed by Data Guard Broker (not configured manually)
+-- LOG_ARCHIVE_DEST_2 es gestionado por Data Guard Broker (no se configura manualmente)
+-- El Broker configura automáticamente el destino remoto al standby
 
+-- Habilitar el destino de archivo primario
 ALTER SYSTEM SET log_archive_dest_state_1='ENABLE' SCOPE=BOTH;
+
+-- Formato de nombre de archivo para archive logs: thread_sequence_resetlogs.arc
+-- %t=thread number, %s=log sequence number, %r=resetlogs ID
 ALTER SYSTEM SET log_archive_format='%t_%s_%r.arc' SCOPE=SPFILE;
 
--- Archive process configuration
+-- Archive process configuration (configuración de procesos archivadores)
+-- Número de procesos ARCn que pueden archivar logs en paralelo (mejora rendimiento)
 ALTER SYSTEM SET log_archive_max_processes=8 SCOPE=BOTH;
 
--- FAL configuration is managed by Data Guard Broker (not configured manually)
+-- FAL (Fetch Archive Log) configuration es gestionada por Data Guard Broker (no se configura manualmente)
+-- El Broker configura automáticamente FAL_SERVER y FAL_CLIENT para recuperación automática de gaps
 
--- Standby file management
+-- Standby file management (gestión automática de archivos en standby)
+-- AUTO: Oracle gestiona automáticamente la creación/eliminación de archivos en standby
 ALTER SYSTEM SET standby_file_management='AUTO' SCOPE=BOTH;
 
--- Protection and checking
+-- Protection and checking (protección y verificación)
+-- db_lost_write_protect: detecta escrituras perdidas que pueden causar corrupción de datos
 ALTER SYSTEM SET db_lost_write_protect='TYPICAL' SCOPE=BOTH;
+
+-- db_block_checking: verifica la integridad de bloques de datos al leer/escribir
 ALTER SYSTEM SET db_block_checking='MEDIUM' SCOPE=BOTH;
+
+-- db_block_checksum: calcula checksums para detectar corrupción de bloques
 ALTER SYSTEM SET db_block_checksum='TYPICAL' SCOPE=BOTH;
 
--- File name conversion
+-- File name conversion (conversión de nombres de archivo)
+-- db_file_name_convert: convierte rutas de archivos de datos del standby al primary
+-- Mapea /u01/oradata/${NODE2_DB_UNIQUE_NAME}/ a /u01/oradata/${NODE1_DB_UNIQUE_NAME}/
 ALTER SYSTEM SET db_file_name_convert='/u01/oradata/${NODE2_DB_UNIQUE_NAME}/','/u01/oradata/${NODE1_DB_UNIQUE_NAME}/' SCOPE=SPFILE;
+
+-- log_file_name_convert: convierte rutas de redo logs del standby al primary
 ALTER SYSTEM SET log_file_name_convert='/u01/oradata/${NODE2_DB_UNIQUE_NAME}/','/u01/oradata/${NODE1_DB_UNIQUE_NAME}/' SCOPE=SPFILE;
 
--- Create password file
+-- Crear archivo de contraseñas para autenticación remota (requerido para Data Guard)
+-- Permite que el standby se autentique con el primary usando SYS password
 !orapwd file=${ORACLE_HOME}/dbs/orapw${ORACLE_SID} password=${SYS_PASSWORD} entries=10 format=12
 
 EXIT;
 EOF
 
 echo "******************************************************************************"
-echo "Verify FLASHBACK DATABASE status (enabled by PREPARE DATABASE)." `date`
+echo "Verificar estado de FLASHBACK DATABASE (habilitado por PREPARE DATABASE)." `date`
 echo "******************************************************************************"
 sqlplus / as sysdba <<EOF
--- Check if flashback is already enabled (PREPARE DATABASE FOR DATA GUARD enables it automatically)
+-- Verificar si flashback está habilitado (PREPARE DATABASE FOR DATA GUARD lo habilita automáticamente)
+-- Flashback Database permite retroceder la base de datos a un punto anterior en el tiempo
+-- Es crítico para operaciones de failover y recuperación en Data Guard
 SET SERVEROUTPUT ON
 DECLARE
     v_flashback_on VARCHAR2(3);
@@ -212,25 +242,26 @@ BEGIN
     SELECT flashback_on INTO v_flashback_on FROM v\$database;
 
     IF v_flashback_on = 'NO' THEN
-        DBMS_OUTPUT.PUT_LINE('Flashback is OFF, enabling now...');
+        DBMS_OUTPUT.PUT_LINE('Flashback está desactivado, habilitando ahora...');
         EXECUTE IMMEDIATE 'ALTER DATABASE FLASHBACK ON';
-        DBMS_OUTPUT.PUT_LINE('Flashback enabled successfully.');
+        DBMS_OUTPUT.PUT_LINE('Flashback habilitado exitosamente.');
     ELSE
-        DBMS_OUTPUT.PUT_LINE('Flashback is already ON (enabled by PREPARE DATABASE FOR DATA GUARD).');
+        DBMS_OUTPUT.PUT_LINE('Flashback ya está activado (habilitado por PREPARE DATABASE FOR DATA GUARD).');
     END IF;
 END;
 /
 
--- Verify flashback is enabled
+-- Verificar que flashback está habilitado y la base de datos está en modo ARCHIVELOG
 SELECT name, db_unique_name, flashback_on, log_mode
 FROM v\$database;
 
--- Show FRA configuration
+-- Mostrar configuración del Fast Recovery Area (FRA)
+-- El FRA almacena flashback logs, archive logs, y backups
 SHOW PARAMETER db_recovery_file_dest;
 
 EXIT;
 EOF
 
 echo "******************************************************************************"
-echo "PRIMARY database creation complete." `date`
+echo "Creación de base de datos PRIMARIA completa." `date`
 echo "******************************************************************************"

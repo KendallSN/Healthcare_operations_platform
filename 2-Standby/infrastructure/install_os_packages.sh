@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install required OS packages for Oracle 21c
+# Instalar paquetes del sistema operativo requeridos para Oracle 21c
 
 . /vagrant_config/install.env
 
@@ -7,10 +7,10 @@ echo "**************************************************************************
 echo "Install OS packages." `date`
 echo "******************************************************************************"
 
-# Install Oracle preinstall package (sets up users, groups, kernel params)
+# Instalar paquete preinstalación de Oracle (configura usuarios, grupos, parámetros del kernel)
 dnf install -y oracle-database-preinstall-21c
 
-# Install additional required packages
+# Instalar paquetes requeridos adicionales
 dnf install -y \
   bc \
   binutils \
@@ -47,14 +47,14 @@ dnf install -y \
   chrony \
   rsync
 
-# Update system
+# Actualizar sistema
 dnf update -y
 
 echo "******************************************************************************"
 echo "Configure kernel parameters." `date`
 echo "******************************************************************************"
 
-# Additional kernel parameters for Data Guard
+# Parámetros del kernel adicionales para Data Guard
 cat >> /etc/sysctl.d/98-oracle.conf << EOF
 fs.file-max = 6815744
 kernel.sem = 250 32000 100 128
@@ -67,7 +67,7 @@ net.core.wmem_default = 262144
 net.core.wmem_max = 16777216
 net.ipv4.ip_local_port_range = 9000 65500
 fs.aio-max-nr = 1048576
-# TCP tuning for Data Guard
+# Ajuste de TCP para Data Guard
 net.ipv4.tcp_rmem = 4096 87380 16777216
 net.ipv4.tcp_wmem = 4096 16384 16777216
 EOF
@@ -84,5 +84,5 @@ systemctl stop firewalld 2>/dev/null || true
 systemctl disable firewalld 2>/dev/null || true
 
 echo "******************************************************************************"
-echo "OS package installation complete." `date`
+echo "Instalación de paquetes del sistema operativo completada." `date`
 echo "******************************************************************************"

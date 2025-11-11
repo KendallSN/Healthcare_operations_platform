@@ -1,7 +1,7 @@
 #!/bin/bash
-# Delete Applied Archives on Standby Older Than 3 Days
-# Run on STANDBY database
-# Scheduled via cron: 0 23 * * * (11 PM daily)
+# Eliminar Archivos de Registro Aplicados en Standby con Mas de 3 Dias
+# Se ejecuta en la base de datos STANDBY
+# Programado via cron: 0 23 * * * (11 PM diariamente)
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
@@ -10,10 +10,10 @@ LOGFILE="/home/oracle/logs/automation/delete_archives_standby.log"
 
 {
   echo "===================================================================="
-  echo "Archive Deletion STANDBY: $(date)"
+  echo "Eliminacion de Archivos STANDBY: $(date)"
   echo "===================================================================="
 
-  # Get max applied sequence older than configured retention days
+  # Obtener maxima secuencia aplicada mas antigua que los dias de retencion configurados
   MAX_OLD_SEQ=$(sqlplus -s / as sysdba << EOF
 SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 SELECT MAX(sequence#)
@@ -25,25 +25,27 @@ EXIT;
 EOF
 )
 
-  echo "Max applied sequence older than ${ARCHIVE_RETENTION_DAYS} days: $MAX_OLD_SEQ"
+  echo "Maxima secuencia aplicada con mas de ${ARCHIVE_RETENTION_DAYS} dias: $MAX_OLD_SEQ"
 
   if [ -n "$MAX_OLD_SEQ" ] && [ "$MAX_OLD_SEQ" != "" ]; then
     rman target / << REOF
 RUN {
+  # Eliminar archivos de log hasta la secuencia antigua determinada
   DELETE NOPROMPT ARCHIVELOG UNTIL SEQUENCE ${MAX_OLD_SEQ} THREAD 1;
+  # Verificar estado de todos los archivos de log en catalogo
   CROSSCHECK ARCHIVELOG ALL;
 }
 EXIT;
 REOF
   else
-    echo "No archives older than ${ARCHIVE_RETENTION_DAYS} days to delete."
+    echo "No hay archivos con mas de ${ARCHIVE_RETENTION_DAYS} dias para eliminar."
   fi
 
   echo "===================================================================="
-  echo "Archive Deletion Complete: $(date)"
+  echo "Eliminacion de Archivos Completada: $(date)"
   echo "===================================================================="
 
 } >> $LOGFILE 2>&1
 
-# Keep logs for 30 days
+# Mantener registros por 30 dias
 find /home/oracle/logs/automation -name "delete_archives_standby.log" -mtime +30 -delete 2>/dev/null
