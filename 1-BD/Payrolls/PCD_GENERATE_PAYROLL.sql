@@ -71,7 +71,7 @@ CREATE OR REPLACE PROCEDURE PCD_GENERATE_PAYROLL (
   v_amt        NUMBER;
   v_total_income NUMBER;
   v_total_ded   NUMBER;
-  v_base_sal   NUMBER := 0; -- añadido: salario base disponible en todo el procedimiento
+  v_base_sal   NUMBER := 0;
   v_msc_count  NUMBER := 0; -- contador de MonthScales procesados
   v_pending_turns NUMBER := 0; -- contador de turnos pendientes (PDG)
   v_pru_ids    VARCHAR2(4000) := ''; -- IDs de PayrollXUser creados

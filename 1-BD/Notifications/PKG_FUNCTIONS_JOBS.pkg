@@ -198,15 +198,13 @@ BEGIN
 
     SELECT COUNT(*)
     INTO v_damaged_count
-    FROM ALL_INDEXES
-    WHERE status = 'UNUSABLE'
-    AND owner = USER;
+    FROM DBA_INDEXES
+    WHERE status = 'UNUSABLE';
 
     IF v_damaged_count > 0 THEN
         FOR idx IN (SELECT index_name, index_type
-                    FROM ALL_INDEXES
-                    WHERE status = 'UNUSABLE'
-                    AND owner = USER) LOOP
+                    FROM DBA_INDEXES
+                    WHERE status = 'UNUSABLE') LOOP
             v_damaged_list := v_damaged_list || 
                 '<li><strong>' || idx.index_name || '</strong> - <em>Tipo:</em> ' || 
                 idx.index_type || '</li>';
@@ -220,8 +218,8 @@ BEGIN
         <div class="details">
             <p style="margin-top:0;"><strong>Resumen:</strong></p>
             <p>Se han detectado <strong style="color:#dc3545;font-size:18px;">' || 
-            v_damaged_count || '</strong> indice(s) danado(s) en el esquema 
-            <strong>' || USER || '</strong>.</p>
+            v_damaged_count || '</strong> indice(s) danado(s) 
+            <strong>' || 'En Todo el Sistema' || '</strong>.</p>
             <p><strong>Lista de indices que requieren reparacion:</strong></p>
             <ul style="line-height: 1.8;">' || v_damaged_list || '</ul>
             <p style="margin-bottom:0;"><strong>Accion requerida:</strong> 

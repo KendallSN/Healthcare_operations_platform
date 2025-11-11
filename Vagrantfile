@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
     primary.vm.hostname = "ol8-21-dg1.localdomain"
     primary.vm.network "private_network", ip: params['node1']['public_ip']
     primary.vm.network "forwarded_port", guest: 1521, host: 15210
-    primary.vm.network "forwarded_port", guest: 5500, host: 5500
+    primary.vm.network "forwarded_port", guest: 5500, host: 5600
 
     primary.vm.provider "virtualbox" do |vb|
       vb.name = params['node1']['vm_name']
@@ -71,7 +71,7 @@ Vagrant.configure("2") do |config|
     standby.vm.hostname = "ol8-21-dg2.localdomain"
     standby.vm.network "private_network", ip: params['node2']['public_ip']
     standby.vm.network "forwarded_port", guest: 1521, host: 15220
-    standby.vm.network "forwarded_port", guest: 5500, host: 5501
+    standby.vm.network "forwarded_port", guest: 5500, host: 5601
 
     standby.vm.provider "virtualbox" do |vb|
       vb.name = params['node2']['vm_name']
