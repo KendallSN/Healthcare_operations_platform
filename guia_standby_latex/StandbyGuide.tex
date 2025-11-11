@@ -186,9 +186,9 @@ La filosofía de Data Guard se basa en copiar instantáneamente cada transacció
 
 \begin{itemize}
     \item La \textbf{Primary Database} recibe todas las transacciones.
-\item Oracle escribe los cambios en \textbf{redo logs}.
-    \item Los \textit{redo logs} se convierten en \textbf{archive logs}.
-\item Los \textit{archive logs} se \textbf{envían automáticamente al standby} vía red.
+\item Oracle escribe los cambios en redo logs.
+    \item Los \textit{redo logs} se convierten en archive logs.
+\item Los \textit{archive logs} se envían automáticamente al standby vía red.
 \item La \textbf{Standby database} aplica los \textit{archive logs} y se mantiene idéntica al \textit{primary}.
 \end{itemize}
 
@@ -232,8 +232,8 @@ El parámetro \texttt{ARCHIVE\_LAG\_TARGET=300} (5 minutos) fuerza un \textit{lo
 \subsection{Virtualización: VirtualBox y Vagrant}
 
 \begin{itemize}
-    \item \textbf{VirtualBox:} Es el \textbf{hypervisor} (motor de virtualización) que crea y ejecuta las Máquinas Virtuales (VMs) Oracle Linux 8.
-    \item \textbf{Vagrant:} Es la herramienta de \textbf{orquestación} que lee el \texttt{Vagrantfile} y automatiza la creación, configuración y \textit{provisioning} de las VMs.
+    \item \textbf{VirtualBox:} Es el hypervisor (motor de virtualización) que crea y ejecuta las Máquinas Virtuales (VMs) Oracle Linux 8.
+    \item \textbf{Vagrant:} Es la herramienta de orquestación que lee el \texttt{Vagrantfile} y automatiza la creación, configuración y \textit{provisioning} de las VMs.
     \item \textbf{Provisioning (Aprovisionamiento):} En el contexto de Vagrant, este es el proceso de instalar software, configurar el sistema y ejecutar scripts automáticamente en la VM después de que esta ha sido creada. En este proyecto, los \textit{provisioners} son los scripts Bash que instalan Oracle y configuran Data Guard.
     \item \textbf{Synced Folders:} Permiten compartir directorios entre el \textit{host} (Windows) y las VMs (Linux), lo cual es indispensable para que los \textit{scripts} de \textit{provisioning} accedan al software de Oracle.
 \end{itemize}
@@ -507,18 +507,17 @@ Para modificar la configuración del ambiente (RAM, IPs, \textit{passwords}), es
 El \texttt{deploy.ps1} (PowerShell) es el orquestador principal que ejecuta todo el proceso en 6 fases:
 
 \begin{enumerate}
-    \item 
-\textbf{Verificación de Prerequisitos:} Comprueba software y recursos.
-    \item \textbf{Corrección de \textit{Line Endings}:} Ejecuta \texttt{fix-line-endings.ps1}.
-\item \textbf{Limpieza de VMs Antiguas:} Ejecuta \texttt{vagrant destroy -f} y \texttt{VBoxManage unregistervm --delete}.
-\item \textbf{Despliegue de \textit{Primary}:} Ejecuta \texttt{vagrant up primary} (30-45 minutos).
-    \item \textbf{Despliegue de \textit{Standby}:} Ejecuta \texttt{vagrant up standby} (20-30 minutos).
-\item \textbf{Verificación Post-Despliegue y Logs:} Verifica SSH, \textit{cron jobs} y recolecta \textit{alert logs} de Oracle.
+    \item Verificación de Prerequisitos: Comprueba software y recursos.
+    \item Corrección de \textit{Line Endings}: Ejecuta \texttt{fix-line-endings.ps1}.
+\item Limpieza de VMs Antiguas: Ejecuta \texttt{vagrant destroy -f} y \texttt{VBoxManage unregistervm --delete}.
+\item Despliegue de \textit{Primary}: Ejecuta \texttt{vagrant up primary} (30-45 minutos).
+    \item Despliegue de \textit{Standby}: Ejecuta \texttt{vagrant up standby} (20-30 minutos).
+\item Verificación Post-Despliegue y Logs: Verifica SSH, \textit{cron jobs} y recolecta \textit{alert logs} de Oracle.
 \end{enumerate}
 
 \subsection{Script de Corrección de \textit{Line Endings} (\texttt{fix-line-endings.ps1})}
 
-Este script es \textbf{importante} para la compatibilidad entre Windows y Linux.
+Este script es necesario para la compatibilidad entre Windows y Linux.
 El problema $\texttt{\$'\textbackslash r': command not found}$ es el síntoma de \textit{line endings} incorrectos.
 El script convierte los archivos \texttt{.sh} y \texttt{.env} de formato Windows \textbf{CRLF} (\texttt{\textbackslash r\textbackslash n}) a formato Unix \textbf{LF} (\texttt{\textbackslash n}) para que Bash pueda interpretarlos correctamente.
 
@@ -555,11 +554,11 @@ Este comando se encargará de instalar todo, desde el sistema operativo en las V
 \subsection{Operaciones Individuales con Vagrant}
 
 \begin{itemize}
-    \item \textbf{Conexión SSH:} \texttt{vagrant ssh primary} o \texttt{vagrant ssh standby}.
-\item \textbf{Apagar:} \texttt{vagrant halt primary} o \texttt{vagrant halt standby}.
-    \item \textbf{Reanudar:} \texttt{vagrant up primary} o \texttt{vagrant up standby} (si ya existen).
-\item \textbf{Re-ejecutar \textit{Provisioners}:} \texttt{vagrant provision primary} (aplicar cambios en \textit{scripts} Bash).
-\item \textbf{Configurar Auto-Start de Oracle:} \texttt{vagrant provision primary --provision-with setup\_oracle\_autostart}.
+    \item Conexión SSH: \texttt{vagrant ssh primary} o \texttt{vagrant ssh standby}.
+\item Apagar: \texttt{vagrant halt primary} o \texttt{vagrant halt standby}.
+    \item Reanudar: \texttt{vagrant up primary} o \texttt{vagrant up standby} (si ya existen).
+\item Re-ejecutar \textit{Provisioners}: \texttt{vagrant provision primary} (aplicar cambios en \textit{scripts} Bash).
+\item Configurar Auto-Start de Oracle: \texttt{vagrant provision primary --provision-with setup\_oracle\_autostart}.
 \end{itemize}
 
 \subsection{Destrucción del Ambiente}
@@ -594,12 +593,12 @@ Recuerde que el puerto para el \textit{Standby} desde el \textit{Host} es \textt
 Para conectarse a la Pluggable Database (PDB) donde reside el esquema de prueba (por defecto \texttt{dgtest}) usando una herramienta gráfica, es importante usar la configuración de red correcta.
 
 \begin{itemize}
-    \item \textbf{Username:} \texttt{dgtest}
-    \item \textbf{Password:} \texttt{DGTest2025!} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
-    \item \textbf{Hostname:} \texttt{localhost}
-    \item \textbf{Port:} \texttt{1521} (para el Primary)
-    \item \textbf{Connection Type:} Seleccione \textbf{Service name} (No usar SID).
-    \item \textbf{Service name:} \texttt{pdb1.world}
+    \item Username: \texttt{dgtest}
+    \item Password: \texttt{DGTest2025!} (o el valor de \texttt{APP\_SCHEMA\_PASSWORD})
+    \item Hostname: \texttt{localhost}
+    \item Port: \texttt{1521} (para el Primary)
+    \item Connection Type: Seleccione Service name (No usar SID).
+    \item Service name: \texttt{pdb1.world}
 \end{itemize}
 El \textit{service name} \texttt{pdb1.world} es el nombre global de la base de datos PDB, que es requerido para la conexión \textit{multitenant}.
 
@@ -618,9 +617,9 @@ Todos los scripts de automatización se encuentran en \texttt{/home/oracle/autom
 
 \begin{itemize}
     \item \textbf{\texttt{check\_log\_transport.sh} (Cada 10 min en \textit{Primary}):} Verifica el \textit{lag} de aplicación entre el \textit{primary} y el \textit{standby}.
-\item \textbf{\texttt{rman\_daily\_backup.sh} (Diario 1 AM en \textit{Primary}):} Ejecuta \texttt{RMAN BACKUP DATABASE PLUS ARCHIVELOG} con compresión, elimina obsoletos (\textit{retention policy} de \textbf{7 días}) y transfiere la copia al \textit{standby} vía \texttt{rsync} sobre SSH.
-\item \textbf{\texttt{delete\_archives\_primary.sh} (Diario 2 AM en \textit{Primary}):} Elimina \textit{archive logs} que tienen más de \textbf{3 días} y han sido respaldados o aplicados en el \textit{standby}.
-\item \textbf{\texttt{delete\_archives\_standby.sh} (Diario 11 PM en \textit{Standby}):} Elimina \textit{archive logs} que tienen más de \textbf{3 días} y han sido aplicados.
+\item \textbf{\texttt{rman\_daily\_backup.sh} (Diario 1 AM en \textit{Primary}):} Ejecuta \texttt{RMAN BACKUP DATABASE PLUS ARCHIVELOG} con compresión, elimina obsoletos (\textit{retention policy} de 7 días) y transfiere la copia al \textit{standby} vía \texttt{rsync} sobre SSH.
+\item \textbf{\texttt{delete\_archives\_primary.sh} (Diario 2 AM en \textit{Primary}):} Elimina \textit{archive logs} que tienen más de 3 días y han sido respaldados o aplicados en el \textit{standby}.
+\item \textbf{\texttt{delete\_archives\_standby.sh} (Diario 11 PM en \textit{Standby}):} Elimina \textit{archive logs} que tienen más de 3 días y han sido aplicados.
 \end{itemize}
 
 \subsection{Scripts de Operación Manual}
@@ -1254,7 +1253,7 @@ Si este script falla en cualquier punto, el despliegue se detiene, y se debe con
 
 \section{Preparación de Discos (\texttt{prepare\_u01\_u02\_disks.sh})}
 
-Este script configura el almacenamiento persistente para Oracle, siendo esencial para la estabilidad del sistema.
+Este script configura el almacenamiento persistente para Oracle, necesario para la estabilidad del sistema.
 \subsection{Flujo de Configuración de Almacenamiento}
 \begin{enumerate}
     \item \textbf{Particionado:} Utiliza \texttt{fdisk} en modo no interactivo para crear una partición primaria en \texttt{/dev/sdb} y \texttt{/dev/sdc}.
@@ -1280,7 +1279,7 @@ El paquete \texttt{chrony} instalado es un requisito para la sincronización de 
 
 \section{Configuración de Red (\texttt{configure\_network.sh})}
 
-La conectividad y la resolución de nombres son esenciales para la comunicación entre los nodos \textit{primary} y \textit{standby}.
+La conectividad y la resolución de nombres permiten la comunicación entre los nodos \textit{primary} y \textit{standby}.
 \subsection{Configuración de Red Data Guard}
 \begin{enumerate}
     \item \textbf{\texttt{/etc/hosts}:} Agrega las entradas de DNS local para \texttt{ol8-21-dg1.localdomain} y \texttt{ol8-21-dg2.localdomain} para asegurar que los nodos puedan encontrarse por nombre a través de la red \textit{Host-Only}.
@@ -1520,7 +1519,7 @@ Verificar cada 10 minutos que los \textit{archive logs} se transfieren y aplican
 
 \subsection{Proceso de Respaldo}
 \begin{enumerate}
-    \item \textbf{Configuración RMAN:} Establece \textit{retention policy} a \textbf{7 días} y \textit{deletion policy} a \texttt{APPLIED ON ALL STANDBY}.
+    \item \textbf{Configuración RMAN:} Establece \textit{retention policy} a 7 días y \textit{deletion policy} a \texttt{APPLIED ON ALL STANDBY}.
 \item \textbf{Backup Comprimido:} Ejecuta \texttt{BACKUP AS COMPRESSED BACKUPSET DATABASE PLUS ARCHIVELOG}.
 \item \textbf{Transferencia:} Utiliza \texttt{rsync} sobre SSH para transferir la copia del \textit{backup} al \textit{standby} (\texttt{/u02/backup\_from\_primary/}).
 \end{enumerate}
@@ -1670,7 +1669,7 @@ Esta sección proporciona definiciones rápidas de los términos técnicos y acr
 
 \chapter{Tarjeta de Referencia Rápida}
 
-Esta sección proporciona comandos esenciales y procedimientos de un vistazo para operaciones diarias.
+Esta sección proporciona comandos principales y procedimientos de un vistazo para operaciones diarias.
 
 \section{Cadenas de Conexión}
 
