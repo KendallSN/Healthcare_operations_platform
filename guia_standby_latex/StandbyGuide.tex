@@ -1375,8 +1375,8 @@ Una vez que la base de datos está preparada, este script despliega el esquema d
 \subsection{Flujo del Esquema}
 \begin{enumerate}
     \item \textbf{Apertura de PDB:} Se asegura de que \texttt{pdb1} esté en modo \texttt{OPEN}.
-\item \textbf{Creación de Usuario:} Ejecuta \texttt{2-Standby/schema/create\_user.sql} para crear el usuario \texttt{dgtest} con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado).
-\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{audit\_log}), secuencias y procedimientos de prueba. Este esquema está diseñado específicamente para validar la replicación de Data Guard.
+\item \textbf{Creación de Usuario:} Crea el usuario \texttt{dgtest} de forma inline (directamente dentro del script mediante un bloque SQL heredoc) con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado). La contraseña se obtiene de la variable de entorno \texttt{APP\_SCHEMA\_PASSWORD} configurada en \texttt{install.env}.
+\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{replication\_details}, \texttt{audit\_log}), secuencias (\texttt{seq\_replication\_test}, \texttt{seq\_replication\_details}, \texttt{seq\_audit\_log}) y procedimientos de prueba (\texttt{insert\_test\_data}, \texttt{check\_replication\_status}). Este esquema está diseñado específicamente para validar la replicación de Data Guard.
 \item \textbf{Replicación:} Se fuerza un \textit{log switch} (\texttt{ALTER SYSTEM ARCHIVE LOG CURRENT}) para garantizar que todas estas sentencias DDL y DML de creación se empaqueten inmediatamente en un \textit{archive log} y estén listas para ser replicadas al \textit{standby}.
 \end{enumerate}
 El esquema de aplicación creado aquí es una de las primeras cosas que el \textit{standby} clonará. Si el \textit{schema} no se replica correctamente, Data Guard fallará en la validación.

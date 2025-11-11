@@ -32,7 +32,6 @@ ROOT/
 │
 ├── 2-Standby/                     # Oracle Data Guard infrastructure (STANDALONE)
 │   ├── schema/                    # Simple test schema for Data Guard testing
-│   │   ├── create_user.sql        # User creation (dgtest with default tablespace)
 │   │   └── simple_schema.sql      # Tables, sequences, procedures for replication testing
 │   ├── scripts/primary/           # Primary DB setup scripts
 │   ├── scripts/standby/           # Standby DB setup scripts
@@ -91,9 +90,10 @@ vagrant destroy -f          # Destroy all VMs
 ### Schema Deployment Process
 
 The simple test schema is deployed automatically during `vagrant up primary` via:
-- Schema scripts on VM: `/vagrant/2-Standby/schema/` (create_user.sql, simple_schema.sql)
+- Schema scripts on VM: `/vagrant/2-Standby/schema/` (simple_schema.sql)
 - Deployment script: `2-Standby/scripts/primary/deploy_custom_schema.sh`
 - Target: PDB named `pdb1` with schema user `dgtest`
+- User creation: Performed inline within deploy_custom_schema.sh (no separate SQL file)
 - Tablespace: Uses default `USERS` tablespace (no custom tablespace needed)
 
 ### Manual Database Operations
