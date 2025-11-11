@@ -1,5 +1,5 @@
 #!/bin/bash
-# Oracle 21c Database Software Installation
+# Instalación de Software de Base de Datos Oracle 21c
 
 . /home/oracle/scripts/setEnv.sh
 
@@ -7,17 +7,17 @@ echo "**************************************************************************
 echo "Install Oracle Database 21c software." `date`
 echo "******************************************************************************"
 
-# Copy software to local directory
+# Copiar software a directorio local
 echo "Copying Oracle software from shared directory..."
 cp /vagrant_software/${DB_SOFTWARE} ${SOFTWARE_DIR}/
 cd ${SOFTWARE_DIR}
 
-# Unzip directly into ORACLE_HOME
+# Descomprimir directamente en ORACLE_HOME
 echo "Unzipping Oracle software into ORACLE_HOME..."
 cd ${ORACLE_HOME}
 unzip -oq ${SOFTWARE_DIR}/${DB_SOFTWARE}
 
-# Create response file for silent installation
+# Crear archivo de respuesta para instalación silenciosa
 cat > /tmp/db_install.rsp << EOF
 oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v21.0.0
 oracle.install.option=INSTALL_DB_SWONLY
@@ -36,14 +36,14 @@ SECURITY_UPDATES_VIA_MYORACLESUPPORT=false
 DECLINE_SECURITY_UPDATES=true
 EOF
 
-# Run installer
+# Ejecutar instalador
 echo "Running Oracle installer..."
 ${ORACLE_HOME}/runInstaller -ignorePrereq -waitforcompletion -silent \
   -responseFile /tmp/db_install.rsp
 
 echo "******************************************************************************"
-echo "Oracle software installation complete." `date`
+echo "Instalación de software de Oracle completada." `date`
 echo "******************************************************************************"
-echo "Run these commands as root:"
+echo "Ejecutar estos comandos como root:"
 echo "  ${ORA_INVENTORY}/orainstRoot.sh"
 echo "  ${ORACLE_HOME}/root.sh"

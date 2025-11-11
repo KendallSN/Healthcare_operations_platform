@@ -1,27 +1,27 @@
 #!/bin/bash
-# Setup SSH Key-Based Authentication for Automated Backups
-# Run on PRIMARY database as oracle user
+# Configurar autenticación basada en claves SSH para respaldos automatizados
+# Ejecutar en la base de datos PRIMARIA como usuario oracle
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
 
 echo "===================================================================="
-echo "Setup SSH Key-Based Authentication"
+echo "Configurar autenticación basada en claves SSH"
 echo "===================================================================="
 
-# Check if SSH key already exists
+# Verificar si la clave SSH ya existe
 if [ -f /home/oracle/.ssh/id_rsa ]; then
-  echo "SSH key already exists"
-  read -p "Regenerate SSH key? (yes/no): " regenerate
-  if [ "$regenerate" != "yes" ]; then
-    echo "Using existing SSH key"
+  echo "La clave SSH ya existe"
+  read -p "¿Regenerar clave SSH? (sí/no): " regenerate
+  if [ "$regenerate" != "yes" ] && [ "$regenerate" != "sí" ]; then
+    echo "Usando clave SSH existente"
   else
     rm -f /home/oracle/.ssh/id_rsa /home/oracle/.ssh/id_rsa.pub
     ssh-keygen -t rsa -b 4096 -f /home/oracle/.ssh/id_rsa -N ""
   fi
 else
-  # Generate SSH key
-  echo "Generating SSH key..."
+  # Generar clave SSH
+  echo "Generando clave SSH..."
   mkdir -p /home/oracle/.ssh
   chmod 700 /home/oracle/.ssh
   ssh-keygen -t rsa -b 4096 -f /home/oracle/.ssh/id_rsa -N ""
@@ -29,17 +29,17 @@ fi
 
 echo ""
 echo "===================================================================="
-echo "Copy SSH key to standby server"
+echo "Copiar clave SSH al servidor en espera"
 echo "===================================================================="
-echo "You will be prompted for the oracle user password on standby"
+echo "Se le pedirá la contraseña del usuario oracle en el servidor en espera"
 echo ""
 
-# Copy public key to standby
+# Copiar clave pública al servidor en espera
 ssh-copy-id -i /home/oracle/.ssh/id_rsa.pub oracle@${NODE2_FQ_HOSTNAME}
 
 echo ""
 echo "===================================================================="
-echo "Test SSH connection to standby"
+echo "Probar conexión SSH al servidor en espera"
 echo "===================================================================="
 
 ssh oracle@${NODE2_FQ_HOSTNAME} "echo 'SSH connection successful from primary to standby'"
@@ -47,13 +47,13 @@ ssh oracle@${NODE2_FQ_HOSTNAME} "echo 'SSH connection successful from primary to
 if [ $? -eq 0 ]; then
   echo ""
   echo "===================================================================="
-  echo "SSH Key Setup Complete!"
+  echo "¡Configuración de clave SSH completada!"
   echo "===================================================================="
-  echo "You can now use passwordless rsync for backup transfers"
+  echo "Ahora puede usar rsync sin contraseña para transferencias de respaldo"
 else
   echo ""
   echo "===================================================================="
-  echo "ERROR: SSH connection test failed!"
+  echo "ERROR: ¡La prueba de conexión SSH falló!"
   echo "===================================================================="
   exit 1
 fi

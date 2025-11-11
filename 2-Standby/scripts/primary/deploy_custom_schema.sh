@@ -1,50 +1,50 @@
 #!/bin/bash
-# Deploy simple test schema for Data Guard replication testing
-# This script creates a minimal schema to verify Data Guard functionality
-# without dependencies on complex application schemas
+# Desplegar esquema de prueba simple para pruebas de replicación de Data Guard
+# Este script crea un esquema mínimo para verificar la funcionalidad de Data Guard
+# sin dependencias de esquemas de aplicación complejos
 
 . /vagrant_config/install.env
 . /home/oracle/scripts/setEnv.sh
 
 echo "******************************************************************************"
-echo "Deploy simple test schema to ${PDB_NAME}." `date`
+echo "Desplegar esquema de prueba simple a ${PDB_NAME}." `date`
 echo "******************************************************************************"
 
-# Define schema directory and files (all within 2-Standby)
+# Definir directorio de esquema y archivos (todos dentro de 2-Standby)
 SCHEMA_DIR="/vagrant/2-Standby/schema"
 SCHEMA_SQL="${SCHEMA_DIR}/simple_schema.sql"
 
-# Verify schema file exists
+# Verificar que el archivo de esquema existe
 if [ ! -f "${SCHEMA_SQL}" ]; then
-  echo "ERROR: Schema script not found: ${SCHEMA_SQL}"
+  echo "ERROR: Script de esquema no encontrado: ${SCHEMA_SQL}"
   exit 1
 fi
 
-echo "Schema file verified: ${SCHEMA_SQL}"
+echo "Archivo de esquema verificado: ${SCHEMA_SQL}"
 
-# Open PDB if not already open
+# Abrir PDB si no está ya abierto
 sqlplus / as sysdba <<EOF
 ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN;
 EXIT;
 EOF
 
 # ============================================================================
-# Step 1: Create test user
+# Paso 1: Crear usuario de prueba
 # ============================================================================
 echo "******************************************************************************"
-echo "Create test user ${APP_SCHEMA} in ${PDB_NAME}..." `date`
+echo "Crear usuario de prueba ${APP_SCHEMA} en ${PDB_NAME}..." `date`
 echo "******************************************************************************"
 
-echo "Creating user with default USERS tablespace..."
+echo "Creando usuario con tablespace USERS predeterminado..."
 
-# Execute user creation directly with password from environment
-# Using heredoc to avoid shell expansion issues with special characters like !
+# Ejecutar creación de usuario directamente con contraseña del entorno
+# Usar heredoc para evitar problemas de expansión de shell con caracteres especiales como !
 sqlplus -S / as sysdba <<EOF
 WHENEVER SQLERROR EXIT SQL.SQLCODE
--- Connect to the PDB
+-- Conectar a la PDB
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 
--- Drop user if exists (for redeployment)
+-- Descartar usuario si existe (para redeployment)
 BEGIN
   EXECUTE IMMEDIATE 'DROP USER ${APP_SCHEMA} CASCADE';
 EXCEPTION
@@ -55,13 +55,13 @@ EXCEPTION
 END;
 /
 
--- Create user with password from config
+-- Crear usuario con contraseña del config
 CREATE USER ${APP_SCHEMA} IDENTIFIED BY "${APP_SCHEMA_PASSWORD}"
   DEFAULT TABLESPACE users
   TEMPORARY TABLESPACE temp
   QUOTA UNLIMITED ON users;
 
--- Grant necessary privileges
+-- Otorgar privilegios necesarios
 GRANT CONNECT, RESOURCE TO ${APP_SCHEMA};
 GRANT CREATE SESSION TO ${APP_SCHEMA};
 GRANT CREATE TABLE TO ${APP_SCHEMA};
@@ -69,7 +69,7 @@ GRANT CREATE SEQUENCE TO ${APP_SCHEMA};
 GRANT CREATE VIEW TO ${APP_SCHEMA};
 GRANT CREATE PROCEDURE TO ${APP_SCHEMA};
 
--- Display confirmation
+-- Mostrar confirmación
 SELECT 'User ${APP_SCHEMA} created successfully' AS status FROM dual;
 
 EXIT;
@@ -77,14 +77,14 @@ EOF
 
 SQL_EXIT_CODE=$?
 if [ ${SQL_EXIT_CODE} -ne 0 ]; then
-  echo "ERROR: User creation failed with exit code ${SQL_EXIT_CODE}"
+  echo "ERROR: Creación de usuario falló con código de salida ${SQL_EXIT_CODE}"
   exit ${SQL_EXIT_CODE}
 fi
 
-echo "User ${APP_SCHEMA} created successfully with default tablespace"
+echo "Usuario ${APP_SCHEMA} creado exitosamente con tablespace predeterminado"
 
-# Verify user was created
-echo "Verifying user creation..."
+# Verificar que el usuario fue creado
+echo "Verificando creación de usuario..."
 sqlplus -S / as sysdba <<EOF
 SET HEADING OFF
 SET FEEDBACK OFF
@@ -98,19 +98,19 @@ EXIT;
 EOF
 
 # ============================================================================
-# Step 2: Deploy simple schema
+# Paso 2: Desplegar esquema simple
 # ============================================================================
 echo "******************************************************************************"
-echo "Deploying simple schema as ${APP_SCHEMA}..." `date`
+echo "Desplegando esquema simple como ${APP_SCHEMA}..." `date`
 echo "******************************************************************************"
 
 sqlplus -S / as sysdba <<EOF
 WHENEVER SQLERROR EXIT SQL.SQLCODE
--- Connect to the PDB and set current schema
+-- Conectar a la PDB y establecer esquema actual
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 ALTER SESSION SET CURRENT_SCHEMA=${APP_SCHEMA};
 
--- Execute the simple schema script
+-- Ejecutar el script de esquema simple
 @${SCHEMA_SQL}
 
 EXIT;
@@ -118,17 +118,17 @@ EOF
 
 SQL_EXIT_CODE=$?
 if [ ${SQL_EXIT_CODE} -ne 0 ]; then
-  echo "ERROR: Schema deployment failed with exit code ${SQL_EXIT_CODE}"
+  echo "ERROR: Despliegue de esquema falló con código de salida ${SQL_EXIT_CODE}"
   exit ${SQL_EXIT_CODE}
 fi
 
-echo "Simple schema deployed successfully"
+echo "Esquema simple desplegado exitosamente"
 
 # ============================================================================
-# Step 3: Verify deployment
+# Paso 3: Verificar despliegue
 # ============================================================================
 echo "******************************************************************************"
-echo "Verify schema objects..." `date`
+echo "Verificar objetos del esquema..." `date`
 echo "******************************************************************************"
 
 sqlplus / as sysdba <<EOF
@@ -138,25 +138,25 @@ ALTER SESSION SET CURRENT_SCHEMA=${APP_SCHEMA};
 SET LINESIZE 150
 SET PAGESIZE 100
 
--- Display tables
+-- Mostrar tablas
 PROMPT
-PROMPT Tables:
+PROMPT Tablas:
 COL table_name FORMAT A30
 SELECT table_name, num_rows
 FROM user_tables
 ORDER BY table_name;
 
--- Display sequences
+-- Mostrar secuencias
 PROMPT
-PROMPT Sequences:
+PROMPT Secuencias:
 COL sequence_name FORMAT A30
 SELECT sequence_name, last_number
 FROM user_sequences
 ORDER BY sequence_name;
 
--- Display procedures
+-- Mostrar procedimientos
 PROMPT
-PROMPT Procedures:
+PROMPT Procedimientos:
 COL object_name FORMAT A30
 SELECT object_name, object_type, status
 FROM user_objects
@@ -167,10 +167,10 @@ EXIT;
 EOF
 
 # ============================================================================
-# Step 4: Force log switch for replication
+# Paso 4: Forzar cambio de registro para replicación
 # ============================================================================
 echo "******************************************************************************"
-echo "Force log archive to ensure replication." `date`
+echo "Forzar archivo de registro para asegurar replicación." `date`
 echo "******************************************************************************"
 
 sqlplus / as sysdba <<EOF
@@ -179,19 +179,19 @@ EXIT;
 EOF
 
 echo "******************************************************************************"
-echo "Simple schema deployment complete." `date`
+echo "Despliegue del esquema simple completado." `date`
 echo "******************************************************************************"
 echo ""
-echo "Schema deployed: ${APP_SCHEMA}"
-echo "Tables created: replication_test, replication_details, audit_log"
-echo "Sequences: seq_replication_test, seq_replication_details, seq_audit_log"
-echo "Procedures: insert_test_data, check_replication_status"
+echo "Esquema desplegado: ${APP_SCHEMA}"
+echo "Tablas creadas: replication_test, replication_details, audit_log"
+echo "Secuencias: seq_replication_test, seq_replication_details, seq_audit_log"
+echo "Procedimientos: insert_test_data, check_replication_status"
 echo ""
-echo "This schema will be automatically replicated to the standby database"
-echo "when Data Guard is configured."
+echo "Este esquema será replicado automáticamente a la base de datos standby"
+echo "cuando Data Guard sea configurado."
 echo ""
-echo "To verify replication after standby setup:"
-echo "  On primary:  SELECT * FROM ${APP_SCHEMA}.replication_test;"
-echo "  On standby:  SELECT * FROM ${APP_SCHEMA}.replication_test;"
-echo "  (timestamps and created_on_db should show replication)"
+echo "Para verificar la replicación después de la configuración del standby:"
+echo "  En primario:  SELECT * FROM ${APP_SCHEMA}.replication_test;"
+echo "  En standby:  SELECT * FROM ${APP_SCHEMA}.replication_test;"
+echo "  (las marcas de tiempo y created_on_db deben mostrar la replicación)"
 echo ""

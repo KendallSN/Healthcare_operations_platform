@@ -1,13 +1,13 @@
 #!/bin/bash
-# Standby node setup entry point
+# Punto de entrada de configuración del nodo Standby
 
 echo "******************************************************************************"
-echo "Starting STANDBY node setup." `date`
+echo "Iniciando configuración del nodo STANDBY." `date`
 echo "******************************************************************************"
 
-# Run root setup script
+# Ejecutar script de configuración raíz
 sudo bash -c 'sh /vagrant/2-Standby/scripts/standby/root_setup.sh'
 
 echo "******************************************************************************"
-echo "STANDBY node setup complete." `date`
+echo "Configuración del nodo STANDBY completada." `date`
 echo "******************************************************************************"

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Create STANDBY database using RMAN DUPLICATE and configure Data Guard Broker
+# Crear base de datos STANDBY usando RMAN DUPLICATE y configurar Data Guard Broker
 
 . /vagrant_config/install.env
 . /home/oracle/scripts/setEnv.sh
 
 echo "******************************************************************************"
-echo "Configure network scripts." `date`
+echo "Configurar scripts de red." `date`
 echo "******************************************************************************"
 
-# Create tnsnames.ora (same as primary)
+# Crear tnsnames.ora (igual que en el primario)
 cat > ${ORACLE_HOME}/network/admin/tnsnames.ora <<EOF
 LISTENER${DB_DOMAIN_STR} = (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE2_FQ_HOSTNAME})(PORT = 1521))
 
@@ -37,7 +37,7 @@ ${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} =
   )
 EOF
 
-# Create listener.ora
+# Crear listener.ora
 cat > ${ORACLE_HOME}/network/admin/listener.ora <<EOF
 LISTENER =
   (DESCRIPTION_LIST =
@@ -71,12 +71,12 @@ ADR_BASE_LISTENER = ${ORACLE_BASE}
 INBOUND_CONNECT_TIMEOUT_LISTENER=400
 EOF
 
-# Create sqlnet.ora
+# Crear sqlnet.ora
 cat > ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
 SQLNET.INBOUND_CONNECT_TIMEOUT=400
 EOF
 
-# Add Native Network Encryption if enabled
+# Agregar cifrado de red nativo si está habilitado
 if [ "${NATIVE_NETWORK_ENCRYPTION}" = "true" ]; then
   cat >> ${ORACLE_HOME}/network/admin/sqlnet.ora <<EOF
 SQLNET.ENCRYPTION_SERVER=REQUIRED
@@ -100,14 +100,14 @@ EOF
 fi
 
 echo "******************************************************************************"
-echo "Start listener." `date`
+echo "Iniciar listener." `date`
 echo "******************************************************************************"
 lsnrctl stop 2>/dev/null || true
 lsnrctl start
 lsnrctl status
 
 echo "******************************************************************************"
-echo "Create directories and password file." `date`
+echo "Crear directorios y archivo de contraseñas." `date`
 echo "******************************************************************************"
 
 mkdir -p /u01/oradata/${ORACLE_SID^^}
@@ -121,7 +121,7 @@ mkdir -p /u02/backup_from_primary
 orapwd file=$ORACLE_HOME/dbs/orapw${ORACLE_SID} password=${SYS_PASSWORD} entries=10 format=12
 
 echo "******************************************************************************"
-echo "Create temporary init.ora file for auxiliary instance." `date`
+echo "Crear archivo init.ora temporal para la instancia auxiliar." `date`
 echo "******************************************************************************"
 
 cat > /tmp/init${ORACLE_SID}_stby.ora <<EOF
@@ -129,7 +129,7 @@ cat > /tmp/init${ORACLE_SID}_stby.ora <<EOF
 EOF
 
 echo "******************************************************************************"
-echo "Create auxiliary instance." `date`
+echo "Crear instancia auxiliar." `date`
 echo "******************************************************************************"
 
 sqlplus / as sysdba <<EOF
@@ -138,16 +138,30 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Test connectivity to primary database." `date`
+echo "Probar conectividad a la base de datos primaria." `date`
 echo "******************************************************************************"
 
 tnsping ${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR}
 
 echo "******************************************************************************"
-echo "Create standby database using RMAN duplicate." `date`
-echo "This may take 10-20 minutes depending on database size..."
+echo "Crear base de datos standby usando RMAN duplicate." `date`
+echo "Esto puede tardar 10-20 minutos dependiendo del tamaño de la base de datos..."
 echo "******************************************************************************"
 
+# RMAN DUPLICATE FROM ACTIVE DATABASE:
+# Este comando crea una copia física exacta de la base de datos primaria para usarla como standby.
+# - TARGET: Se conecta a la base de datos primaria (origen de los datos)
+# - AUXILIARY: Se conecta a la instancia auxiliar standby (destino de la copia)
+# - DUPLICATE TARGET DATABASE: Comando principal que inicia la duplicación
+# - FOR STANDBY: Indica que se creará una base de datos standby (no una copia independiente)
+# - FROM ACTIVE DATABASE: Copia los datos directamente desde la base de datos primaria en ejecución
+#   sin necesidad de backups previos. Usa conexiones de red para transferir los archivos.
+# - DORECOVER: Aplica automáticamente los redo logs archivados disponibles después de copiar
+#   los archivos de datos, sincronizando el standby con el primario lo máximo posible
+# - SPFILE: Copia y configura el archivo de parámetros del servidor (SPFile) desde el primario
+# - SET DB_UNIQUE_NAME: Establece el nombre único de la base de datos standby (debe ser diferente al primario)
+# - NOFILENAMECHECK: Omite la validación de nombres de archivos, permitiendo usar el mismo
+#   nombre de archivo en ambos servidores (necesario cuando ambos están en máquinas diferentes)
 rman target sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} auxiliary sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 
 duplicate target database
@@ -162,11 +176,11 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Enable FLASHBACK DATABASE on standby." `date`
+echo "Habilitar FLASHBACK DATABASE en standby." `date`
 echo "******************************************************************************"
 
 sqlplus / as sysdba <<EOF
--- Check if flashback is already enabled
+-- Verificar si flashback ya está habilitado
 SET SERVEROUTPUT ON
 DECLARE
     v_flashback_on VARCHAR2(3);
@@ -174,16 +188,16 @@ BEGIN
     SELECT flashback_on INTO v_flashback_on FROM v\$database;
 
     IF v_flashback_on = 'NO' THEN
-        DBMS_OUTPUT.PUT_LINE('Flashback is OFF on standby, enabling now...');
+        DBMS_OUTPUT.PUT_LINE('Flashback está DESACTIVADO en standby, habilitando ahora...');
         EXECUTE IMMEDIATE 'ALTER DATABASE FLASHBACK ON';
-        DBMS_OUTPUT.PUT_LINE('Flashback enabled successfully on standby.');
+        DBMS_OUTPUT.PUT_LINE('Flashback habilitado exitosamente en standby.');
     ELSE
-        DBMS_OUTPUT.PUT_LINE('Flashback is already ON on standby.');
+        DBMS_OUTPUT.PUT_LINE('Flashback ya está ACTIVADO en standby.');
     END IF;
 END;
 /
 
--- Verify flashback is enabled
+-- Verificar que flashback está habilitado
 SELECT name, db_unique_name, flashback_on, log_mode
 FROM v\$database;
 
@@ -191,28 +205,66 @@ EXIT;
 EOF
 
 echo "******************************************************************************"
-echo "Enable Data Guard Broker on standby." `date`
+echo "Habilitar Data Guard Broker en standby." `date`
 echo "******************************************************************************"
 
+# ALTER SYSTEM SET DG_BROKER_START=TRUE:
+# Inicia el proceso Data Guard Broker (DMON) en la base de datos standby.
+# El Broker es una herramienta de gestión centralizada que simplifica la administración
+# de configuraciones Data Guard, incluyendo switchover, failover y monitoreo.
 sqlplus / as sysdba <<EOF
 alter system set dg_broker_start=true;
 EXIT;
 EOF
 
 echo "******************************************************************************"
-echo "Enable Data Guard Broker on primary and create configuration." `date`
+echo "Habilitar Data Guard Broker en primario y crear configuración." `date`
 echo "******************************************************************************"
 
-# Enable broker on primary
+# Habilitar broker en primario
+# ALTER SYSTEM SET DG_BROKER_START=TRUE:
+# Inicia el proceso Data Guard Broker (DMON) en la base de datos primaria.
+# Debe habilitarse en ambas bases de datos (primaria y standby) para que puedan
+# comunicarse y coordinarse a través del Broker.
 sqlplus sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 alter system set dg_broker_start=true;
 EXIT;
 EOF
 
-# Wait for broker to initialize
+# Esperar a que el broker se inicialice
 sleep 10
 
-# Configure broker
+# Configurar broker
+# COMANDOS DATA GUARD BROKER (DGMGRL):
+# DGMGRL es la herramienta de línea de comandos para gestionar Data Guard Broker.
+# Se conecta a la base de datos primaria para administrar toda la configuración.
+#
+# REMOVE CONFIGURATION:
+# Elimina cualquier configuración de Broker existente (útil en reinstalaciones).
+# Es seguro ejecutar aunque no exista configuración previa (genera advertencia pero continúa).
+#
+# CREATE CONFIGURATION DG_CONFIG AS PRIMARY DATABASE:
+# Crea una nueva configuración de Data Guard Broker con nombre 'dg_config'.
+# - AS PRIMARY DATABASE IS: Define cuál base de datos es la primaria en la configuración
+# - CONNECT IDENTIFIER IS: Especifica el nombre de servicio TNS para conectarse al primario
+#
+# ADD DATABASE AS CONNECT IDENTIFIER:
+# Agrega la base de datos standby a la configuración de Broker.
+# - Registra el standby como miembro de la configuración Data Guard
+# - CONNECT IDENTIFIER: Nombre de servicio TNS para conectarse al standby
+# - El Broker usará esta conexión para administrar y monitorear el standby
+#
+# ENABLE CONFIGURATION:
+# Activa la configuración de Data Guard Broker.
+# - Inicia el monitoreo automático y la gestión de ambas bases de datos
+# - El Broker comienza a rastrear el estado de sincronización
+# - Habilita comandos avanzados como SWITCHOVER y FAILOVER
+#
+# SHOW CONFIGURATION:
+# Muestra el estado actual de la configuración Data Guard:
+# - Estado de cada base de datos (SUCCESS, WARNING, ERROR)
+# - Modo de protección actual (MAXPERFORMANCE, MAXAVAILABILITY, MAXPROTECTION)
+# - Roles de cada base de datos (PRIMARY, PHYSICAL STANDBY)
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 remove configuration;
 create configuration dg_config as primary database is ${NODE1_DB_UNIQUE_NAME} connect identifier is ${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR};
@@ -222,24 +274,24 @@ show configuration;
 exit;
 EOF
 
-# Wait for configuration to stabilize
+# Esperar a que la configuración se estabilice
 sleep 15
 
 echo "******************************************************************************"
-echo "Configure MAXAVAILABILITY protection mode and FASTSYNC transport." `date`
+echo "Configurar modo de protección MAXAVAILABILITY y transporte FASTSYNC." `date`
 echo "******************************************************************************"
 
-# Function to verify LogXptMode is set correctly on a database
+# Función para verificar que LogXptMode está configurado correctamente en una base de datos
 verify_logxptmode() {
     local db_name=$1
     local expected_mode=$2
-    local max_attempts=12  # 60 seconds total (12 * 5 seconds)
+    local max_attempts=12  # 60 segundos totales (12 * 5 segundos)
     local attempt=1
 
-    echo "Verifying LogXptMode=${expected_mode} on ${db_name}..."
+    echo "Verificando LogXptMode=${expected_mode} en ${db_name}..."
 
     while [ $attempt -le $max_attempts ]; do
-        # Query the LogXptMode property from Data Guard Broker
+        # Consultar la propiedad LogXptMode desde Data Guard Broker
         local actual_mode=$(dgmgrl -silent sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF | grep "LogXptMode" | awk '{print $3}' | tr -d "'"
 SHOW DATABASE VERBOSE ${db_name};
 exit;
@@ -247,28 +299,28 @@ EOF
 )
 
         if echo "$actual_mode" | grep -qi "$expected_mode"; then
-            echo "[OK] LogXptMode verified as ${expected_mode} on ${db_name}"
+            echo "[OK] LogXptMode verificado como ${expected_mode} en ${db_name}"
             return 0
         fi
 
-        echo "  Attempt ${attempt}/${max_attempts}: LogXptMode is '${actual_mode}', waiting for '${expected_mode}'..."
+        echo "  Intento ${attempt}/${max_attempts}: LogXptMode es '${actual_mode}', esperando '${expected_mode}'..."
         sleep 5
         attempt=$((attempt + 1))
     done
 
-    echo "[ERROR] Failed to verify LogXptMode=${expected_mode} on ${db_name} after ${max_attempts} attempts"
+    echo "[ERROR] Falló la verificación de LogXptMode=${expected_mode} en ${db_name} después de ${max_attempts} intentos"
     return 1
 }
 
-# Function to verify protection level is MAXIMUM AVAILABILITY (not RESYNCHRONIZATION)
+# Función para verificar que el nivel de protección es MAXIMUM AVAILABILITY (no RESYNCHRONIZATION)
 verify_protection_level() {
-    local max_attempts=12  # 60 seconds total
+    local max_attempts=12  # 60 segundos totales
     local attempt=1
 
-    echo "Verifying protection level is MAXIMUM AVAILABILITY..."
+    echo "Verificando que el nivel de protección es MAXIMUM AVAILABILITY..."
 
     while [ $attempt -le $max_attempts ]; do
-        # Query protection level from the primary database
+        # Consultar el nivel de protección desde la base de datos primaria
         local protection_level=$(sqlplus -s / as sysdba <<EOF
 SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
 SELECT protection_level FROM v\$database;
@@ -276,69 +328,116 @@ EXIT;
 EOF
 )
 
-        # Trim whitespace
+        # Eliminar espacios en blanco
         protection_level=$(echo "$protection_level" | tr -d ' \t\r\n')
 
         if [ "$protection_level" = "MAXIMUMAVAILABILITY" ]; then
-            echo "[OK] Protection level verified as MAXIMUM AVAILABILITY"
+            echo "[OK] Nivel de protección verificado como MAXIMUM AVAILABILITY"
             return 0
         fi
 
-        echo "  Attempt ${attempt}/${max_attempts}: Protection level is '${protection_level}', waiting for 'MAXIMUM AVAILABILITY'..."
+        echo "  Intento ${attempt}/${max_attempts}: Nivel de protección es '${protection_level}', esperando 'MAXIMUM AVAILABILITY'..."
         sleep 5
         attempt=$((attempt + 1))
     done
 
-    echo "[ERROR] Failed to verify MAXIMUM AVAILABILITY protection level after ${max_attempts} attempts"
-    echo "  Current protection level: ${protection_level}"
+    echo "[ERROR] Falló la verificación del nivel de protección MAXIMUM AVAILABILITY después de ${max_attempts} intentos"
+    echo "  Nivel de protección actual: ${protection_level}"
     return 1
 }
 
-# Step 1: Set FASTSYNC transport mode on PRIMARY
-echo "Setting LogXptMode=FASTSYNC on primary database..."
+# Paso 1: Establecer modo de transporte FASTSYNC en PRIMARIO
+# EDIT DATABASE SET PROPERTY LogXptMode='FASTSYNC':
+# Configura el modo de transporte de redo logs desde el primario al standby.
+# - LogXptMode (Log Transport Mode): Define cómo se envían los redo logs al standby
+# - FASTSYNC: Modo de transporte SÍNCRONO que garantiza cero pérdida de datos
+#   * El primario espera confirmación de que el redo se escribió en el disco del standby
+#   * Más lento que ASYNC pero garantiza que no se pierden transacciones confirmadas
+#   * Requiere que el standby esté disponible, o las transacciones se bloquean
+#   * Necesario para el modo de protección MAXAVAILABILITY
+# - Otras opciones: SYNC (más estricto), ASYNC (sin espera), ARCH (por archivos)
+echo "Estableciendo LogXptMode=FASTSYNC en base de datos primaria..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT DATABASE ${NODE1_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
 exit;
 EOF
 
-echo "Setting LogXptMode=FASTSYNC on standby database..."
+# EDIT DATABASE SET PROPERTY LogXptMode='FASTSYNC' (en standby):
+# Configura el modo de transporte de redo logs en el standby.
+# Aunque el standby no envía logs en operación normal, esta propiedad se usa
+# durante un switchover cuando el standby se convierte en primario.
+echo "Estableciendo LogXptMode=FASTSYNC en base de datos standby..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
 exit;
 EOF
 
-# Verify primary LogXptMode is applied
+# Verificar que LogXptMode del primario se aplicó correctamente
 if ! verify_logxptmode "${NODE1_DB_UNIQUE_NAME}" "FASTSYNC"; then
-    echo "WARNING: Could not verify LogXptMode on primary, but continuing..."
+    echo "ADVERTENCIA: No se pudo verificar LogXptMode en primario, pero continuando..."
 fi
 
-# Step 2: Enable apply on standby to start log transport
-echo "Enabling apply on standby database..."
+# Paso 2: Habilitar aplicación de logs en standby para iniciar transporte de logs
+# EDIT DATABASE SET STATE='APPLY-ON':
+# Inicia el proceso Managed Recovery (MRP) en la base de datos standby.
+# - APPLY-ON: Activa la aplicación automática de redo logs en el standby
+# - El proceso MRP lee los redo logs recibidos y los aplica al standby
+# - Mantiene el standby sincronizado con el primario en tiempo real
+# - Necesario para que el transporte de logs funcione correctamente
+# - Otras opciones: APPLY-OFF (desactiva aplicación), ONLINE (abre para lectura)
+echo "Habilitando aplicación de logs en base de datos standby..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET STATE='APPLY-ON';
 exit;
 EOF
 
-# Give standby a moment to start applying
+# Dar tiempo al standby para comenzar a aplicar logs
 sleep 5
 
-# Step 3: Set MAXAVAILABILITY protection mode AFTER transport is configured
-echo "Setting MAXAVAILABILITY protection mode..."
+# Paso 3: Establecer modo de protección MAXAVAILABILITY DESPUÉS de configurar el transporte
+# EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY:
+# Configura el modo de protección Data Guard a MAXIMUM AVAILABILITY.
+#
+# MODOS DE PROTECCIÓN DISPONIBLES:
+# 1. MAXPROTECTION (Máxima Protección):
+#    - Cero pérdida de datos GARANTIZADA
+#    - Transacciones esperan confirmación SYNC del standby
+#    - Si el standby no está disponible, el primario se APAGA
+#    - El más seguro pero el más restrictivo
+#
+# 2. MAXAVAILABILITY (Máxima Disponibilidad) [CONFIGURADO AQUÍ]:
+#    - Cero pérdida de datos EN CONDICIONES NORMALES
+#    - Transacciones esperan confirmación FASTSYNC del standby
+#    - Si el standby no está disponible, el primario continúa en modo MAXPERFORMANCE
+#    - Mejor balance entre protección de datos y disponibilidad del primario
+#    - Requiere LogXptMode=FASTSYNC o SYNC
+#
+# 3. MAXPERFORMANCE (Máximo Rendimiento):
+#    - Pérdida de datos POSIBLE (según el retraso del transporte)
+#    - No espera confirmación del standby (modo ASYNC)
+#    - Máxima performance del primario, sin impacto por el standby
+#    - El primario siempre continúa aunque el standby esté inactivo
+#
+# MAXAVAILABILITY proporciona:
+# - Protección de datos (cero pérdida si el standby está activo)
+# - Alta disponibilidad del primario (continúa si el standby falla)
+# - Ideal para entornos de producción críticos
+echo "Estableciendo modo de protección MAXAVAILABILITY..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY;
 exit;
 EOF
 
-# Step 4: Verify protection level is actually MAXIMUM AVAILABILITY
+# Paso 4: Verificar que el nivel de protección es realmente MAXIMUM AVAILABILITY
 if ! verify_protection_level; then
-    echo "WARNING: Protection level verification failed!"
-    echo "The configuration may be in RESYNCHRONIZATION or MAXIMUM PERFORMANCE mode."
-    echo "Check Data Guard Broker status for ORA-16627 errors."
+    echo "ADVERTENCIA: ¡Falló la verificación del nivel de protección!"
+    echo "La configuración puede estar en modo RESYNCHRONIZATION o MAXIMUM PERFORMANCE."
+    echo "Verifique el estado de Data Guard Broker para errores ORA-16627."
 fi
 
-# Show final configuration after all settings are applied
+# Mostrar configuración final después de aplicar todos los ajustes
 echo ""
-echo "Final Data Guard Broker configuration:"
+echo "Configuración final de Data Guard Broker:"
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 SHOW CONFIGURATION;
 SHOW DATABASE ${NODE1_DB_UNIQUE_NAME};
@@ -347,11 +446,18 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Validate Data Guard configuration." `date`
+echo "Validar configuración de Data Guard." `date`
 echo "******************************************************************************"
 
 sleep 30
 
+# VALIDATE DATABASE:
+# Verifica que la base de datos esté configurada correctamente para Data Guard.
+# - Valida configuración de redo logs, archive logs, parámetros de inicialización
+# - VALIDATE DATABASE: Verifica la base de datos en general
+# - VALIDATE DATABASE SPFILE: Verifica específicamente el archivo de parámetros
+# - VALIDATE STATIC CONNECT IDENTIFIER: Verifica la configuración TNS para conexiones estáticas
+#   (necesarias para que el Broker pueda conectarse cuando la BD está en modo MOUNT)
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 validate database ${NODE1_DB_UNIQUE_NAME};
 validate database ${NODE2_DB_UNIQUE_NAME};
@@ -362,10 +468,10 @@ exit;
 EOF
 
 echo "******************************************************************************"
-echo "Verify FLASHBACK DATABASE is enabled on both databases." `date`
+echo "Verificar que FLASHBACK DATABASE está habilitado en ambas bases de datos." `date`
 echo "******************************************************************************"
 
-echo "Checking flashback status on PRIMARY..."
+echo "Verificando estado de flashback en PRIMARIO..."
 sqlplus -s sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 SET LINESIZE 180
 COLUMN name FORMAT A15
@@ -378,7 +484,7 @@ EXIT;
 EOF
 
 echo ""
-echo "Checking flashback status on STANDBY..."
+echo "Verificando estado de flashback en STANDBY..."
 sqlplus -s / as sysdba <<EOF
 SET LINESIZE 180
 COLUMN name FORMAT A15
@@ -391,15 +497,15 @@ EXIT;
 EOF
 
 echo ""
-echo "NOTE: FLASHBACK DATABASE enables quick reinstatement after failover."
-echo "      Without flashback, the old primary must be rebuilt from scratch."
+echo "NOTA: FLASHBACK DATABASE permite reinstauración rápida después de un failover."
+echo "      Sin flashback, el antiguo primario debe reconstruirse desde cero."
 echo ""
 
 echo "******************************************************************************"
-echo "Verify Data Guard synchronization and schema replication." `date`
+echo "Verificar sincronización de Data Guard y replicación del esquema." `date`
 echo "******************************************************************************"
 
-# Show final configuration status after protection mode change
+# Mostrar estado final de la configuración después del cambio de modo de protección
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 SHOW CONFIGURATION;
 SHOW DATABASE ${NODE1_DB_UNIQUE_NAME};
@@ -408,26 +514,27 @@ exit;
 EOF
 
 echo ""
-echo "Data Guard Synchronization Status:"
-echo "- Standby database is managed by Data Guard Broker"
-echo "- Custom schema (${APP_SCHEMA}) was created on primary before standby creation"
-echo "- RMAN DUPLICATE copied all data including custom schema to standby"
-echo "- Ongoing changes are replicated via Data Guard log transport and apply"
-echo "- Use '/home/oracle/automation/verify_dataguard.sh' for detailed verification"
+echo "Estado de Sincronización de Data Guard:"
+echo "- Base de datos standby está gestionada por Data Guard Broker"
+echo "- Esquema personalizado (${APP_SCHEMA}) fue creado en primario antes de la creación del standby"
+echo "- RMAN DUPLICATE copió todos los datos incluyendo el esquema personalizado al standby"
+echo "- Los cambios continuos se replican mediante transporte y aplicación de logs de Data Guard"
+echo "- Use '/home/oracle/automation/verify_dataguard.sh' para verificación detallada"
 echo ""
 
 echo "******************************************************************************"
-echo "STANDBY database creation and configuration complete!" `date`
+echo "¡Creación y configuración de base de datos STANDBY completa!" `date`
 echo "******************************************************************************"
 echo ""
-echo "Data Guard Configuration Summary:"
-echo "- Primary: ${NODE1_DB_UNIQUE_NAME} on ${NODE1_FQ_HOSTNAME}"
-echo "- Standby: ${NODE2_DB_UNIQUE_NAME} on ${NODE2_FQ_HOSTNAME}"
-echo "- Protection Mode: MAXAVAILABILITY"
-echo "- Transport Mode: FASTSYNC (synchronous)"
-echo "- Archive Lag Target: ${ARCHIVE_LAG_TARGET} seconds (5 minutes)"
-echo "- Redo Log Size: ${REDO_LOG_SIZE} MB"
-echo "- Flashback Database: ENABLED (allows fast reinstatement after failover)"
-echo "- Custom schema has been replicated to standby"
+echo "Resumen de Configuración de Data Guard:"
+echo "- Primario: ${NODE1_DB_UNIQUE_NAME} en ${NODE1_FQ_HOSTNAME}"
+echo "- Standby: ${NODE2_DB_UNIQUE_NAME} en ${NODE2_FQ_HOSTNAME}"
+echo "- Modo de Protección: MAXAVAILABILITY"
+echo "- Modo de Transporte: FASTSYNC (síncrono)"
+echo "- Objetivo de Retraso de Archivado: ${ARCHIVE_LAG_TARGET} segundos (5 minutos)"
+echo "- Tamaño de Redo Log: ${REDO_LOG_SIZE} MB"
+echo "- Flashback Database: HABILITADO (permite reinstauración rápida después de failover)"
+echo "- El esquema personalizado ha sido replicado al standby"
 echo ""
-echo "Use 'dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR}' to manage Data Guard"
+echo "Use 'dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR}' para administrar Data Guard"
+echo ""

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Manual On-Demand Backup
-# Run on PRIMARY database when manual backup is needed
+# Respaldo Manual Bajo Demanda
+# Se ejecuta en la base de datos PRINCIPAL cuando se necesita un respaldo manual
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
@@ -8,50 +8,56 @@
 BACKUP_TAG="MANUAL_BACKUP_$(date +%Y%m%d_%H%M%S)"
 
 echo "===================================================================="
-echo "Manual RMAN Backup"
+echo "Respaldo Manual RMAN"
 echo "===================================================================="
-echo "Backup tag: $BACKUP_TAG"
-echo "Backup directory: $BACKUP_DIR"
+echo "Etiqueta del respaldo: $BACKUP_TAG"
+echo "Directorio de respaldo: $BACKUP_DIR"
 echo ""
 
-read -p "Proceed with backup? (yes/no): " confirm
+read -p "Proceder con el respaldo? (yes/no): " confirm
 
 if [ "$confirm" != "yes" ]; then
-  echo "Backup cancelled"
+  echo "Respaldo cancelado"
   exit 0
 fi
 
 echo ""
-echo "Starting backup..."
+echo "Iniciando respaldo..."
 
 rman target / <<REOF
 RUN {
+  # Asignar canal para respaldo
   ALLOCATE CHANNEL ch1 DEVICE TYPE DISK FORMAT '${BACKUP_DIR}/${BACKUP_TAG}_%U';
 
+  # Forzar archivado del log actual antes del respaldo
   SQL 'ALTER SYSTEM ARCHIVE LOG CURRENT';
 
+  # Respaldo completo comprimido de base de datos con archivos de log
   BACKUP AS COMPRESSED BACKUPSET
     DATABASE
     PLUS ARCHIVELOG
     TAG ${BACKUP_TAG};
 
+  # Respaldar archivo de control actual
   BACKUP CURRENT CONTROLFILE;
 
+  # Liberar canal de respaldo
   RELEASE CHANNEL ch1;
 }
+# Mostrar resumen de respaldos existentes
 LIST BACKUP SUMMARY;
 EXIT;
 REOF
 
 echo ""
 echo "===================================================================="
-echo "Manual Backup Complete"
+echo "Respaldo Manual Completado"
 echo "===================================================================="
 
-read -p "Transfer to standby? (yes/no): " transfer
+read -p "Transferir a standby? (yes/no): " transfer
 
 if [ "$transfer" = "yes" ]; then
-  echo "Transferring backups..."
+  echo "Transfiriendo respaldos..."
   rsync -avz --progress ${BACKUP_DIR}/${BACKUP_TAG}* oracle@${NODE2_FQ_HOSTNAME}:/u02/backup_from_primary/
-  echo "Transfer complete"
+  echo "Transferencia completada"
 fi
