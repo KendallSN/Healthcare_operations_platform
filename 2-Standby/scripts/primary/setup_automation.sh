@@ -1,26 +1,26 @@
 #!/bin/bash
-# Setup automation scripts on primary
+# Configurar scripts de automatización en el primario
 
 . /vagrant_config/install.env
 . /home/oracle/scripts/setEnv.sh
 
 echo "******************************************************************************"
-echo "Setup automation scripts on PRIMARY." `date`
+echo "Configurar scripts de automatización en PRIMARY." `date`
 echo "******************************************************************************"
 
-# Copy automation scripts to oracle user home
+# Copiar scripts de automatización al directorio del usuario oracle
 mkdir -p /home/oracle/automation
 
 cp /vagrant_automation/*.sh /home/oracle/automation/
 chmod +x /home/oracle/automation/*.sh
 chown -R oracle:oinstall /home/oracle/automation
 
-# Create logs directory for automation
+# Crear directorio de registros para automatización
 mkdir -p /home/oracle/logs/automation
 chown -R oracle:oinstall /home/oracle/logs
 
 echo "******************************************************************************"
-echo "Automation scripts setup complete." `date`
+echo "Configuración de scripts de automatización completada." `date`
 echo "******************************************************************************"
-echo "Available scripts in /home/oracle/automation/:"
+echo "Scripts disponibles en /home/oracle/automation/:"
 ls -l /home/oracle/automation/

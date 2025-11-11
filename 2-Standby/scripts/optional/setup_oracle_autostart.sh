@@ -1,75 +1,75 @@
 #!/bin/bash
-# Setup Oracle Database and Listener to auto-start on system boot via systemd
-# This script creates a systemd service that manages Oracle database lifecycle
+# Configurar Base de Datos Oracle y Listener para auto-iniciarse al arranque del sistema a través de systemd
+# Este script crea un servicio systemd que gestiona el ciclo de vida de la base de datos Oracle
 
 . /vagrant_config/install.env
 
 echo "******************************************************************************"
-echo "Setting up Oracle Database Auto-Start via systemd" `date`
+echo "Configurando Auto-Inicio de Base de Datos Oracle a través de systemd" `date`
 echo "******************************************************************************"
 
-# Step 1: Create wrapper scripts for starting and stopping Oracle
-echo "Creating Oracle start/stop wrapper scripts..."
+# Paso 1: Crear scripts envolventes para iniciar y detener Oracle
+echo "Creando scripts envolventes de inicio/parada de Oracle..."
 
 START_SCRIPT="/home/oracle/scripts/oracle_start.sh"
 STOP_SCRIPT="/home/oracle/scripts/oracle_stop.sh"
 
-# Create start script
+# Crear script de inicio
 cat > "$START_SCRIPT" <<'STARTEOF'
 #!/bin/bash
-# Start Oracle Database and Listener
+# Iniciar Base de Datos Oracle y Listener
 
-# Source Oracle environment
+# Cargar entorno de Oracle
 . /home/oracle/scripts/setEnv.sh
 
-# Start listener
-echo "Starting Oracle Listener..."
+# Iniciar listener
+echo "Iniciando Oracle Listener..."
 lsnrctl start
 
-# Start database
-echo "Starting Oracle Database..."
+# Iniciar base de datos
+echo "Iniciando Base de Datos Oracle..."
 sqlplus -s / as sysdba <<EOF
 STARTUP;
 ALTER PLUGGABLE DATABASE ALL OPEN;
 EXIT;
 EOF
 
-echo "Oracle Database and Listener started successfully"
+echo "Base de Datos Oracle y Listener iniciados exitosamente"
 STARTEOF
 
-# Create stop script
+# Crear script de detención
 cat > "$STOP_SCRIPT" <<'STOPEOF'
 #!/bin/bash
-# Stop Oracle Database and Listener
+# Detener Base de Datos Oracle y Listener
 
-# Source Oracle environment
+# Cargar entorno de Oracle
 . /home/oracle/scripts/setEnv.sh
 
-# Stop database
-echo "Stopping Oracle Database..."
+# Detener base de datos
+echo "Deteniendo Base de Datos Oracle..."
 sqlplus -s / as sysdba <<EOF
 SHUTDOWN IMMEDIATE;
 EXIT;
 EOF
 
-# Stop listener
-echo "Stopping Oracle Listener..."
+# Detener listener
+echo "Deteniendo Oracle Listener..."
 lsnrctl stop
 
-echo "Oracle Database and Listener stopped successfully"
+echo "Base de Datos Oracle y Listener detenidos exitosamente"
 STOPEOF
 
-# Set permissions and ownership
+# Establecer permisos y propietario
 chown oracle:oinstall "$START_SCRIPT" "$STOP_SCRIPT"
 chmod 750 "$START_SCRIPT" "$STOP_SCRIPT"
 
-echo "[OK] Wrapper scripts created"
+echo "[OK] Scripts envolventes creados"
 echo ""
 
-# Step 2: Create the systemd service file
+# Paso 2: Crear archivo de servicio systemd
 SERVICE_FILE="/etc/systemd/system/oracle-database.service"
 
-echo "Creating systemd service file: $SERVICE_FILE"
+echo "Creando archivo de servicio systemd: $SERVICE_FILE"
 
 cat > "$SERVICE_FILE" <<SERVICEEOF
 [Unit]
@@ -83,11 +83,11 @@ Group=oinstall
 Restart=no
 RemainAfterExit=yes
 
-# Start and stop scripts
+# Scripts de inicio y detención
 ExecStart=$START_SCRIPT
 ExecStop=$STOP_SCRIPT
 
-# Timeout settings (Oracle can take time to start/stop)
+# Configuración de tiempo de espera (Oracle puede tomar tiempo para iniciar/detener)
 TimeoutStartSec=600
 TimeoutStopSec=600
 
@@ -95,63 +95,63 @@ TimeoutStopSec=600
 WantedBy=multi-user.target
 SERVICEEOF
 
-# Set proper permissions on service file
+# Establecer permisos apropiados en archivo de servicio
 chmod 644 "$SERVICE_FILE"
 
-echo "[OK] Systemd service file created"
+echo "[OK] Archivo de servicio systemd creado"
 echo ""
 
-# Reload systemd to recognize the new service
-echo "Reloading systemd daemon..."
+# Recargar systemd para reconocer el nuevo servicio
+echo "Recargando daemon systemd..."
 systemctl daemon-reload
 
-# Enable the service to start on boot
-echo "Enabling oracle-database.service to start on boot..."
+# Habilitar el servicio para que inicie al arrancar
+echo "Habilitando oracle-database.service para que inicie al arrancar..."
 systemctl enable oracle-database.service
 
-# Check service status
+# Verificar estado del servicio
 echo ""
 echo "******************************************************************************"
-echo "Service configuration complete!" `date`
+echo "¡Configuración de servicio completada!" `date`
 echo "******************************************************************************"
 echo ""
-echo "Service Status:"
+echo "Estado del servicio:"
 systemctl status oracle-database.service --no-pager || true
 
 echo ""
-echo "To manually control the Oracle database service:"
-echo "  Start:   sudo systemctl start oracle-database"
-echo "  Stop:    sudo systemctl stop oracle-database"
-echo "  Restart: sudo systemctl restart oracle-database"
-echo "  Status:  sudo systemctl status oracle-database"
+echo "Para controlar manualmente el servicio de base de datos Oracle:"
+echo "  Iniciar:   sudo systemctl start oracle-database"
+echo "  Detener:    sudo systemctl stop oracle-database"
+echo "  Reiniciar: sudo systemctl restart oracle-database"
+echo "  Estado:  sudo systemctl status oracle-database"
 echo ""
-echo "The service will now automatically start when the VM boots."
+echo "El servicio ahora se iniciará automáticamente cuando se arranque la VM."
 echo ""
 
-# Check if Oracle is currently running and ask if we should start the service now
-echo "Checking if Oracle is currently running..."
+# Verificar si Oracle se está ejecutando actualmente y preguntar si debemos iniciar el servicio ahora
+echo "Verificando si Oracle se está ejecutando actualmente..."
 RUNNING=$(su - oracle -c "ps aux | grep pmon | grep -v grep" || true)
 
 if [ -z "$RUNNING" ]; then
-  echo "Oracle is not currently running."
-  echo "Starting oracle-database.service now..."
+  echo "Oracle no se está ejecutando actualmente."
+  echo "Iniciando oracle-database.service ahora..."
   systemctl start oracle-database.service
 
-  # Wait a moment and check status
+  # Esperar un momento y verificar estado
   sleep 5
   if systemctl is-active --quiet oracle-database.service; then
-    echo "[OK] Oracle database service started successfully"
+    echo "[OK] Servicio de base de datos Oracle iniciado exitosamente"
   else
-    echo "[ERROR] Failed to start Oracle database service"
-    echo "Check logs with: journalctl -u oracle-database -n 50"
+    echo "[ERROR] Falló al iniciar servicio de base de datos Oracle"
+    echo "Verificar registros con: journalctl -u oracle-database -n 50"
   fi
 else
-  echo "Oracle is already running. Service is configured but not started."
-  echo "The service will start automatically on next reboot."
-  echo "To manually start the service now (and stop current Oracle): sudo systemctl start oracle-database"
+  echo "Oracle ya se está ejecutando. El servicio está configurado pero no iniciado."
+  echo "El servicio se iniciará automáticamente en el próximo reinicio."
+  echo "Para iniciar manualmente el servicio ahora (y detener Oracle actual): sudo systemctl start oracle-database"
 fi
 
 echo ""
 echo "******************************************************************************"
-echo "Auto-start setup complete!" `date`
+echo "¡Configuración de auto-inicio completada!" `date`
 echo "******************************************************************************"

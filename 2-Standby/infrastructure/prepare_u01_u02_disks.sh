@@ -1,7 +1,7 @@
 #!/bin/bash
-# Prepare u01 and u02 disks for Oracle installation
-# u01: Oracle software and database files
-# u02: Backups and Fast Recovery Area
+# Preparar discos u01 y u02 para instalación de Oracle
+# u01: Software de Oracle y archivos de base de datos
+# u02: Copias de seguridad y Área de Recuperación Rápida
 
 . /vagrant_config/install.env
 
@@ -13,26 +13,26 @@ function prepare_disk {
   echo "Prepare ${MOUNT_POINT} disk." `date`
   echo "******************************************************************************"
 
-  # New partition for the whole disk
+  # Nueva partición para todo el disco
   echo -e "n\np\n1\n\n\nw" | fdisk ${DISK_DEVICE}
 
-  # Add XFS file system
+  # Añadir sistema de archivos XFS
   mkfs.xfs -f ${DISK_DEVICE}1
 
-  # Mount it
+  # Montarlo
   UUID=`blkid -o export ${DISK_DEVICE}1 | grep ^UUID= | head -1`
   mkdir -p ${MOUNT_POINT}
   echo "${UUID}  ${MOUNT_POINT}    xfs    defaults 1 2" >> /etc/fstab
   mount ${MOUNT_POINT}
 }
 
-# Prepare u01 (Oracle base)
+# Preparar u01: software Oracle y archivos de BD
 prepare_disk /u01 /dev/sdb
 
-# Prepare u02 (Backups and FRA)
+# Preparar u02: backups y FRA
 prepare_disk /u02 /dev/sdc
 
-# Create directory structure
+# Crear estructura de directorios
 mkdir -p /u01/app/oracle
 mkdir -p /u01/app/oraInventory
 mkdir -p /u01/oradata

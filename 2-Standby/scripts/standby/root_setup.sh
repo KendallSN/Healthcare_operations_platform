@@ -1,68 +1,68 @@
 #!/bin/bash
-# Standby node root setup script
+# Script de configuración raíz del nodo Standby
 
 . /vagrant_config/install.env
 
 echo "******************************************************************************"
-echo "STANDBY Root Setup Started." `date`
+echo "Configuración raíz de STANDBY iniciada." `date`
 echo "******************************************************************************"
 
-# Prepare disks
+# Preparar discos
 sh /vagrant_scripts/prepare_u01_u02_disks.sh
 
-# Install OS packages
+# Instalar paquetes del SO
 sh /vagrant_scripts/install_os_packages.sh
 
-# Set passwords
+# Establecer contraseñas
 echo "******************************************************************************"
-echo "Set root and oracle password and change ownership." `date`
+echo "Estableciendo contraseñas de root y oracle y cambiando propietario." `date`
 echo "******************************************************************************"
 echo -e "${ROOT_PASSWORD}\n${ROOT_PASSWORD}" | passwd
 echo -e "${ORACLE_PASSWORD}\n${ORACLE_PASSWORD}" | passwd oracle
 chown -R oracle:oinstall /u01 /u02
 chmod -R 775 /u01 /u02
 
-# Configure hosts file
+# Configurar archivo de hosts
 sh /vagrant_scripts/configure_hosts_base.sh
 
-# Configure hostname
+# Configurar nombre de host
 sh /vagrant_scripts/configure_hostname.sh
 
-# Configure time sync
+# Configurar sincronización de tiempo
 sh /vagrant_scripts/configure_chrony.sh
 
-# Setup oracle user environment
+# Configurar entorno del usuario oracle
 su - oracle -c 'sh /vagrant/2-Standby/scripts/standby/oracle_user_environment_setup.sh'
 . /home/oracle/scripts/setEnv.sh
 
-# Install Oracle software
+# Instalar software de Oracle
 su - oracle -c 'sh /vagrant_scripts/oracle_db_software_installation.sh'
 
-# Run Oracle root scripts
+# Ejecutar scripts raíz de Oracle
 echo "******************************************************************************"
-echo "Run DB root scripts." `date`
+echo "Ejecutando scripts raíz de BD." `date`
 echo "******************************************************************************"
 sh ${ORA_INVENTORY}/orainstRoot.sh
 sh ${ORACLE_HOME}/root.sh
 
-# Create standby database
+# Crear base de datos Standby
 su - oracle -c 'sh /vagrant/2-Standby/scripts/standby/oracle_create_database.sh'
 
-# Setup automation scripts
+# Configurar scripts de automatización
 su - oracle -c 'sh /vagrant/2-Standby/scripts/standby/setup_automation.sh'
 
-# Setup SSH keys for receiving backup transfers (run as root for /vagrant access)
+# Configurar claves SSH para recibir transferencias de copia de seguridad (ejecutar como root para acceso a /vagrant)
 echo "******************************************************************************"
-echo "Setting up SSH keys for receiving backups from primary." `date`
+echo "Configurando claves SSH para recibir copias de seguridad del primario." `date`
 echo "******************************************************************************"
 sh /vagrant/2-Standby/scripts/standby/setup_ssh_keys_auto.sh
 
-# Install cron jobs for automation
+# Instalar trabajos cron para automatización
 echo "******************************************************************************"
-echo "Installing cron jobs for automation." `date`
+echo "Instalando trabajos cron para automatización." `date`
 echo "******************************************************************************"
 su - oracle -c 'sh /home/oracle/automation/install_cron_jobs.sh'
 
 echo "******************************************************************************"
-echo "STANDBY Root Setup Complete." `date`
+echo "Configuración raíz de STANDBY completada." `date`
 echo "******************************************************************************"

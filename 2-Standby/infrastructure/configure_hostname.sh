@@ -1,9 +1,9 @@
 #!/bin/bash
-# Configure hostname
+# Configurar nombre de host
 
 . /vagrant_config/install.env
 
-# Determine which node this is based on IP
+# Determinar cuál nodo es éste basado en IP
 IP_ADDR=$(hostname -I | awk '{print $2}')
 
 if [ "${IP_ADDR}" == "${NODE1_PUBLIC_IP}" ]; then
@@ -11,7 +11,7 @@ if [ "${IP_ADDR}" == "${NODE1_PUBLIC_IP}" ]; then
 elif [ "${IP_ADDR}" == "${NODE2_PUBLIC_IP}" ]; then
   HOSTNAME_TO_SET=${NODE2_FQ_HOSTNAME}
 else
-  echo "ERROR: Unable to determine node from IP: ${IP_ADDR}"
+  echo "ERROR: No se puede determinar nodo de IP: ${IP_ADDR}"
   exit 1
 fi
 

@@ -1,114 +1,114 @@
 #!/bin/bash
-# Verify Backup Automation Setup
-# Run after deployment to confirm all components are working
-# Usage: /home/oracle/automation/verify_backup_automation.sh
+# Verificar configuración de automatización de respaldos
+# Ejecutar después del despliegue para confirmar que todos los componentes funcionan
+# Uso: /home/oracle/automation/verify_backup_automation.sh
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
 
 echo "========================================================================"
-echo "BACKUP AUTOMATION VERIFICATION"
+echo "VERIFICACIÓN DE AUTOMATIZACIÓN DE RESPALDOS"
 echo "Host: $(hostname)"
-echo "Date: $(date)"
+echo "Fecha: $(date)"
 echo "========================================================================"
 
 ERRORS=0
 
-# 1. Check SSH keys
+# 1. Verificar claves SSH
 echo ""
-echo "=== SSH Key Configuration ==="
+echo "=== Configuración de claves SSH ==="
 if [ -f ~/.ssh/id_rsa ]; then
-    echo "  [OK] Private key exists"
+    echo "  [OK] La clave privada existe"
     KEY_PERMS=$(stat -c "%a" ~/.ssh/id_rsa)
     if [ "$KEY_PERMS" = "600" ]; then
-        echo "  [OK] Private key permissions correct (600)"
+        echo "  [OK] Permisos de clave privada correctos (600)"
     else
-        echo "  [ERROR] Private key permissions incorrect: $KEY_PERMS (should be 600)"
+        echo "  [ERROR] Permisos de clave privada incorrectos: $KEY_PERMS (debe ser 600)"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  [ERROR] Private key missing"
+    echo "  [ERROR] Clave privada faltante"
     ERRORS=$((ERRORS + 1))
 fi
 
 if [ -f ~/.ssh/id_rsa.pub ]; then
-    echo "  [OK] Public key exists"
+    echo "  [OK] La clave pública existe"
     PUB_KEY_PERMS=$(stat -c "%a" ~/.ssh/id_rsa.pub)
     if [ "$PUB_KEY_PERMS" = "644" ]; then
-        echo "  [OK] Public key permissions correct (644)"
+        echo "  [OK] Permisos de clave pública correctos (644)"
     else
-        echo "  [ERROR] Public key permissions incorrect: $PUB_KEY_PERMS (should be 644)"
+        echo "  [ERROR] Permisos de clave pública incorrectos: $PUB_KEY_PERMS (debe ser 644)"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  [ERROR] Public key missing"
+    echo "  [ERROR] Clave pública faltante"
     ERRORS=$((ERRORS + 1))
 fi
 
-# 2. Test SSH connectivity (if on primary)
+# 2. Probar conectividad SSH (si está en primario)
 if [ "$ORACLE_SID" = "cdb1" ]; then
     echo ""
-    echo "=== SSH Connectivity Test ==="
+    echo "=== Prueba de conectividad SSH ==="
     if ssh -o BatchMode=yes -o ConnectTimeout=10 oracle@${NODE2_FQ_HOSTNAME} "echo 'SSH OK'" 2>/dev/null | grep -q "SSH OK"; then
-        echo "  [OK] Passwordless SSH to standby working"
+        echo "  [OK] SSH sin contraseña al servidor en espera funcionando"
     else
-        echo "  [ERROR] Passwordless SSH to standby failed"
+        echo "  [ERROR] SSH sin contraseña al servidor en espera falló"
         ERRORS=$((ERRORS + 1))
     fi
 fi
 
-# 3. Check authorized_keys (if on standby)
+# 3. Verificar claves autorizadas (si está en espera)
 if [ "$ORACLE_SID" != "cdb1" ]; then
     echo ""
-    echo "=== Authorized Keys ==="
+    echo "=== Claves autorizadas ==="
     if [ -f ~/.ssh/authorized_keys ]; then
-        echo "  [OK] authorized_keys file exists"
+        echo "  [OK] El archivo de claves autorizadas existe"
         AUTH_KEY_PERMS=$(stat -c "%a" ~/.ssh/authorized_keys)
         if [ "$AUTH_KEY_PERMS" = "600" ]; then
-            echo "  [OK] authorized_keys permissions correct (600)"
+            echo "  [OK] Permisos de claves autorizadas correctos (600)"
         else
-            echo "  [ERROR] authorized_keys permissions incorrect: $AUTH_KEY_PERMS (should be 600)"
+            echo "  [ERROR] Permisos de claves autorizadas incorrectos: $AUTH_KEY_PERMS (debe ser 600)"
             ERRORS=$((ERRORS + 1))
         fi
 
         KEY_COUNT=$(grep -c "^ssh-rsa" ~/.ssh/authorized_keys)
-        echo "  [OK] Number of authorized keys: $KEY_COUNT"
+        echo "  [OK] Número de claves autorizadas: $KEY_COUNT"
     else
-        echo "  [ERROR] authorized_keys file missing"
+        echo "  [ERROR] Archivo de claves autorizadas faltante"
         ERRORS=$((ERRORS + 1))
     fi
 fi
 
-# 4. Check backup directories
+# 4. Verificar directorios de respaldos
 echo ""
-echo "=== Backup Directories ==="
+echo "=== Directorios de respaldos ==="
 if [ "$ORACLE_SID" = "cdb1" ]; then
     if [ -d /u02/backup ]; then
-        echo "  [OK] Primary backup directory exists: /u02/backup"
+        echo "  [OK] El directorio de respaldos primario existe: /u02/backup"
         BACKUP_COUNT=$(ls -1 /u02/backup/*.bkp 2>/dev/null | wc -l)
         BACKUP_SIZE=$(du -sh /u02/backup 2>/dev/null | awk '{print $1}')
-        echo "    Backup files: $BACKUP_COUNT"
-        echo "    Total size: $BACKUP_SIZE"
+        echo "    Archivos de respaldo: $BACKUP_COUNT"
+        echo "    Tamaño total: $BACKUP_SIZE"
     else
-        echo "  [ERROR] Primary backup directory missing: /u02/backup"
+        echo "  [ERROR] Directorio de respaldos primario faltante: /u02/backup"
         ERRORS=$((ERRORS + 1))
     fi
 else
     if [ -d /u02/backup_from_primary ]; then
-        echo "  [OK] Standby backup directory exists: /u02/backup_from_primary"
+        echo "  [OK] El directorio de respaldos en espera existe: /u02/backup_from_primary"
         BACKUP_COUNT=$(ls -1 /u02/backup_from_primary/*.bkp 2>/dev/null | wc -l)
         BACKUP_SIZE=$(du -sh /u02/backup_from_primary 2>/dev/null | awk '{print $1}')
-        echo "    Backup files: $BACKUP_COUNT"
-        echo "    Total size: $BACKUP_SIZE"
+        echo "    Archivos de respaldo: $BACKUP_COUNT"
+        echo "    Tamaño total: $BACKUP_SIZE"
     else
-        echo "  [ERROR] Standby backup directory missing: /u02/backup_from_primary"
+        echo "  [ERROR] Directorio de respaldos en espera faltante: /u02/backup_from_primary"
         ERRORS=$((ERRORS + 1))
     fi
 fi
 
-# 5. Check automation scripts
+# 5. Verificar scripts de automatización
 echo ""
-echo "=== Automation Scripts ==="
+echo "=== Scripts de automatización ==="
 REQUIRED_SCRIPTS=(
     "check_log_transport.sh"
     "delete_archives_primary.sh"
@@ -126,81 +126,81 @@ for script in "${REQUIRED_SCRIPTS[@]}"; do
     if [ -x "/home/oracle/automation/$script" ]; then
         echo "  [OK] $script"
     else
-        echo "  [ERROR] $script (missing or not executable)"
+        echo "  [ERROR] $script (faltante o no ejecutable)"
         ERRORS=$((ERRORS + 1))
         SCRIPT_ERRORS=$((SCRIPT_ERRORS + 1))
     fi
 done
 
 if [ $SCRIPT_ERRORS -eq 0 ]; then
-    echo "  All automation scripts present and executable"
+    echo "  Todos los scripts de automatización están presentes y son ejecutables"
 fi
 
-# 6. Check cron jobs
+# 6. Verificar tareas programadas
 echo ""
-echo "=== Cron Jobs ==="
+echo "=== Tareas programadas ==="
 CRON_COUNT=$(crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | wc -l)
 if [ "$ORACLE_SID" = "cdb1" ]; then
-    # Primary should have 3 cron jobs
+    # El primario debe tener 3 tareas programadas
     if [ "$CRON_COUNT" -ge 3 ]; then
-        echo "  [OK] Primary cron jobs installed ($CRON_COUNT jobs)"
+        echo "  [OK] Tareas programadas del primario instaladas ($CRON_COUNT trabajos)"
         echo ""
         crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | sed 's/^/    /'
     else
-        echo "  [ERROR] Primary cron jobs missing (found $CRON_COUNT, expected 3)"
-        echo "  Run: /home/oracle/automation/install_cron_jobs.sh"
+        echo "  [ERROR] Tareas programadas del primario faltantes (encontradas $CRON_COUNT, se esperaban 3)"
+        echo "  Ejecutar: /home/oracle/automation/install_cron_jobs.sh"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    # Standby should have 1 cron job
+    # El servidor en espera debe tener 1 tarea programada
     if [ "$CRON_COUNT" -ge 1 ]; then
-        echo "  [OK] Standby cron jobs installed ($CRON_COUNT jobs)"
+        echo "  [OK] Tareas programadas en espera instaladas ($CRON_COUNT trabajos)"
         echo ""
         crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | sed 's/^/    /'
     else
-        echo "  [ERROR] Standby cron jobs missing (found $CRON_COUNT, expected 1)"
-        echo "  Run: /home/oracle/automation/install_cron_jobs.sh"
+        echo "  [ERROR] Tareas programadas en espera faltantes (encontradas $CRON_COUNT, se esperaba 1)"
+        echo "  Ejecutar: /home/oracle/automation/install_cron_jobs.sh"
         ERRORS=$((ERRORS + 1))
     fi
 fi
 
-# 7. Check logs directory
+# 7. Verificar directorio de registros
 echo ""
-echo "=== Logs Directory ==="
+echo "=== Directorio de registros ==="
 if [ -d /home/oracle/logs/automation ]; then
-    echo "  [OK] Logs directory exists: /home/oracle/logs/automation"
+    echo "  [OK] El directorio de registros existe: /home/oracle/logs/automation"
     LOG_COUNT=$(ls -1 /home/oracle/logs/automation/*.log 2>/dev/null | wc -l)
-    echo "    Log files: $LOG_COUNT"
+    echo "    Archivos de registro: $LOG_COUNT"
 
     if [ $LOG_COUNT -gt 0 ]; then
-        echo "    Recent logs:"
+        echo "    Registros recientes:"
         ls -lth /home/oracle/logs/automation/*.log 2>/dev/null | head -5 | awk '{print "      " $9 " (" $5 ")"}'
     fi
 else
-    echo "  [ERROR] Logs directory missing: /home/oracle/logs/automation"
+    echo "  [ERROR] Directorio de registros faltante: /home/oracle/logs/automation"
     ERRORS=$((ERRORS + 1))
 fi
 
-# 8. Check Oracle environment
+# 8. Verificar entorno Oracle
 echo ""
-echo "=== Oracle Environment ==="
+echo "=== Entorno de Oracle ==="
 if [ -n "$ORACLE_HOME" ]; then
-    echo "  [OK] ORACLE_HOME set: $ORACLE_HOME"
+    echo "  [OK] ORACLE_HOME configurado: $ORACLE_HOME"
 else
-    echo "  [ERROR] ORACLE_HOME not set"
+    echo "  [ERROR] ORACLE_HOME no está configurado"
     ERRORS=$((ERRORS + 1))
 fi
 
 if [ -n "$ORACLE_SID" ]; then
-    echo "  [OK] ORACLE_SID set: $ORACLE_SID"
+    echo "  [OK] ORACLE_SID configurado: $ORACLE_SID"
 else
-    echo "  [ERROR] ORACLE_SID not set"
+    echo "  [ERROR] ORACLE_SID no está configurado"
     ERRORS=$((ERRORS + 1))
 fi
 
-# 9. Check database connectivity
+# 9. Verificar conectividad de base de datos
 echo ""
-echo "=== Database Connectivity ==="
+echo "=== Conectividad de base de datos ==="
 DB_STATUS=$(sqlplus -s / as sysdba << EOF
 SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 SELECT status FROM v\$instance;
@@ -211,51 +211,51 @@ EOF
 DB_STATUS=$(echo "$DB_STATUS" | tr -d '[:space:]')
 
 if [ "$DB_STATUS" = "OPEN" ] || [ "$DB_STATUS" = "MOUNTED" ]; then
-    echo "  [OK] Database status: $DB_STATUS"
+    echo "  [OK] Estado de la base de datos: $DB_STATUS"
 else
-    echo "  [WARNING] Database status: $DB_STATUS (unexpected)"
+    echo "  [ADVERTENCIA] Estado de la base de datos: $DB_STATUS (inesperado)"
     ERRORS=$((ERRORS + 1))
 fi
 
-# 10. Check Data Guard configuration (if primary)
+# 10. Verificar configuración de Data Guard (si es primario)
 if [ "$ORACLE_SID" = "cdb1" ]; then
     echo ""
-    echo "=== Data Guard Configuration ==="
+    echo "=== Configuración de Data Guard ==="
 
     DG_STATUS=$(dgmgrl / "show configuration" 2>/dev/null | grep "Configuration Status" | awk -F: '{print $2}' | tr -d '[:space:]')
 
     if [ "$DG_STATUS" = "SUCCESS" ]; then
-        echo "  [OK] Data Guard configuration status: SUCCESS"
+        echo "  [OK] Estado de configuración de Data Guard: ÉXITO"
     else
-        echo "  [WARNING] Data Guard configuration status: $DG_STATUS"
+        echo "  [ADVERTENCIA] Estado de configuración de Data Guard: $DG_STATUS"
         ERRORS=$((ERRORS + 1))
     fi
 fi
 
-# Summary
+# Resumen
 echo ""
 echo "========================================================================"
 if [ $ERRORS -eq 0 ]; then
-    echo "VERIFICATION RESULT: [OK] ALL CHECKS PASSED"
+    echo "RESULTADO DE VERIFICACIÓN: [OK] TODAS LAS VERIFICACIONES PASARON"
     echo ""
-    echo "Backup automation is fully configured and ready."
+    echo "La automatización de respaldos está completamente configurada y lista."
     echo ""
-    echo "Automated tasks:"
+    echo "Tareas automatizadas:"
     if [ "$ORACLE_SID" = "cdb1" ]; then
-        echo "  - Daily backups at 1:00 AM (with auto-transfer to standby)"
-        echo "  - Archive cleanup at 2:00 AM (after standby confirmation)"
-        echo "  - Log transport monitoring every 10 minutes"
+        echo "  - Respaldos diarios a las 1:00 AM (con transferencia automática al servidor en espera)"
+        echo "  - Limpieza de archivos a las 2:00 AM (después de la confirmación del servidor en espera)"
+        echo "  - Monitoreo de transporte de registros cada 10 minutos"
     else
-        echo "  - Archive cleanup at 11:00 PM (3-day retention)"
+        echo "  - Limpieza de archivos a las 11:00 PM (retención de 3 días)"
     fi
 else
-    echo "VERIFICATION RESULT: [FAIL] FOUND $ERRORS ERROR(S)"
+    echo "RESULTADO DE VERIFICACIÓN: [FALLO] SE ENCONTRARON $ERRORS ERROR(ES)"
     echo ""
-    echo "Please review the errors above and fix before production use."
+    echo "Por favor, revise los errores anteriores y corríjalos antes del uso en producción."
     echo ""
-    echo "Common fixes:"
-    echo "  - Missing cron jobs: /home/oracle/automation/install_cron_jobs.sh"
-    echo "  - SSH keys missing: /home/oracle/automation/setup_ssh_keys.sh"
+    echo "Soluciones comunes:"
+    echo "  - Tareas programadas faltantes: /home/oracle/automation/install_cron_jobs.sh"
+    echo "  - Claves SSH faltantes: /home/oracle/automation/setup_ssh_keys.sh"
 fi
 echo "========================================================================"
 

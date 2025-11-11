@@ -123,6 +123,9 @@ Este manual documenta la implementación completa de un sistema de alta disponib
 
 El sistema replica la base de datos principal en tiempo real a una base de datos \textit{standby} para garantizar la cero pérdida de datos y la continuidad del servicio. El enfoque de este manual está en cómo la arquitectura Data Guard automatizada resuelve la necesidad de \textbf{alta disponibilidad} para cualquier aplicación que lo requiera.
 
+\vspace{0.5em}
+\noindent\textbf{Nota:} Para entender mejor los comandos y configuraciones de Data Guard, consulte los \textbf{Apéndices} al final del manual. Los scripts en \texttt{2-Standby/} también incluyen comentarios que explican cada operación.
+
 \subsection{Componentes Principales del Entorno}
 
 \begin{enumerate}
@@ -639,14 +642,14 @@ Todos los scripts de automatización se encuentran en \texttt{/home/oracle/autom
 
 \begin{itemize}
     \item \textbf{Problema:} Deploy falla con \texttt{\$'\textbackslash r': command not found}.
-\item \textbf{Solución:} Ejecutar manualmente \texttt{.\textbackslash powershell\textbackslash fix-line-endings.ps1} y re-deployar.
+\item \textbf{Solución:} Ejecutar manualmente \texttt{.\textbackslash powershell\textbackslash fix-line-endings.ps1} y redesplegar.
     \item \textbf{Problema:} \texttt{ORA-12541: TNS:no listener} o \texttt{ORA-01034: ORACLE not available}.
-\item \textbf{Solución:} Iniciar manually el \textit{listener} (\texttt{lsnrctl start}) y la base de datos (\texttt{STARTUP}) a través de SSH. Si el problema es recurrente, configure el \textit{auto-start} con el \textit{provisioner} \texttt{setup\_oracle\_autostart}.
+\item \textbf{Solución:} Iniciar manualmente el \textit{listener} (\texttt{lsnrctl start}) y la base de datos (\texttt{STARTUP}) a través de SSH. Si el problema es recurrente, configure el \textit{auto-start} con el \textit{provisioner} \texttt{setup\_oracle\_autostart}.
     \item \textbf{Problema:} \textit{Apply lag} en \textit{Standby} aumenta.
 \item \textbf{Solución:} El proceso \texttt{MRP0} del \textit{Standby} está lento o detenido. Verifique su estado con \texttt{v\$managed\_standby} y, si es necesario, reinicie la aplicación de logs (\texttt{ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION}).
 \end{itemize}
 
-Ante cualquier fallo irrecuperable, la solución más rápida es \textbf{destruir y re-deployar} con el script \texttt{deploy.ps1}, asegurando que la configuración en \texttt{install.env} y \texttt{vagrant.yml} sea correcta.
+Ante cualquier fallo irrecuperable, la solución más rápida es \textbf{destruir y redesplegar} con el script \texttt{deploy.ps1}, asegurando que la configuración en \texttt{install.env} y \texttt{vagrant.yml} sea correcta.
 
 \newpage
 
@@ -1375,8 +1378,8 @@ Una vez que la base de datos está preparada, este script despliega el esquema d
 \subsection{Flujo del Esquema}
 \begin{enumerate}
     \item \textbf{Apertura de PDB:} Se asegura de que \texttt{pdb1} esté en modo \texttt{OPEN}.
-\item \textbf{Creación de Usuario:} Ejecuta \texttt{2-Standby/schema/create\_user.sql} para crear el usuario \texttt{dgtest} con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado).
-\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{audit\_log}), secuencias y procedimientos de prueba. Este esquema está diseñado específicamente para validar la replicación de Data Guard.
+\item \textbf{Creación de Usuario:} Crea el usuario \texttt{dgtest} de forma inline (directamente dentro del script mediante un bloque SQL heredoc) con el tablespace por defecto \texttt{USERS} (sin tablespace personalizado). La contraseña se obtiene de la variable de entorno \texttt{APP\_SCHEMA\_PASSWORD} configurada en \texttt{install.env}.
+\item \textbf{Despliegue de Objetos:} Ejecuta \texttt{2-Standby/schema/simple\_schema.sql} para crear tablas simples (\texttt{replication\_test}, \texttt{replication\_details}, \texttt{audit\_log}), secuencias (\texttt{seq\_replication\_test}, \texttt{seq\_replication\_details}, \texttt{seq\_audit\_log}) y procedimientos de prueba (\texttt{insert\_test\_data}, \texttt{check\_replication\_status}). Este esquema está diseñado específicamente para validar la replicación de Data Guard.
 \item \textbf{Replicación:} Se fuerza un \textit{log switch} (\texttt{ALTER SYSTEM ARCHIVE LOG CURRENT}) para garantizar que todas estas sentencias DDL y DML de creación se empaqueten inmediatamente en un \textit{archive log} y estén listas para ser replicadas al \textit{standby}.
 \end{enumerate}
 El esquema de aplicación creado aquí es una de las primeras cosas que el \textit{standby} clonará. Si el \textit{schema} no se replica correctamente, Data Guard fallará en la validación.

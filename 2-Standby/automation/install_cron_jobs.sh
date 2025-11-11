@@ -1,76 +1,76 @@
 #!/bin/bash
-# Install Cron Jobs for Automation
-# Run as oracle user
+# Instalar tareas programadas para automatización
+# Ejecutar como usuario oracle
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
 
-# Determine if this is primary or standby based on hostname
+# Determinar si esto es primario o en espera basándose en el nombre de host
 CURRENT_HOST=$(hostname -f)
 
 echo "===================================================================="
-echo "Installing Cron Jobs for Automation"
-echo "Current host: $CURRENT_HOST"
+echo "Instalando tareas programadas para automatización"
+echo "Host actual: $CURRENT_HOST"
 echo "===================================================================="
 
-# Create temporary cron file
+# Crear archivo cron temporal
 CRON_FILE="/tmp/oracle_cron_$$"
 
-# Get existing cron jobs (if any)
+# Obtener crontab existente
 crontab -l > $CRON_FILE 2>/dev/null || touch $CRON_FILE
 
-# Remove old automation entries
+# Eliminar entradas de automatización antiguas
 sed -i '/# Oracle Data Guard Automation/d' $CRON_FILE
 sed -i '/check_log_transport.sh/d' $CRON_FILE
 sed -i '/rman_daily_backup.sh/d' $CRON_FILE
 sed -i '/delete_archives/d' $CRON_FILE
 
 echo ""
-echo "Adding automation cron jobs..."
+echo "Agregando tareas programadas de automatización..."
 
-# Add header
+# Agregar encabezado
 echo "" >> $CRON_FILE
 echo "# Oracle Data Guard Automation" >> $CRON_FILE
 
 if [ "$CURRENT_HOST" == "$NODE1_FQ_HOSTNAME" ]; then
-  echo "Configuring PRIMARY cron jobs..."
+  echo "Configurando tareas programadas del PRIMARIO..."
 
-  # Log transport check every 10 minutes
+  # Verificación de transporte de registro cada 10 minutos
   echo "${LOG_TRANSPORT_CHECK_INTERVAL} /home/oracle/automation/check_log_transport.sh" >> $CRON_FILE
 
-  # Daily backup at configured time (default 1 AM)
+  # Respaldo diario a la hora configurada (default: 1 AM)
   echo "${BACKUP_TIME} /home/oracle/automation/rman_daily_backup.sh" >> $CRON_FILE
 
-  # Archive cleanup on primary at 2 AM (after backup)
+  # Limpieza de archivos en primario (2 AM, después del respaldo)
   echo "0 2 * * * /home/oracle/automation/delete_archives_primary.sh" >> $CRON_FILE
 
 elif [ "$CURRENT_HOST" == "$NODE2_FQ_HOSTNAME" ]; then
-  echo "Configuring STANDBY cron jobs..."
+  echo "Configurando tareas programadas del SERVIDOR EN ESPERA..."
 
-  # Archive cleanup on standby at configured time (default 11 PM)
+  # Limpieza de archivos en standby (default: 11 PM)
   echo "${ARCHIVE_CLEANUP_TIME} /home/oracle/automation/delete_archives_standby.sh" >> $CRON_FILE
 
 else
-  echo "ERROR: Cannot determine if this is primary or standby!"
-  echo "Current hostname: $CURRENT_HOST"
-  echo "Expected: $NODE1_FQ_HOSTNAME or $NODE2_FQ_HOSTNAME"
+  echo "ERROR: ¡No se puede determinar si esto es primario o en espera!"
+  echo "Nombre de host actual: $CURRENT_HOST"
+  echo "Esperado: $NODE1_FQ_HOSTNAME o $NODE2_FQ_HOSTNAME"
   rm -f $CRON_FILE
   exit 1
 fi
 
-# Install crontab
+# Instalar crontab
 crontab $CRON_FILE
 
-# Cleanup
+# Limpiar
 rm -f $CRON_FILE
 
 echo ""
 echo "===================================================================="
-echo "Installed Cron Jobs:"
+echo "Tareas programadas instaladas:"
 echo "===================================================================="
 crontab -l | grep -A 10 "Oracle Data Guard Automation"
 
 echo ""
 echo "===================================================================="
-echo "Cron Jobs Installation Complete!"
+echo "¡Instalación de tareas programadas completada!"
 echo "===================================================================="

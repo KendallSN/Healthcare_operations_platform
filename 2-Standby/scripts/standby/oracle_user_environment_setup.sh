@@ -1,19 +1,19 @@
 #!/bin/bash
-# Setup Oracle user environment for STANDBY
+# Configurar entorno del usuario Oracle para STANDBY
 
 . /vagrant_config/install.env
 
 echo "******************************************************************************"
-echo "Setup Oracle user environment." `date`
+echo "Configuración del entorno del usuario Oracle." `date`
 echo "******************************************************************************"
 
-# Create scripts directory
+# Crear directorio de scripts
 mkdir -p /home/oracle/scripts
 mkdir -p /home/oracle/logs
 
-# Create setEnv.sh
+# Crear setEnv.sh
 cat > /home/oracle/scripts/setEnv.sh << EOF
-# Oracle Environment
+# Entorno de Oracle
 export ORACLE_HOSTNAME=${NODE2_FQ_HOSTNAME}
 export ORACLE_UNQNAME=${NODE2_DB_UNIQUE_NAME}
 export ORACLE_BASE=${ORACLE_BASE}
@@ -23,7 +23,7 @@ export ORACLE_SID=${ORACLE_SID}
 export DATA_DIR=${DATA_DIR}
 export PDB_NAME=${PDB_NAME}
 
-# Software installation variables
+# Variables de instalación de software
 export SOFTWARE_DIR=${SOFTWARE_DIR}
 export DB_SOFTWARE=${DB_SOFTWARE}
 
@@ -37,19 +37,19 @@ export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 export TNS_ADMIN=\${ORACLE_HOME}/network/admin
 EOF
 
-# Add to .bash_profile
+# Agregar a .bash_profile
 echo ". /home/oracle/scripts/setEnv.sh" >> /home/oracle/.bash_profile
 
-# Source the environment and create Oracle directories
+# Cargar el entorno y crear directorios de Oracle
 . /home/oracle/scripts/setEnv.sh
 mkdir -p ${ORACLE_HOME}
 mkdir -p ${DATA_DIR}
 
-# Set ownership
+# Establecer propietario
 chown -R oracle:oinstall /home/oracle/scripts
 chown -R oracle:oinstall /home/oracle/logs
 chown oracle:oinstall /home/oracle/.bash_profile
 
 echo "******************************************************************************"
-echo "Oracle user environment setup complete." `date`
+echo "Configuración del entorno del usuario Oracle completada." `date`
 echo "******************************************************************************"

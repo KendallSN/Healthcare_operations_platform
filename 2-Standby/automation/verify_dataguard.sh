@@ -1,17 +1,17 @@
 #!/bin/bash
-# Complete Data Guard Configuration Verification
-# Run on PRIMARY database
+# Verificación Completa de la Configuración de Data Guard
+# Ejecutar en la base de datos PRIMARY
 
 . /home/oracle/scripts/setEnv.sh
 . /vagrant_config/install.env
 
 echo "========================================================================"
-echo "DATA GUARD CONFIGURATION VERIFICATION"
+echo "VERIFICACIÓN DE LA CONFIGURACIÓN DE DATA GUARD"
 echo "========================================================================"
 
-# 1. Primary Database Status
+# 1. Estado de la Base de Datos Primary
 echo ""
-echo "=== PRIMARY DATABASE STATUS ==="
+echo "=== ESTADO DE LA BASE DE DATOS PRIMARY ==="
 sqlplus -s / as sysdba <<EOF
 SET LINESIZE 150
 COL name FORMAT A10
@@ -21,14 +21,15 @@ COL open_mode FORMAT A12
 COL protection_mode FORMAT A20
 COL protection_level FORMAT A20
 
+-- Muestra rol, modo de apertura y nivel de protección
 SELECT name, db_unique_name, database_role, open_mode, log_mode,
        force_logging, flashback_on, protection_mode, protection_level
 FROM v\$database;
 EOF
 
-# 2. Archive Destinations Status
+# 2. Destinos de Archivo
 echo ""
-echo "=== ARCHIVE DESTINATIONS ==="
+echo "=== DESTINOS DE ARCHIVO ==="
 sqlplus -s / as sysdba <<EOF
 SET LINESIZE 200
 COL dest_name FORMAT A15
@@ -36,6 +37,7 @@ COL status FORMAT A10
 COL destination FORMAT A40
 COL error FORMAT A30
 
+-- v\$archive_dest: estado de destinos de archive logs (solo activos)
 SELECT dest_name, status, destination, error
 FROM v\$archive_dest
 WHERE status != 'INACTIVE'
@@ -44,9 +46,11 @@ EOF
 
 # 3. Standby Redo Logs
 echo ""
-echo "=== STANDBY REDO LOGS ==="
+echo "=== LOGS DE REDO STANDBY ==="
 sqlplus -s / as sysdba <<EOF
 COL member FORMAT A50
+
+-- v\$standby_log: configuración de standby redo logs (necesarios para recibir cambios)
 SELECT l.group#, l.thread#, l.sequence#, l.bytes/1024/1024 AS size_mb,
        l.archived, l.status, f.member
 FROM v\$standby_log l, v\$logfile f
@@ -54,17 +58,19 @@ WHERE l.group# = f.group#
 ORDER BY l.group#;
 EOF
 
-# 4. Archive Lag Configuration
+# 4. Archive Lag Target
 echo ""
-echo "=== ARCHIVE LAG TARGET ==="
+echo "=== OBJETIVO DE RETRASO DE ARCHIVO ==="
 sqlplus -s / as sysdba <<EOF
+-- ARCHIVE_LAG_TARGET: tiempo máximo en segundos antes de forzar switch de log
 SHOW PARAMETER ARCHIVE_LAG_TARGET;
 EOF
 
-# 5. Log Switch History
+# 5. Historial de Log Switches
 echo ""
-echo "=== RECENT LOG SWITCHES ==="
+echo "=== CAMBIOS DE LOG RECIENTES ==="
 sqlplus -s / as sysdba <<EOF
+-- v\$log_history: últimos 10 switches de log en 24 horas
 SELECT sequence#, thread#, first_time, first_change#
 FROM v\$log_history
 WHERE first_time > SYSDATE - 1
@@ -72,66 +78,79 @@ ORDER BY sequence# DESC
 FETCH FIRST 10 ROWS ONLY;
 EOF
 
-# 6. Standby Database Status
+# 6. Estado del Standby
 echo ""
-echo "=== STANDBY DATABASE STATUS ==="
+echo "=== ESTADO DE LA BASE DE DATOS STANDBY ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 SET LINESIZE 150
+
+-- Rol y modo de apertura del standby
 SELECT name, db_unique_name, database_role, open_mode, log_mode
 FROM v\$database;
 EOF
 
-# 7. Standby Apply Status
+# 7. Procesos de Aplicación
 echo ""
-echo "=== STANDBY APPLY STATUS ==="
+echo "=== ESTADO DE APLICACIÓN EN STANDBY ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
+-- v\$managed_standby: procesos activos (MRP=aplica logs, RFS=recibe logs)
+-- LNS: Log Network Server (envía logs desde primary)
 SELECT process, status, thread#, sequence#, block#, blocks
 FROM v\$managed_standby
 WHERE process LIKE 'MRP%' OR process LIKE 'RFS%' OR process LIKE 'LNS%';
 EOF
 
-# 8. Transport and Apply Lag
+# 8. Retraso de Transporte y Aplicación
 echo ""
-echo "=== TRANSPORT AND APPLY LAG ==="
+echo "=== RETRASO DE TRANSPORTE Y APLICACIÓN ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 COL name FORMAT A20
 COL value FORMAT A20
 COL unit FORMAT A15
 COL time_computed FORMAT A20
 
+-- Consulta v\$dataguard_stats para medir el retraso entre primary y standby
+-- transport lag: tiempo desde que el log fue generado hasta que fue recibido
+-- apply lag: tiempo desde que el log fue generado hasta que fue aplicado
 SELECT name, value, unit, time_computed
 FROM v\$dataguard_stats
 WHERE name IN ('transport lag', 'apply lag');
 EOF
 
-# 9. Archive Gap Check
+# 9. Verificación de Brechas de Archivo
 echo ""
-echo "=== ARCHIVE GAP CHECK ==="
+echo "=== VERIFICACIÓN DE BRECHAS DE ARCHIVO ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
+-- Consulta v\$archive_gap para identificar secuencias de log faltantes en el standby
 SELECT * FROM v\$archive_gap;
 EOF
 
 echo ""
-echo "If no rows returned, there are NO GAPS (this is good)"
+echo "Si no se devuelven filas, NO HAY BRECHAS (esto es bueno)"
 
-# 10. Data Guard Broker Status
+# 10. Estado del Broker de Data Guard
 echo ""
-echo "=== DATA GUARD BROKER CONFIGURATION ==="
+echo "=== CONFIGURACIÓN DEL BROKER DE DATA GUARD ==="
 dgmgrl -silent sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
+-- Muestra la configuración completa del Data Guard Broker
+-- y el estado de cada base de datos (primary y standby)
 SHOW CONFIGURATION;
 SHOW DATABASE ${NODE1_DB_UNIQUE_NAME};
 SHOW DATABASE ${NODE2_DB_UNIQUE_NAME};
 EXIT;
 EOF
 
-# 11. Custom Schema Verification
+# 11. Verificación del Esquema Personalizado
 echo ""
-echo "=== CUSTOM SCHEMA VERIFICATION (in PDB) ==="
+echo "=== VERIFICACIÓN DEL ESQUEMA PERSONALIZADO (en PDB) ==="
 sqlplus -s / as sysdba <<EOF
 ALTER SESSION SET CONTAINER=${PDB_NAME};
 SET LINESIZE 150
 COL owner FORMAT A15
 COL table_name FORMAT A30
+
+-- Lista todas las tablas de usuarios no-sistema en el PDB
+-- Útil para verificar que el esquema personalizado se replicó correctamente
 SELECT owner, table_name, num_rows
 FROM dba_tables
 WHERE owner NOT IN ('SYS','SYSTEM','OUTLN','DBSNMP','APPQOSSYS',
@@ -144,5 +163,5 @@ EOF
 
 echo ""
 echo "========================================================================"
-echo "VERIFICATION COMPLETE"
+echo "VERIFICACIÓN COMPLETA"
 echo "========================================================================"

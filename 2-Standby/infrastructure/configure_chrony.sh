@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configure time synchronization with chrony
+# Configurar sincronización de hora con chrony
 
 . /vagrant_config/install.env
 
@@ -7,11 +7,11 @@ echo "**************************************************************************
 echo "Configure chrony for time synchronization." `date`
 echo "******************************************************************************"
 
-# Enable and start chrony
+# Habilitar e iniciar chrony
 systemctl enable chronyd
 systemctl start chronyd
 
-# Verify time sync
+# Verificar sincronización de hora
 chronyc tracking
 
 echo "******************************************************************************"
