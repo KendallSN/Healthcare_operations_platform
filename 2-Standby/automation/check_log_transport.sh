@@ -13,8 +13,7 @@ LOGFILE="/home/oracle/logs/automation/log_transport.log"
   echo "Verificación de Transporte de Logs: $(date)"
   echo "===================================================================="
 
-  # Verificar en primary - última secuencia archivada
-  # Consulta v$archived_log con dest_id=1 (destino local) para obtener el último log archivado
+  # Última secuencia archivada en primary (v$archived_log dest_id=1)
   PRIMARY_SEQ=$(sqlplus -s / as sysdba << EOF
 SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 SELECT MAX(sequence#) FROM v\$archived_log WHERE dest_id=1 AND archived='YES';
@@ -22,8 +21,7 @@ EXIT;
 EOF
 )
 
-  # Verificar en standby - última secuencia aplicada
-  # Consulta v$archived_log en el standby para obtener el último log aplicado
+  # Última secuencia aplicada en standby
   STANDBY_SEQ=$(sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba << EOF
 SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 SELECT MAX(sequence#) FROM v\$archived_log WHERE dest_id=1 AND applied='YES';
@@ -31,15 +29,14 @@ EXIT;
 EOF
 )
 
-  # Calcular brecha entre primary y standby
+  # Calcular brecha
   GAP=$((PRIMARY_SEQ - STANDBY_SEQ))
 
   echo "Último archivado en primary: $PRIMARY_SEQ"
   echo "Último aplicado en standby: $STANDBY_SEQ"
   echo "Brecha actual: $GAP secuencias"
 
-  # Verificar retraso de aplicación
-  # Consulta v$dataguard_stats para obtener el tiempo de retraso en la aplicación de logs
+  # Retraso de aplicación (v$dataguard_stats)
   APPLY_LAG=$(sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba << EOF
 SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 SELECT value FROM v\$dataguard_stats WHERE name='apply lag';

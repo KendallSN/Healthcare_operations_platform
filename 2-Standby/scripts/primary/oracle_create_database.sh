@@ -166,63 +166,57 @@ echo "**************************************************************************
 echo "Configurar parámetros adicionales de Data Guard según la guía." `date`
 echo "******************************************************************************"
 sqlplus / as sysdba <<EOF
--- Archive lag target (objetivo de retraso de archivo) - fuerza cambio de log después de 5 minutos
--- Garantiza que los cambios se envíen al standby incluso con poca actividad transaccional
+-- ARCHIVE_LAG_TARGET: fuerza switch de log después de 5 minutos
+-- Envía cambios al standby aunque haya poca actividad transaccional
 ALTER SYSTEM SET archive_lag_target=${ARCHIVE_LAG_TARGET} SCOPE=BOTH;
 
--- Log archive configuration (configuración de archivo de logs) - lista todas las bases de datos en la configuración de Data Guard
--- DG_CONFIG identifica todas las bases de datos que participan en la configuración de Data Guard
+-- DG_CONFIG: lista las bases de datos en la configuración de Data Guard
 ALTER SYSTEM SET log_archive_config='DG_CONFIG=(${NODE1_DB_UNIQUE_NAME},${NODE2_DB_UNIQUE_NAME})' SCOPE=BOTH;
 
--- Archive destinations (destinos de archivo) - destino local para archive logs
--- LOCATION: directorio local donde se guardan los archive logs
--- VALID_FOR: aplica a todos los archivos de log y todos los roles (primary/standby)
--- DB_UNIQUE_NAME: identifica esta base de datos en la configuración de Data Guard
+-- LOG_ARCHIVE_DEST_1: destino local para archive logs
+-- LOCATION: directorio donde se guardan los archive logs
+-- VALID_FOR: aplica a todos los archivos de log y roles
+-- DB_UNIQUE_NAME: nombre único de esta BD en la configuración
 ALTER SYSTEM SET log_archive_dest_1=
   'LOCATION=${DATA_DIR}/${ORACLE_SID}/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=${NODE1_DB_UNIQUE_NAME}'
   SCOPE=BOTH;
 
--- LOG_ARCHIVE_DEST_2 es gestionado por Data Guard Broker (no se configura manualmente)
--- El Broker configura automáticamente el destino remoto al standby
+-- LOG_ARCHIVE_DEST_2: el Broker lo configura automáticamente (no manual)
 
--- Habilitar el destino de archivo primario
+-- Habilitar destino de archivo primario
 ALTER SYSTEM SET log_archive_dest_state_1='ENABLE' SCOPE=BOTH;
 
--- Formato de nombre de archivo para archive logs: thread_sequence_resetlogs.arc
--- %t=thread number, %s=log sequence number, %r=resetlogs ID
+-- Formato de nombre para archive logs: thread_sequence_resetlogs.arc
+-- %t=thread, %s=sequence, %r=resetlogs ID
 ALTER SYSTEM SET log_archive_format='%t_%s_%r.arc' SCOPE=SPFILE;
 
--- Archive process configuration (configuración de procesos archivadores)
--- Número de procesos ARCn que pueden archivar logs en paralelo (mejora rendimiento)
+-- LOG_ARCHIVE_MAX_PROCESSES: procesos ARCn para archivar logs en paralelo
 ALTER SYSTEM SET log_archive_max_processes=8 SCOPE=BOTH;
 
--- FAL (Fetch Archive Log) configuration es gestionada por Data Guard Broker (no se configura manualmente)
--- El Broker configura automáticamente FAL_SERVER y FAL_CLIENT para recuperación automática de gaps
+-- FAL_SERVER y FAL_CLIENT: el Broker los configura automáticamente
 
--- Standby file management (gestión automática de archivos en standby)
--- AUTO: Oracle gestiona automáticamente la creación/eliminación de archivos en standby
+-- STANDBY_FILE_MANAGEMENT en AUTO: gestión automática de archivos en standby
 ALTER SYSTEM SET standby_file_management='AUTO' SCOPE=BOTH;
 
--- Protection and checking (protección y verificación)
--- db_lost_write_protect: detecta escrituras perdidas que pueden causar corrupción de datos
+-- Protección contra corrupción de datos
+-- DB_LOST_WRITE_PROTECT: detecta escrituras perdidas
 ALTER SYSTEM SET db_lost_write_protect='TYPICAL' SCOPE=BOTH;
 
--- db_block_checking: verifica la integridad de bloques de datos al leer/escribir
+-- DB_BLOCK_CHECKING: verifica integridad de bloques
 ALTER SYSTEM SET db_block_checking='MEDIUM' SCOPE=BOTH;
 
--- db_block_checksum: calcula checksums para detectar corrupción de bloques
+-- DB_BLOCK_CHECKSUM: calcula checksums de bloques
 ALTER SYSTEM SET db_block_checksum='TYPICAL' SCOPE=BOTH;
 
--- File name conversion (conversión de nombres de archivo)
--- db_file_name_convert: convierte rutas de archivos de datos del standby al primary
--- Mapea /u01/oradata/${NODE2_DB_UNIQUE_NAME}/ a /u01/oradata/${NODE1_DB_UNIQUE_NAME}/
+-- Conversión de rutas de archivos para Data Guard
+-- DB_FILE_NAME_CONVERT: mapea rutas de datafiles del standby al primary
 ALTER SYSTEM SET db_file_name_convert='/u01/oradata/${NODE2_DB_UNIQUE_NAME}/','/u01/oradata/${NODE1_DB_UNIQUE_NAME}/' SCOPE=SPFILE;
 
--- log_file_name_convert: convierte rutas de redo logs del standby al primary
+-- LOG_FILE_NAME_CONVERT: mapea rutas de redo logs del standby al primary
 ALTER SYSTEM SET log_file_name_convert='/u01/oradata/${NODE2_DB_UNIQUE_NAME}/','/u01/oradata/${NODE1_DB_UNIQUE_NAME}/' SCOPE=SPFILE;
 
--- Crear archivo de contraseñas para autenticación remota (requerido para Data Guard)
--- Permite que el standby se autentique con el primary usando SYS password
+-- Archivo de contraseñas para autenticación remota (requerido para Data Guard)
+-- Permite autenticación del standby con el primary usando password de SYS
 !orapwd file=${ORACLE_HOME}/dbs/orapw${ORACLE_SID} password=${SYS_PASSWORD} entries=10 format=12
 
 EXIT;
@@ -232,9 +226,8 @@ echo "**************************************************************************
 echo "Verificar estado de FLASHBACK DATABASE (habilitado por PREPARE DATABASE)." `date`
 echo "******************************************************************************"
 sqlplus / as sysdba <<EOF
--- Verificar si flashback está habilitado (PREPARE DATABASE FOR DATA GUARD lo habilita automáticamente)
--- Flashback Database permite retroceder la base de datos a un punto anterior en el tiempo
--- Es crítico para operaciones de failover y recuperación en Data Guard
+-- Verificar si flashback está habilitado (PREPARE DATABASE lo habilita automáticamente)
+-- Flashback Database permite retroceder la BD a un punto anterior (necesario para failover)
 SET SERVEROUTPUT ON
 DECLARE
     v_flashback_on VARCHAR2(3);
@@ -255,8 +248,7 @@ END;
 SELECT name, db_unique_name, flashback_on, log_mode
 FROM v\$database;
 
--- Mostrar configuración del Fast Recovery Area (FRA)
--- El FRA almacena flashback logs, archive logs, y backups
+-- Configuración del Fast Recovery Area: almacena flashback logs, archives, y backups
 SHOW PARAMETER db_recovery_file_dest;
 
 EXIT;

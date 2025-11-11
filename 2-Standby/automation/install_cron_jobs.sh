@@ -16,7 +16,7 @@ echo "===================================================================="
 # Crear archivo cron temporal
 CRON_FILE="/tmp/oracle_cron_$$"
 
-# Obtener tareas programadas existentes (si las hay)
+# Obtener crontab existente
 crontab -l > $CRON_FILE 2>/dev/null || touch $CRON_FILE
 
 # Eliminar entradas de automatización antiguas
@@ -38,16 +38,16 @@ if [ "$CURRENT_HOST" == "$NODE1_FQ_HOSTNAME" ]; then
   # Verificación de transporte de registro cada 10 minutos
   echo "${LOG_TRANSPORT_CHECK_INTERVAL} /home/oracle/automation/check_log_transport.sh" >> $CRON_FILE
 
-  # Respaldo diario a la hora configurada (default 1 AM)
+  # Respaldo diario a la hora configurada (default: 1 AM)
   echo "${BACKUP_TIME} /home/oracle/automation/rman_daily_backup.sh" >> $CRON_FILE
 
-  # Limpieza de archivos en primario a las 2 AM (después del respaldo)
+  # Limpieza de archivos en primario (2 AM, después del respaldo)
   echo "0 2 * * * /home/oracle/automation/delete_archives_primary.sh" >> $CRON_FILE
 
 elif [ "$CURRENT_HOST" == "$NODE2_FQ_HOSTNAME" ]; then
   echo "Configurando tareas programadas del SERVIDOR EN ESPERA..."
 
-  # Limpieza de archivos en servidor en espera a la hora configurada (default 11 PM)
+  # Limpieza de archivos en standby (default: 11 PM)
   echo "${ARCHIVE_CLEANUP_TIME} /home/oracle/automation/delete_archives_standby.sh" >> $CRON_FILE
 
 else

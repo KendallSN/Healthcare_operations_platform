@@ -8,7 +8,7 @@ echo "**************************************************************************
 echo "Configurar scripts de red." `date`
 echo "******************************************************************************"
 
-# Crear tnsnames.ora (igual que en el primario)
+# Crear tnsnames.ora
 cat > ${ORACLE_HOME}/network/admin/tnsnames.ora <<EOF
 LISTENER${DB_DOMAIN_STR} = (ADDRESS = (PROTOCOL = TCP)(HOST = ${NODE2_FQ_HOSTNAME})(PORT = 1521))
 
@@ -149,19 +149,15 @@ echo "Esto puede tardar 10-20 minutos dependiendo del tamaño de la base de dato
 echo "******************************************************************************"
 
 # RMAN DUPLICATE FROM ACTIVE DATABASE:
-# Este comando crea una copia física exacta de la base de datos primaria para usarla como standby.
-# - TARGET: Se conecta a la base de datos primaria (origen de los datos)
-# - AUXILIARY: Se conecta a la instancia auxiliar standby (destino de la copia)
-# - DUPLICATE TARGET DATABASE: Comando principal que inicia la duplicación
-# - FOR STANDBY: Indica que se creará una base de datos standby (no una copia independiente)
-# - FROM ACTIVE DATABASE: Copia los datos directamente desde la base de datos primaria en ejecución
-#   sin necesidad de backups previos. Usa conexiones de red para transferir los archivos.
-# - DORECOVER: Aplica automáticamente los redo logs archivados disponibles después de copiar
-#   los archivos de datos, sincronizando el standby con el primario lo máximo posible
-# - SPFILE: Copia y configura el archivo de parámetros del servidor (SPFile) desde el primario
-# - SET DB_UNIQUE_NAME: Establece el nombre único de la base de datos standby (debe ser diferente al primario)
-# - NOFILENAMECHECK: Omite la validación de nombres de archivos, permitiendo usar el mismo
-#   nombre de archivo en ambos servidores (necesario cuando ambos están en máquinas diferentes)
+# Crea una copia física exacta del primario para usarla como standby
+# - TARGET: conexión a la BD primaria (origen)
+# - AUXILIARY: conexión a la instancia standby (destino)
+# - FOR STANDBY: crea una BD standby (no una copia independiente)
+# - FROM ACTIVE DATABASE: copia datos directamente del primario en ejecución (sin backups previos)
+# - DORECOVER: aplica los redo logs disponibles después de copiar (sincronización máxima)
+# - SPFILE: copia el SPFile desde el primario
+# - SET DB_UNIQUE_NAME: nombre único del standby (diferente al primario)
+# - NOFILENAMECHECK: permite mismo nombre de archivo en ambos servidores
 rman target sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} auxiliary sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 
 duplicate target database
@@ -208,10 +204,8 @@ echo "**************************************************************************
 echo "Habilitar Data Guard Broker en standby." `date`
 echo "******************************************************************************"
 
-# ALTER SYSTEM SET DG_BROKER_START=TRUE:
-# Inicia el proceso Data Guard Broker (DMON) en la base de datos standby.
-# El Broker es una herramienta de gestión centralizada que simplifica la administración
-# de configuraciones Data Guard, incluyendo switchover, failover y monitoreo.
+# DG_BROKER_START=TRUE: inicia el proceso DMON del Data Guard Broker en standby
+# El Broker simplifica la gestión de switchover, failover y monitoreo
 sqlplus / as sysdba <<EOF
 alter system set dg_broker_start=true;
 EXIT;
@@ -222,10 +216,8 @@ echo "Habilitar Data Guard Broker en primario y crear configuración." `date`
 echo "******************************************************************************"
 
 # Habilitar broker en primario
-# ALTER SYSTEM SET DG_BROKER_START=TRUE:
-# Inicia el proceso Data Guard Broker (DMON) en la base de datos primaria.
-# Debe habilitarse en ambas bases de datos (primaria y standby) para que puedan
-# comunicarse y coordinarse a través del Broker.
+# DG_BROKER_START=TRUE: inicia DMON en el primario
+# Debe habilitarse en ambas BD para que se comuniquen vía Broker
 sqlplus sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 alter system set dg_broker_start=true;
 EXIT;
@@ -234,37 +226,23 @@ EOF
 # Esperar a que el broker se inicialice
 sleep 10
 
-# Configurar broker
-# COMANDOS DATA GUARD BROKER (DGMGRL):
-# DGMGRL es la herramienta de línea de comandos para gestionar Data Guard Broker.
-# Se conecta a la base de datos primaria para administrar toda la configuración.
+# Configurar broker con DGMGRL (herramienta CLI del Broker)
 #
-# REMOVE CONFIGURATION:
-# Elimina cualquier configuración de Broker existente (útil en reinstalaciones).
-# Es seguro ejecutar aunque no exista configuración previa (genera advertencia pero continúa).
+# REMOVE CONFIGURATION: elimina configuración existente (útil en reinstalaciones)
 #
-# CREATE CONFIGURATION DG_CONFIG AS PRIMARY DATABASE:
-# Crea una nueva configuración de Data Guard Broker con nombre 'dg_config'.
-# - AS PRIMARY DATABASE IS: Define cuál base de datos es la primaria en la configuración
-# - CONNECT IDENTIFIER IS: Especifica el nombre de servicio TNS para conectarse al primario
+# CREATE CONFIGURATION: crea nueva configuración de Broker con nombre 'dg_config'
+# - AS PRIMARY DATABASE IS: define cuál BD es la primaria
+# - CONNECT IDENTIFIER IS: nombre de servicio TNS para conectarse
 #
-# ADD DATABASE AS CONNECT IDENTIFIER:
-# Agrega la base de datos standby a la configuración de Broker.
-# - Registra el standby como miembro de la configuración Data Guard
-# - CONNECT IDENTIFIER: Nombre de servicio TNS para conectarse al standby
-# - El Broker usará esta conexión para administrar y monitorear el standby
+# ADD DATABASE: agrega el standby a la configuración del Broker
+# - CONNECT IDENTIFIER: nombre de servicio TNS del standby
 #
-# ENABLE CONFIGURATION:
-# Activa la configuración de Data Guard Broker.
-# - Inicia el monitoreo automático y la gestión de ambas bases de datos
-# - El Broker comienza a rastrear el estado de sincronización
-# - Habilita comandos avanzados como SWITCHOVER y FAILOVER
+# ENABLE CONFIGURATION: activa la configuración del Broker
+# - Inicia monitoreo automático de ambas BD
+# - Habilita comandos de switchover y failover
 #
-# SHOW CONFIGURATION:
-# Muestra el estado actual de la configuración Data Guard:
-# - Estado de cada base de datos (SUCCESS, WARNING, ERROR)
-# - Modo de protección actual (MAXPERFORMANCE, MAXAVAILABILITY, MAXPROTECTION)
-# - Roles de cada base de datos (PRIMARY, PHYSICAL STANDBY)
+# SHOW CONFIGURATION: muestra estado de la configuración (SUCCESS/WARNING/ERROR)
+# y modo de protección (MAXPERFORMANCE/MAXAVAILABILITY/MAXPROTECTION)
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 remove configuration;
 create configuration dg_config as primary database is ${NODE1_DB_UNIQUE_NAME} connect identifier is ${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR};
@@ -281,7 +259,7 @@ echo "**************************************************************************
 echo "Configurar modo de protección MAXAVAILABILITY y transporte FASTSYNC." `date`
 echo "******************************************************************************"
 
-# Función para verificar que LogXptMode está configurado correctamente en una base de datos
+# Verificar que LogXptMode está configurado correctamente
 verify_logxptmode() {
     local db_name=$1
     local expected_mode=$2
@@ -312,7 +290,7 @@ EOF
     return 1
 }
 
-# Función para verificar que el nivel de protección es MAXIMUM AVAILABILITY (no RESYNCHRONIZATION)
+# Verificar nivel de protección MAXIMUM AVAILABILITY
 verify_protection_level() {
     local max_attempts=12  # 60 segundos totales
     local attempt=1
@@ -347,14 +325,11 @@ EOF
 }
 
 # Paso 1: Establecer modo de transporte FASTSYNC en PRIMARIO
-# EDIT DATABASE SET PROPERTY LogXptMode='FASTSYNC':
-# Configura el modo de transporte de redo logs desde el primario al standby.
-# - LogXptMode (Log Transport Mode): Define cómo se envían los redo logs al standby
-# - FASTSYNC: Modo de transporte SÍNCRONO que garantiza cero pérdida de datos
-#   * El primario espera confirmación de que el redo se escribió en el disco del standby
-#   * Más lento que ASYNC pero garantiza que no se pierden transacciones confirmadas
-#   * Requiere que el standby esté disponible, o las transacciones se bloquean
-#   * Necesario para el modo de protección MAXAVAILABILITY
+# LogXptMode='FASTSYNC': modo de transporte SÍNCRONO para cero pérdida de datos
+# - El primario espera confirmación de que el redo se escribió en disco del standby
+# - Más lento que ASYNC pero no se pierden transacciones confirmadas
+# - Requiere standby disponible, o las transacciones se bloquean
+# - Necesario para MAXAVAILABILITY
 # - Otras opciones: SYNC (más estricto), ASYNC (sin espera), ARCH (por archivos)
 echo "Estableciendo LogXptMode=FASTSYNC en base de datos primaria..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
@@ -362,10 +337,7 @@ EDIT DATABASE ${NODE1_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
 exit;
 EOF
 
-# EDIT DATABASE SET PROPERTY LogXptMode='FASTSYNC' (en standby):
-# Configura el modo de transporte de redo logs en el standby.
-# Aunque el standby no envía logs en operación normal, esta propiedad se usa
-# durante un switchover cuando el standby se convierte en primario.
+# LogXptMode en standby: se usa durante switchover cuando el standby se convierte en primario
 echo "Estableciendo LogXptMode=FASTSYNC en base de datos standby..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET PROPERTY LogXptMode='FASTSYNC';
@@ -377,14 +349,11 @@ if ! verify_logxptmode "${NODE1_DB_UNIQUE_NAME}" "FASTSYNC"; then
     echo "ADVERTENCIA: No se pudo verificar LogXptMode en primario, pero continuando..."
 fi
 
-# Paso 2: Habilitar aplicación de logs en standby para iniciar transporte de logs
-# EDIT DATABASE SET STATE='APPLY-ON':
-# Inicia el proceso Managed Recovery (MRP) en la base de datos standby.
-# - APPLY-ON: Activa la aplicación automática de redo logs en el standby
-# - El proceso MRP lee los redo logs recibidos y los aplica al standby
-# - Mantiene el standby sincronizado con el primario en tiempo real
-# - Necesario para que el transporte de logs funcione correctamente
-# - Otras opciones: APPLY-OFF (desactiva aplicación), ONLINE (abre para lectura)
+# Paso 2: Habilitar aplicación de logs en standby
+# STATE='APPLY-ON': inicia el proceso Managed Recovery (MRP)
+# - Activa la aplicación automática de redo logs en el standby
+# - El MRP lee los redo logs y los aplica en tiempo real
+# - Opciones: APPLY-OFF (desactiva), ONLINE (abre para lectura)
 echo "Habilitando aplicación de logs en base de datos standby..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT DATABASE ${NODE2_DB_UNIQUE_NAME} SET STATE='APPLY-ON';
@@ -394,34 +363,22 @@ EOF
 # Dar tiempo al standby para comenzar a aplicar logs
 sleep 5
 
-# Paso 3: Establecer modo de protección MAXAVAILABILITY DESPUÉS de configurar el transporte
-# EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY:
-# Configura el modo de protección Data Guard a MAXIMUM AVAILABILITY.
-#
-# MODOS DE PROTECCIÓN DISPONIBLES:
-# 1. MAXPROTECTION (Máxima Protección):
+# Paso 3: Establecer modo de protección MAXAVAILABILITY
+# MODOS DE PROTECCIÓN:
+# 1. MAXPROTECTION:
 #    - Cero pérdida de datos GARANTIZADA
-#    - Transacciones esperan confirmación SYNC del standby
-#    - Si el standby no está disponible, el primario se APAGA
-#    - El más seguro pero el más restrictivo
+#    - Si standby no disponible, primario se APAGA
 #
-# 2. MAXAVAILABILITY (Máxima Disponibilidad) [CONFIGURADO AQUÍ]:
-#    - Cero pérdida de datos EN CONDICIONES NORMALES
-#    - Transacciones esperan confirmación FASTSYNC del standby
-#    - Si el standby no está disponible, el primario continúa en modo MAXPERFORMANCE
-#    - Mejor balance entre protección de datos y disponibilidad del primario
+# 2. MAXAVAILABILITY [CONFIGURADO]:
+#    - Cero pérdida de datos en condiciones normales
+#    - Si standby no disponible, primario continúa en modo MAXPERFORMANCE
+#    - Mejor balance entre protección y disponibilidad
 #    - Requiere LogXptMode=FASTSYNC o SYNC
 #
-# 3. MAXPERFORMANCE (Máximo Rendimiento):
-#    - Pérdida de datos POSIBLE (según el retraso del transporte)
+# 3. MAXPERFORMANCE:
+#    - Pérdida de datos posible (según retraso del transporte)
 #    - No espera confirmación del standby (modo ASYNC)
-#    - Máxima performance del primario, sin impacto por el standby
-#    - El primario siempre continúa aunque el standby esté inactivo
-#
-# MAXAVAILABILITY proporciona:
-# - Protección de datos (cero pérdida si el standby está activo)
-# - Alta disponibilidad del primario (continúa si el standby falla)
-# - Ideal para entornos de producción críticos
+#    - Primario siempre continúa aunque standby esté inactivo
 echo "Estableciendo modo de protección MAXAVAILABILITY..."
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY;
@@ -451,13 +408,11 @@ echo "**************************************************************************
 
 sleep 30
 
-# VALIDATE DATABASE:
-# Verifica que la base de datos esté configurada correctamente para Data Guard.
-# - Valida configuración de redo logs, archive logs, parámetros de inicialización
-# - VALIDATE DATABASE: Verifica la base de datos en general
-# - VALIDATE DATABASE SPFILE: Verifica específicamente el archivo de parámetros
-# - VALIDATE STATIC CONNECT IDENTIFIER: Verifica la configuración TNS para conexiones estáticas
-#   (necesarias para que el Broker pueda conectarse cuando la BD está en modo MOUNT)
+# VALIDATE DATABASE: verifica la configuración de Data Guard
+# - Valida redo logs, archive logs, parámetros de inicialización
+# - VALIDATE DATABASE SPFILE: verifica el SPFile
+# - VALIDATE STATIC CONNECT IDENTIFIER: verifica configuración TNS para conexiones estáticas
+#   (necesarias para que el Broker se conecte cuando la BD está en modo MOUNT)
 dgmgrl sys/${SYS_PASSWORD}@${NODE1_DB_UNIQUE_NAME}${DB_DOMAIN_STR} <<EOF
 validate database ${NODE1_DB_UNIQUE_NAME};
 validate database ${NODE2_DB_UNIQUE_NAME};

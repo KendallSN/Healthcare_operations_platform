@@ -21,13 +21,13 @@ COL open_mode FORMAT A12
 COL protection_mode FORMAT A20
 COL protection_level FORMAT A20
 
--- Muestra el rol, modo de apertura, y nivel de protección de la base de datos
+-- Muestra rol, modo de apertura y nivel de protección
 SELECT name, db_unique_name, database_role, open_mode, log_mode,
        force_logging, flashback_on, protection_mode, protection_level
 FROM v\$database;
 EOF
 
-# 2. Estado de los Destinos de Archivo
+# 2. Destinos de Archivo
 echo ""
 echo "=== DESTINOS DE ARCHIVO ==="
 sqlplus -s / as sysdba <<EOF
@@ -37,22 +37,20 @@ COL status FORMAT A10
 COL destination FORMAT A40
 COL error FORMAT A30
 
--- Consulta v\$archive_dest para verificar el estado de los destinos de archivo de logs
--- Solo muestra destinos activos (no INACTIVE)
+-- v\$archive_dest: estado de destinos de archive logs (solo activos)
 SELECT dest_name, status, destination, error
 FROM v\$archive_dest
 WHERE status != 'INACTIVE'
 ORDER BY dest_id;
 EOF
 
-# 3. Logs de Redo Standby
+# 3. Standby Redo Logs
 echo ""
 echo "=== LOGS DE REDO STANDBY ==="
 sqlplus -s / as sysdba <<EOF
 COL member FORMAT A50
 
--- Consulta v\$standby_log para verificar la configuración de standby redo logs
--- Estos logs son necesarios para recibir cambios en el standby
+-- v\$standby_log: configuración de standby redo logs (necesarios para recibir cambios)
 SELECT l.group#, l.thread#, l.sequence#, l.bytes/1024/1024 AS size_mb,
        l.archived, l.status, f.member
 FROM v\$standby_log l, v\$logfile f
@@ -60,19 +58,19 @@ WHERE l.group# = f.group#
 ORDER BY l.group#;
 EOF
 
-# 4. Configuración del Retraso de Archivo
+# 4. Archive Lag Target
 echo ""
 echo "=== OBJETIVO DE RETRASO DE ARCHIVO ==="
 sqlplus -s / as sysdba <<EOF
--- ARCHIVE_LAG_TARGET especifica el tiempo máximo (en segundos) antes de forzar un switch de log
+-- ARCHIVE_LAG_TARGET: tiempo máximo en segundos antes de forzar switch de log
 SHOW PARAMETER ARCHIVE_LAG_TARGET;
 EOF
 
-# 5. Historial de Cambios de Log
+# 5. Historial de Log Switches
 echo ""
 echo "=== CAMBIOS DE LOG RECIENTES ==="
 sqlplus -s / as sysdba <<EOF
--- Consulta v\$log_history para ver los últimos 10 switches de log en las últimas 24 horas
+-- v\$log_history: últimos 10 switches de log en 24 horas
 SELECT sequence#, thread#, first_time, first_change#
 FROM v\$log_history
 WHERE first_time > SYSDATE - 1
@@ -80,24 +78,22 @@ ORDER BY sequence# DESC
 FETCH FIRST 10 ROWS ONLY;
 EOF
 
-# 6. Estado de la Base de Datos Standby
+# 6. Estado del Standby
 echo ""
 echo "=== ESTADO DE LA BASE DE DATOS STANDBY ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
 SET LINESIZE 150
 
--- Verifica el rol y modo de apertura de la base de datos standby
+-- Rol y modo de apertura del standby
 SELECT name, db_unique_name, database_role, open_mode, log_mode
 FROM v\$database;
 EOF
 
-# 7. Estado de Aplicación en Standby
+# 7. Procesos de Aplicación
 echo ""
 echo "=== ESTADO DE APLICACIÓN EN STANDBY ==="
 sqlplus -s sys/${SYS_PASSWORD}@${NODE2_DB_UNIQUE_NAME}${DB_DOMAIN_STR} as sysdba <<EOF
--- Consulta v\$managed_standby para ver los procesos de Data Guard activos
--- MRP: Managed Recovery Process (aplica logs)
--- RFS: Remote File Server (recibe logs)
+-- v\$managed_standby: procesos activos (MRP=aplica logs, RFS=recibe logs)
 -- LNS: Log Network Server (envía logs desde primary)
 SELECT process, status, thread#, sequence#, block#, blocks
 FROM v\$managed_standby

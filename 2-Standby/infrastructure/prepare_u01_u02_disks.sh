@@ -26,10 +26,10 @@ function prepare_disk {
   mount ${MOUNT_POINT}
 }
 
-# Preparar u01 (Base de Oracle)
+# Preparar u01: software Oracle y archivos de BD
 prepare_disk /u01 /dev/sdb
 
-# Preparar u02 (Copias de seguridad y FRA)
+# Preparar u02: backups y FRA
 prepare_disk /u02 /dev/sdc
 
 # Crear estructura de directorios

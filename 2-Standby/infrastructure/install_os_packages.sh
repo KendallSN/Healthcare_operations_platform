@@ -7,7 +7,7 @@ echo "**************************************************************************
 echo "Install OS packages." `date`
 echo "******************************************************************************"
 
-# Instalar paquete preinstalación de Oracle (configura usuarios, grupos, parámetros del kernel)
+# Instalar paquete oracle-database-preinstall-21c: configura usuarios, grupos y parámetros del kernel
 dnf install -y oracle-database-preinstall-21c
 
 # Instalar paquetes requeridos adicionales
