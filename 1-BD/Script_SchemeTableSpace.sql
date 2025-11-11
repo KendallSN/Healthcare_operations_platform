@@ -18,7 +18,7 @@ GRANT GRANT ANY ROLE TO HC_SCHEME;
 GRANT CREATE ANY DIRECTORY TO HC_SCHEME;
 GRANT SELECT ANY DICTIONARY TO HC_SCHEME;
 GRANT CREATE PROFILE TO HC_SCHEME;
-GRANT ALTER ANY USER TO HC_SCHEME;
+GRANT ALTER USER TO HC_SCHEME;
 
 -- Tambien desde sys como dba crear el tablespace principal para las tablas y procedimientos
 create tablespace HC_TS datafile '/opt/oracle/oradata/hc_ts.DBF' SIZE 1g autoextend on next 100m MAXSIZE 5g;
