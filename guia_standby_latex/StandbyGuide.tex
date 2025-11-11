@@ -1197,27 +1197,16 @@ Este proyecto implementa una solución de \textbf{Alta Disponibilidad (HA)} y \t
 Si esta arquitectura se traslada a un entorno de producción:
 
 \subsection{Infraestructura y Red}
-\begin{itemize}
-    \item \textbf{Hardware Dedicado:} Utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento.
-\item \textbf{Red Geográfica:} Colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales.
-\item \textbf{Conectividad:} Garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
-\end{itemize}
+
+En cuanto al \textbf{Hardware Dedicado}, se recomienda utilizar servidores físicos o instancias IaaS (\texttt{OCI}, \texttt{AWS}) con mínimo 32 GB de RAM y dispositivos SSD empresariales para el almacenamiento. Para la \textbf{Red Geográfica}, es fundamental colocar los nodos \textit{Primary} y \textit{Standby} en centros de datos separados para protección real ante desastres regionales. En términos de \textbf{Conectividad}, se debe garantizar 1 Gbps de ancho de banda dedicado y baja latencia para la replicación \texttt{FASTSYNC}.
 
 \subsection{Operación y Seguridad}
-\begin{itemize}
-    \item \textbf{Monitoreo Enterprise:} Reemplazar scripts Bash por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS).
-\item \textbf{TDE:} Implementar Transparent Data Encryption (TDE) para cifrar los \textit{datafiles} de la base de datos en reposo.
-\item \textbf{Pruebas de DR:} Realizar ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real.
-\item \textbf{Licenciamiento:} Verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
-\end{itemize}
+
+Respecto al \textbf{Monitoreo Enterprise}, se recomienda reemplazar scripts Bash por Oracle Enterprise Manager (OEM) o herramientas como Prometheus/Grafana para alertas automatizadas (email/SMS). En cuanto a seguridad, se debe implementar \textbf{TDE} (Transparent Data Encryption) para cifrar los \textit{datafiles} de la base de datos en reposo. Para \textbf{Pruebas de DR}, es necesario realizar ejercicios de \textit{Switchover} y \textit{Failover} al menos trimestralmente para validar procedimientos y medir el \texttt{RTO} real. Finalmente, sobre \textbf{Licenciamiento}, se debe verificar la necesidad de licencias adicionales (\textit{e.g.}, \textit{Active Data Guard} para \textit{queries} en el \textit{standby}).
 
 \section{Posibles Mejoras Futuras}
 
-\begin{itemize}
-    \item \textbf{Failover Automático (\texttt{FSFO}):} Habilitar \texttt{Fast-Start Failover} con un proceso \textit{Observer} para eliminar la dependencia de la intervención del DBA en caso de fallo.
-\item \textbf{Clonación Rápida:} Utilizar \texttt{SNAPSHOT STANDBY} para crear copias \textit{Read-Write} temporales para QA y desarrollo a partir del \textit{standby}.
-\item \textbf{Automatización DevOps:} Integración con \texttt{Ansible} o \texttt{GitLab CI} para la gestión de configuración y el despliegue de parches.
-\end{itemize}
+Para el \textbf{Failover Automático (\texttt{FSFO})}, se puede habilitar \texttt{Fast-Start Failover} con un proceso \textit{Observer} para eliminar la dependencia de la intervención del DBA en caso de fallo. En cuanto a \textbf{Clonación Rápida}, es posible utilizar \texttt{SNAPSHOT STANDBY} para crear copias \textit{Read-Write} temporales para QA y desarrollo a partir del \textit{standby}. Respecto a \textbf{Automatización DevOps}, se puede lograr la integración con \texttt{Ansible} o \texttt{GitLab CI} para la gestión de configuración y el despliegue de parches.
 
 \section{Conclusión Final}
 
